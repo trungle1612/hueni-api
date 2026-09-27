@@ -3,7 +3,6 @@
 module Vacancy
   def self.on(date = Date.current)
     busy = Booking.blocking_on(date).pluck(:room_id).to_set
-    # ponytail: groups all active rooms in Ruby; move to a SQL GROUP BY if rooms reach thousands
     Room.where(active: true).joins(:place).pluck("places.slug", :id, :max_guests)
       .group_by(&:first)
       .transform_values do |rooms|
