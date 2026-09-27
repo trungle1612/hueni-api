@@ -1,0 +1,9 @@
+limdim:
+  place: tomo
+  name: Limdim
+  max_guests: 4
+
+garden:
+  place: tomo
+  name: Garden
+  max_guests: 2

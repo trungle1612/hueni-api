@@ -1,0 +1,7 @@
+limdim_confirmed:
+  room: limdim
+  start_date: 2026-10-01
+  end_date: 2026-10-03
+  status: confirmed
+  source: manual
+  guest_name: Anh Minh
