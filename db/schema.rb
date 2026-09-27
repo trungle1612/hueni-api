@@ -51,6 +51,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100002) do
     t.integer "place_id", null: false
     t.string "name", null: false
     t.integer "max_guests", null: false
+    t.integer "price"
+    t.json "photo_urls", default: [], null: false
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
