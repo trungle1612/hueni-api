@@ -1,24 +1,9 @@
-# README
+## Rails 8 backend for hueni.me — the Huế travel guide.
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+- Vacancy API — GET /v1/vacancy returns free homestay rooms today, used by hueni's "Phòng trống" tab.
+- Owner admin — homestay owners manage rooms, calendar feeds, and manual bookings at /admin.
+- iCal sync — hourly import of bookings from Airbnb / Booking.com calendars.
 
-Things you may want to cover:
+## Stack
 
-* Ruby version
-
-* System dependencies
-
-* Configuration
-
-* Database creation
-
-* Database initialization
-
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+- Rails 8 · Ruby 3.4 · SQLite · Solid Queue/Cache/Cable · Hotwire · Kamal 2 · Litestream
