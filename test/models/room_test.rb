@@ -1,0 +1,56 @@
+require "test_helper"
+
+class RoomTest < ActiveSupport::TestCase
+  test "active by default" do
+    assert Room.new.active?
+  end
+
+  test "requires name and positive max_guests" do
+    room = Room.new(place: places(:tomo), max_guests: 0)
+    assert_not room.valid?
+    assert_includes room.errors.attribute_names, :name
+    assert_includes room.errors.attribute_names, :max_guests
+  end
+
+  test "price is optional whole VND amount, not negative" do
+    room = rooms(:garden)
+    assert room.tap { it.price = nil }.valid?
+    assert room.tap { it.price = 450_000 }.valid?
+    assert_not room.tap { it.price = -1 }.valid?
+    assert_not room.tap { it.price = 1.5 }.valid?
+  end
+
+  test "photo_urls defaults to empty array" do
+    assert_equal [], Room.new.photo_urls
+  end
+
+  test "photo_urls round-trips an array of http(s) urls" do
+    urls = [ "https://hueni.me/images/homestay/tomo-homestay/limdim-1.webp", "http://example.com/a.jpg" ]
+    rooms(:garden).update!(photo_urls: urls)
+    assert_equal urls, rooms(:garden).reload.photo_urls
+  end
+
+  test "photo_urls rejects non-array and non-http entries" do
+    room = rooms(:garden)
+    assert_not room.tap { it.photo_urls = "https://example.com/a.jpg" }.valid?
+    assert_not room.tap { it.photo_urls = [ "javascript:alert(1)" ] }.valid?
+    assert_not room.tap { it.photo_urls = [ 42 ] }.valid?
+  end
+
+  test "name is unique within a place" do
+    assert_not Room.new(place: places(:tomo), name: "Limdim", max_guests: 2).valid?
+    assert Room.new(place: places(:hiuhill), name: "Limdim", max_guests: 2).valid?
+  end
+
+  test "db enforces unique name per place" do
+    assert_raises(ActiveRecord::RecordNotUnique) do
+      Room.new(place: places(:tomo), name: "Limdim", max_guests: 2).save(validate: false)
+    end
+  end
+
+  test "db enforces place foreign key" do
+    assert_raises(ActiveRecord::InvalidForeignKey) do
+      Room.new(place_id: 0, name: "Ghost", max_guests: 2).save(validate: false)
+    end
+  end
+end
