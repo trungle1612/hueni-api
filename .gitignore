@@ -39,3 +39,6 @@
 
 # Brainstorming mockups (superpowers visual companion)
 /.superpowers/
+
+/app/assets/builds/*
+!/app/assets/builds/.keep

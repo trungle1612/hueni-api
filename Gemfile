@@ -64,3 +64,5 @@ group :test do
   gem "selenium-webdriver"
   gem "webmock"
 end
+
+gem "tailwindcss-rails", "~> 4.6"

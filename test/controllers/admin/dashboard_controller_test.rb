@@ -28,4 +28,38 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     get "/up"
     assert_response :success
   end
+
+  test "owner sees menu without users item; disabled items are not links" do
+    log_in users(:owner)
+    get admin_root_path
+
+    assert_select "aside a[href='/admin']", text: /Tổng quan/
+    assert_select "aside", text: /Lịch phòng/
+    assert_select "aside a", text: /Lịch phòng/, count: 0
+    assert_select "aside", text: /Người dùng/, count: 0
+    assert_select ".dock a[href='/admin']"
+  end
+
+  test "admin also sees the users item" do
+    log_in users(:admin)
+    get admin_root_path
+    assert_select "aside", text: /Người dùng/
+  end
+
+  test "shows name, role and avatar initial, including Vietnamese letters" do
+    users(:owner).update!(name: "ánh")
+    log_in users(:owner)
+    get admin_root_path
+
+    assert_select ".avatar", text: "Á"
+    assert_select "aside", text: /ánh/
+    assert_select "aside", text: /Chủ homestay/
+    assert_select "aside button", text: "Đăng xuất"
+  end
+
+  test "dashboard shows the empty state" do
+    log_in users(:owner)
+    get admin_root_path
+    assert_select "main", text: /Chưa có homestay nào/
+  end
 end
