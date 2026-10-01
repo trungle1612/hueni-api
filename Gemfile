@@ -4,6 +4,8 @@ source "https://rubygems.org"
 gem "rails", "~> 8.1.4"
 # Vietnamese translations for built-in Rails messages
 gem "rails-i18n", "~> 8.1"
+# Parse OTA iCal feeds (Airbnb, Booking.com)
+gem "icalendar", "~> 2.12"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use sqlite3 as the database for Active Record
@@ -60,4 +62,5 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
+  gem "webmock"
 end
