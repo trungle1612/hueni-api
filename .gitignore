@@ -33,3 +33,6 @@
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
+
+# Copy of hue-ni (private) homestay.json for places:import; never commit.
+/db/places/*.json
