@@ -2,10 +2,25 @@
 
 <h1 class="text-xl font-semibold mb-4">Tổng quan</h1>
 
-<div class="card bg-base-100 border border-dashed border-base-300">
-  <div class="card-body items-center text-center py-10">
-    <%= render "shared/icon", name: "home" %>
-    <div class="font-semibold">Chưa có homestay nào</div>
-    <div class="text-sm opacity-70">Quản trị viên sẽ gán homestay cho tài khoản của bạn.</div>
+<% if @places.any? %>
+  <div class="flex flex-col gap-3">
+    <% @places.each do |place| %>
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-4">
+          <div class="font-semibold"><%= place.name %></div>
+          <% if place.address.present? %>
+            <div class="text-sm opacity-60"><%= place.address %></div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
   </div>
-</div>
+<% else %>
+  <div class="card bg-base-100 border border-dashed border-base-300">
+    <div class="card-body items-center text-center py-10">
+      <%= render "shared/icon", name: "home" %>
+      <div class="font-semibold">Chưa có homestay nào</div>
+      <div class="text-sm opacity-70">Quản trị viên sẽ gán homestay cho tài khoản của bạn.</div>
+    </div>
+  </div>
+<% end %>

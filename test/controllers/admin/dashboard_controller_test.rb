@@ -57,7 +57,24 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "aside button", text: "Đăng xuất"
   end
 
-  test "dashboard shows the empty state" do
+  test "owner sees only their homestays" do
+    log_in users(:owner)
+    get admin_root_path
+    assert_select "main .card", text: /tomo homestay/
+    assert_select "main", text: /6\/24 Kim Long/
+    assert_select "main", text: /Hiu Hill Homestay/, count: 0
+  end
+
+  test "admin sees every homestay, including ones without an address" do
+    log_in users(:admin)
+    get admin_root_path
+    assert_select "main .card", text: /tomo homestay/
+    assert_select "main .card", text: /Hiu Hill Homestay/
+    assert_select "main .card .text-sm", count: 1 # only tomo has an address line
+  end
+
+  test "owner without homestays sees the empty state" do
+    users(:owner).place_memberships.destroy_all
     log_in users(:owner)
     get admin_root_path
     assert_select "main", text: /Chưa có homestay nào/

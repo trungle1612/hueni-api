@@ -32,7 +32,7 @@ CI (`.github/workflows/ci.yml`) runs brakeman, bundler-audit, importmap audit, r
 
 ## Architecture
 
-**Data model** (`db/schema.rb`): `places` → `rooms` → `bookings`, plus `calendar_feeds` (room → feed → its imported bookings).
+**Data model** (`db/schema.rb`): `places` → `rooms` → `bookings`, plus `calendar_feeds` (room → feed → its imported bookings) and `place_memberships` (users ↔ places, many-to-many).
 
 - `places.slug` = hueni's `Place.id`. Other place columns (address, phone, rating, lat/lng, …) are a **read-only copy** of hueni's `homestay.json`, overwritten by `places:import`. hueni stays the source of truth; never edit them here.
 - `bookings`: `end_date` is **exclusive** (checkout day is free). `status` = `hold` | `confirmed` | `cancelled`; `source` = `manual` | `ical`. Values are enforced by DB check constraints *and* `enum ..., validate: true`. Cancelled rows are kept as history, not deleted.
@@ -59,7 +59,7 @@ CI (`.github/workflows/ci.yml`) runs brakeman, bundler-audit, importmap audit, r
 - `calendar_feeds.url` embeds OTA tokens: never render it in `/v1/*`, keep `:url` in `filter_parameters`.
 - SSRF: feed URLs must be http(s) and resolve only to public IPs (`CalendarFeed.public_ip?`), checked on save **and again at fetch time** (DNS rebinding).
 - iCal sync failure must change no bookings; record `last_error` / `last_error_at` instead. `CalendarFeed#sync` fetches and parses *before* opening the transaction.
-- Admin rule: every `/admin` controller inherits `Admin::BaseController`; from #18 it scopes through `Current.user.accessible_place_ids` and returns 404 out of scope.
+- Admin rule: every admin lookup goes through `Current.user.accessible_places / _rooms / _calendar_feeds / _bookings` (admins: everything; owners: places they are members of). Never `Place.find` / `Room.find` etc. in admin controllers. Out of scope → `RecordNotFound` → 404. Each new admin page adds a request test that another owner's record returns 404.
 
 ## Conventions
 
