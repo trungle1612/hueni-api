@@ -1,0 +1,21 @@
+{
+  "places": [
+    {
+      "id": "tomo-homestay",
+      "name": "tomo homestay",
+      "address": "6/24 Kim Long, Huế, Việt Nam",
+      "phone": "+84 338 268 999",
+      "rating": 4.8,
+      "coordinates": { "lat": 16.4603327, "lng": 107.5677355 },
+      "website": "https://www.facebook.com/tomo",
+      "coverImage": "https://hueni.me/images/homestay/tomo-homestay/cover.webp",
+      "place_id": "ChIJZ2Zrp7SnQTERagYjjuo8XN0",
+      "description": "not imported"
+    },
+    {
+      "id": "nha-vuon-homestay",
+      "name": "Nhà Vườn Homestay",
+      "coordinates": { "lat": 16.45, "lng": 107.58 }
+    }
+  ]
+}
