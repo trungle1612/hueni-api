@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_01_143716) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_01_152228) do
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -42,6 +42,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_143716) do
     t.datetime "updated_at", null: false
     t.index ["room_id", "url"], name: "index_calendar_feeds_on_room_id_and_url", unique: true
     t.check_constraint "provider IN ('airbnb', 'booking', 'other')", name: "calendar_feeds_provider_values"
+  end
+
+  create_table "place_memberships", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.integer "place_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id"], name: "index_place_memberships_on_place_id"
+    t.index ["user_id", "place_id"], name: "index_place_memberships_on_user_id_and_place_id", unique: true
   end
 
   create_table "places", force: :cascade do |t|
@@ -95,6 +104,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_143716) do
   add_foreign_key "bookings", "calendar_feeds"
   add_foreign_key "bookings", "rooms"
   add_foreign_key "calendar_feeds", "rooms"
+  add_foreign_key "place_memberships", "places"
+  add_foreign_key "place_memberships", "users"
   add_foreign_key "rooms", "places"
   add_foreign_key "sessions", "users"
 end
