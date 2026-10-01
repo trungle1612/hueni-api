@@ -1,6 +1,8 @@
 class Booking < ApplicationRecord
   belongs_to :room
 
+  after_commit { Vacancy.bust }
+
   enum :status, { hold: "hold", confirmed: "confirmed", cancelled: "cancelled" }, validate: true
   enum :source, { manual: "manual", ical: "ical" }, validate: true
 
