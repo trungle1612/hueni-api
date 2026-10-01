@@ -36,3 +36,12 @@
 
 # Copy of hue-ni (private) homestay.json for places:import; never commit.
 /db/places/*.json
+
+# Brainstorming mockups (superpowers visual companion)
+/.superpowers/
+
+/app/assets/builds/*
+!/app/assets/builds/.keep
+
+# Local design specs and plans (superpowers); not committed
+/docs/superpowers/

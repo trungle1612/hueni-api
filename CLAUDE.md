@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Rails 8 backend for **hueni** (`https://hueni.me`, private repo `trungle1612/hue-ni`, usually checked out at `../hue-ni`), a static React travel guide for Huế. It provides:
 
 1. `GET /v1/vacancy` — public JSON of free homestay rooms today, consumed by hueni's "Phòng trống" tab.
-2. `/admin` — owner admin (Hotwire, not built yet): owners manage rooms, calendar feeds and bookings.
+2. `/admin` — owner admin (Hotwire; login + frame built, pages in #18–#23): owners manage rooms, calendar feeds and bookings.
 3. iCal sync pulling bookings from owners' Airbnb / Booking.com calendars: `CalendarFeed#sync` + `SyncCalendarFeedJob` (hourly schedule is #15).
 
 **Design spec:** `../hue-ni/docs/superpowers/specs/2026-09-26-hueni-api-design.md` (lives in the hue-ni repo). Work is tracked as GitHub issues grouped under epics #12 (Step 1), #16 (Step 2), #24 (Step 3), #28 (Step 4). **Issue bodies are newer than the spec** where they differ — see "Deviations" below. If code, issue and spec disagree, ask.
@@ -18,7 +18,7 @@ rbenv shims are not on PATH in non-interactive shells; prefix commands with `exp
 
 ```bash
 bin/setup                                  # gems + DB
-bin/dev                                    # http://localhost:3000
+bin/dev                                    # http://localhost:3000 (server + Tailwind watcher)
 bin/rails test                             # all non-system tests
 bin/rails test test/models/vacancy_test.rb      # one file
 bin/rails test test/models/vacancy_test.rb:12   # one test by line
@@ -42,6 +42,8 @@ CI (`.github/workflows/ci.yml`) runs brakeman, bundler-audit, importmap audit, r
 
 **Public API** (`app/controllers/v1/`): controllers inherit `ActionController::API`, not `ApplicationController` (which has `allow_browser :modern` and would block curl/uptime checks). CORS is a hand-set `Access-Control-Allow-Origin` for `https://hueni.me` and `http://localhost:5173` only — no `rack-cors`. `/v1/*` must never expose guest fields, feed URLs or `uid`s; the request test asserts this.
 
+**Auth & admin:** Rails 8 authentication generator (`Authentication` concern in `ApplicationController`, DB-backed `sessions`) — every controller requires login unless it calls `allow_unauthenticated_access`. `users.role` = `admin` | `owner`. Admin controllers inherit `Admin::BaseController` (scoping in #18). The admin menu is one list, `ApplicationHelper#admin_menu_items`, rendered as a bottom dock on phones and a sidebar on `lg+`; `path: nil` items show as "Sắp có". No password reset / mailer yet (#23).
+
 **Time:** `config.time_zone = "Asia/Ho_Chi_Minh"`. Always `Date.current` / `Time.current`. A Huế day starts at 17:00 UTC; tests use `travel_to`.
 
 ## Deviations from the spec (agreed, already in issues)
@@ -57,11 +59,11 @@ CI (`.github/workflows/ci.yml`) runs brakeman, bundler-audit, importmap audit, r
 - `calendar_feeds.url` embeds OTA tokens: never render it in `/v1/*`, keep `:url` in `filter_parameters`.
 - SSRF: feed URLs must be http(s) and resolve only to public IPs (`CalendarFeed.public_ip?`), checked on save **and again at fetch time** (DNS rebinding).
 - iCal sync failure must change no bookings; record `last_error` / `last_error_at` instead. `CalendarFeed#sync` fetches and parses *before* opening the transaction.
-- Planned admin rule: every `/admin` controller inherits `Admin::BaseController` and scopes through `Current.user.accessible_place_ids`; out-of-scope → 404.
+- Admin rule: every `/admin` controller inherits `Admin::BaseController`; from #18 it scopes through `Current.user.accessible_place_ids` and returns 404 out of scope.
 
 ## Conventions
 
-- All user-facing strings in Vietnamese. Admin UI: server-rendered ERB + Turbo/Stimulus via importmap, plain CSS with hueni's "Imperial Huế" tokens (primary `#7d0010`, gold `#735c00`, background `#fdf6ec`, text `#2b1613`; Noto Serif headings, Plus Jakarta Sans body), mobile-first.
+- All user-facing strings in Vietnamese, inline in views/controllers. Admin UI: server-rendered ERB + Turbo/Stimulus via importmap, **Tailwind 4 + daisyUI 5 (`autumn` theme only)** via `tailwindcss-rails`; daisyUI is the vendored `app/assets/tailwind/daisyui.mjs` (update by re-downloading; keep `@source not "./daisyui.mjs"` or every daisyUI class gets emitted). Mobile-first. The admin does not follow hueni's design.
 - SQLite for everything (primary + Solid Queue/Cache/Cable). No Redis, no Postgres, no Node build.
 - Prefer stdlib over new gems (e.g. `Resolv`/`IPAddr` for SSRF, `Net::HTTP`).
 - HTTP in tests is blocked by WebMock (`webmock/minitest`, localhost allowed); stub every external request. Use public IP literals (e.g. `https://1.1.1.1/…`) for feed URLs so validation needs no DNS.
