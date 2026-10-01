@@ -17,4 +17,11 @@ class User < ApplicationRecord
   def role_label = ROLE_LABELS.fetch(role)
 
   def initial = name.to_s.first.to_s.upcase
+
+  # The single access rule for admin code: look records up only through these.
+  # Out-of-scope `find` raises RecordNotFound, which Rails renders as 404.
+  def accessible_places = admin? ? Place.all : Place.where(id: place_memberships.select(:place_id))
+  def accessible_rooms = Room.where(place_id: accessible_places.select(:id))
+  def accessible_calendar_feeds = CalendarFeed.where(room_id: accessible_rooms.select(:id))
+  def accessible_bookings = Booking.where(room_id: accessible_rooms.select(:id))
 end
