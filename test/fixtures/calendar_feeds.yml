@@ -1,0 +1,4 @@
+limdim_airbnb:
+  room: limdim
+  url: https://www.airbnb.com/calendar/ical/123.ics?s=secret-token
+  provider: airbnb

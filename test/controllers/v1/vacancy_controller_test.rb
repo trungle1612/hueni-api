@@ -27,7 +27,7 @@ class V1::VacancyControllerTest < ActionDispatch::IntegrationTest
     bookings(:limdim_confirmed).update!(guest_phone: "0905123456", note: "secret", uid: "abc@airbnb.com")
     get "/v1/vacancy"
 
-    %w[Anh\ Minh 0905123456 secret abc@airbnb.com].each { assert_not_includes response.body, it }
+    [ "Anh Minh", "0905123456", "secret", "abc@airbnb.com", calendar_feeds(:limdim_airbnb).url ].each { assert_not_includes response.body, it }
   end
 
   test "cache is busted when a booking is written" do
