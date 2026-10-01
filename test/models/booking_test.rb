@@ -40,9 +40,9 @@ class BookingTest < ActiveSupport::TestCase
   end
 
   test "db enforces unique uid per calendar feed" do
-    build(source: "ical", calendar_feed_id: 1, uid: "abc").save!
+    build(source: "ical", calendar_feed: calendar_feeds(:limdim_airbnb), uid: "abc").save!
     assert_raises(ActiveRecord::RecordNotUnique) do
-      build(source: "ical", calendar_feed_id: 1, uid: "abc", start_date: "2026-11-01", end_date: "2026-11-02").save!
+      build(source: "ical", calendar_feed: calendar_feeds(:limdim_airbnb), uid: "abc", start_date: "2026-11-01", end_date: "2026-11-02").save!
     end
   end
 

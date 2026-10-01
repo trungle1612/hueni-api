@@ -1,5 +1,6 @@
 class Booking < ApplicationRecord
   belongs_to :room
+  belongs_to :calendar_feed, optional: true
 
   after_commit { Vacancy.bust }
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_27_100002) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_01_100000) do
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -29,6 +29,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100002) do
     t.check_constraint "end_date > start_date", name: "bookings_dates_order"
     t.check_constraint "source IN ('manual', 'ical')", name: "bookings_source_values"
     t.check_constraint "status IN ('hold', 'confirmed', 'cancelled')", name: "bookings_status_values"
+  end
+
+  create_table "calendar_feeds", force: :cascade do |t|
+    t.integer "room_id", null: false
+    t.string "url", null: false
+    t.string "provider", default: "other", null: false
+    t.datetime "last_synced_at"
+    t.text "last_error"
+    t.datetime "last_error_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["room_id", "url"], name: "index_calendar_feeds_on_room_id_and_url", unique: true
+    t.check_constraint "provider IN ('airbnb', 'booking', 'other')", name: "calendar_feeds_provider_values"
   end
 
   create_table "places", force: :cascade do |t|
@@ -59,6 +72,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100002) do
     t.index ["place_id", "name"], name: "index_rooms_on_place_id_and_name", unique: true
   end
 
+  add_foreign_key "bookings", "calendar_feeds"
   add_foreign_key "bookings", "rooms"
+  add_foreign_key "calendar_feeds", "rooms"
   add_foreign_key "rooms", "places"
 end
