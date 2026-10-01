@@ -50,4 +50,17 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     get admin_root_path
     assert_redirected_to new_session_path
   end
+
+  test "after a stale logout, logging in goes to admin instead of the logout URL" do
+    delete session_path
+    assert_redirected_to new_session_path
+
+    log_in "lan@example.com"
+    assert_redirected_to admin_root_url
+  end
+
+  test "login page works on older phone browsers" do
+    get new_session_path, headers: { "User-Agent" => "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1" }
+    assert_response :success
+  end
 end
