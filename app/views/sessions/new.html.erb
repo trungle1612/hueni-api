@@ -10,8 +10,8 @@
     <h1 class="card-title">Đăng nhập</h1>
     <%= form_with url: session_path, class: "flex flex-col gap-3" do |form| %>
       <div>
-        <%= form.label :email_address, "Email", class: "label mb-1" %>
-        <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", value: params[:email_address], class: "input w-full" %>
+        <%= form.label :phone_number, "Số điện thoại", class: "label mb-1" %>
+        <%= form.telephone_field :phone_number, required: true, autofocus: true, autocomplete: "username", value: params[:phone_number], class: "input w-full" %>
       </div>
       <div>
         <%= form.label :password, "Mật khẩu", class: "label mb-1" %>
@@ -19,5 +19,6 @@
       </div>
       <%= form.submit "Đăng nhập", class: "btn btn-primary btn-block mt-2" %>
     <% end %>
+    <p class="text-sm opacity-70 mt-2">Quên mật khẩu? Liên hệ quản trị viên để đặt lại.</p>
   </div>
 </div>

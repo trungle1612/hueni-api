@@ -1,5 +1,7 @@
 Rails.application.routes.draw do
   resource :session, only: %i[new create destroy]
+  get "dat-mat-khau/:token", to: "password_setups#edit", as: :password_setup
+  patch "dat-mat-khau/:token", to: "password_setups#update"
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
@@ -23,6 +25,9 @@ Rails.application.routes.draw do
     end
     resources :rooms, only: %i[edit update] do
       resources :calendar_feeds, only: :create
+    end
+    resources :users, only: %i[index new create edit update] do
+      post :reset_password, on: :member
     end
     resources :calendar_feeds, only: %i[index destroy] do
       post :sync, on: :member

@@ -1,11 +1,11 @@
 admin:
-  email_address: admin@example.com
+  phone_number: "0905111222"
   name: Trung
   role: admin
   password_digest: <%= BCrypt::Password.create("password123") %>
 
 owner:
-  email_address: lan@example.com
+  phone_number: "0912345678"
   name: Chị Lan
   role: owner
   password_digest: <%= BCrypt::Password.create("password123") %>

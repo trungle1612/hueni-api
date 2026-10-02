@@ -7,7 +7,7 @@ class CalendarFeedsTest < ApplicationSystemTestCase
     travel_to Time.zone.local(2026, 10, 5, 12)
     stub_request(:get, URL).to_return(body: file_fixture("airbnb.ics").read)
     visit new_session_path
-    fill_in "Email", with: "lan@example.com"
+    fill_in "Số điện thoại", with: "0912 345 678"
     fill_in "Mật khẩu", with: "password123"
     click_button "Đăng nhập"
     assert_selector "h1", text: "Tổng quan"

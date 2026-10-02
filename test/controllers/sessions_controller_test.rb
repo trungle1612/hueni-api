@@ -1,8 +1,8 @@
 require "test_helper"
 
 class SessionsControllerTest < ActionDispatch::IntegrationTest
-  def log_in(email, password = "password123")
-    post session_path, params: { email_address: email, password: password }
+  def log_in(phone, password = "password123")
+    post session_path, params: { phone_number: phone, password: password }
   end
 
   test "login page renders" do
@@ -13,28 +13,28 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
 
   test "correct credentials start a session and go to admin" do
     assert_difference -> { users(:owner).sessions.count }, 1 do
-      log_in "lan@example.com"
+      log_in "0912345678"
     end
     assert_redirected_to admin_root_url
   end
 
-  test "email casing and spaces don't matter" do
-    log_in "  LAN@Example.com "
+  test "phone number spacing and +84 prefix don't matter" do
+    log_in "+84 912.345-678"
     assert_redirected_to admin_root_url
   end
 
   test "wrong password goes back to login with an error and no session" do
     assert_no_difference -> { Session.count } do
-      log_in "lan@example.com", "wrong-password"
+      log_in "0912345678", "wrong-password"
     end
     assert_redirected_to new_session_path
     follow_redirect!
-    assert_select "[role=alert]", text: /Email hoặc mật khẩu không đúng/
+    assert_select "[role=alert]", text: /Số điện thoại hoặc mật khẩu không đúng/
   end
 
   test "logout ends only this device's session" do
     other_device = users(:owner).sessions.create!(ip_address: "1.1.1.1", user_agent: "phone")
-    log_in "lan@example.com"
+    log_in "0912345678"
 
     delete session_path
 
@@ -45,7 +45,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "session of a deleted user no longer works" do
-    log_in "lan@example.com"
+    log_in "0912345678"
     users(:owner).destroy!
     get admin_root_path
     assert_redirected_to new_session_path
@@ -55,7 +55,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     delete session_path
     assert_redirected_to new_session_path
 
-    log_in "lan@example.com"
+    log_in "0912345678"
     assert_redirected_to admin_root_url
   end
 

@@ -2,7 +2,7 @@ require "test_helper"
 
 class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
   def log_in(user)
-    post session_path, params: { email_address: user.email_address, password: "password123" }
+    post session_path, params: { phone_number: user.phone_number, password: "password123" }
   end
 
   test "requires login" do
@@ -44,7 +44,7 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     log_in users(:admin)
     get admin_root_path
     assert_select "aside", text: /Người dùng/
-    assert_select "aside a", text: /Người dùng/, count: 0 # not built yet
+    assert_select "aside a[href='/admin/users']", text: /Người dùng/
   end
 
   test "shows name, role and avatar initial, including Vietnamese letters" do

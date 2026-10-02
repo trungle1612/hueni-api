@@ -1,0 +1,32 @@
+<% content_for :title, "Đặt mật khẩu · hueni admin" %>
+
+<div class="text-center mb-6">
+  <div class="text-3xl font-bold text-primary">hueni</div>
+  <div class="text-sm opacity-70">Quản lý phòng cho chủ homestay</div>
+</div>
+
+<div class="card bg-base-100 shadow-md">
+  <div class="card-body">
+    <h1 class="card-title">Đặt mật khẩu</h1>
+    <p class="text-sm">Xin chào <b><%= @user.name %></b>. Chọn mật khẩu để đăng nhập bằng số <b><%= phone(@user.phone_number) %></b>.</p>
+    <% if @user.errors.any? %>
+      <div role="alert" class="alert alert-error alert-soft">
+        <ul><% @user.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul>
+      </div>
+    <% end %>
+    <%= form_with model: @user, url: password_setup_path(token: params[:token]), method: :patch, class: "flex flex-col gap-3" do |form| %>
+      <%# Lets the phone's password manager save the login under the phone number. %>
+      <input type="hidden" autocomplete="username" value="<%= @user.phone_number %>">
+      <div>
+        <%= form.label :password, "Mật khẩu mới", class: "label mb-1" %>
+        <%= form.password_field :password, required: true, minlength: 8, maxlength: 72, autocomplete: "new-password", autofocus: true, class: "input w-full" %>
+        <div class="text-xs opacity-60 mt-1">Ít nhất 8 ký tự.</div>
+      </div>
+      <div>
+        <%= form.label :password_confirmation, "Nhập lại mật khẩu", class: "label mb-1" %>
+        <%= form.password_field :password_confirmation, required: true, maxlength: 72, autocomplete: "new-password", class: "input w-full" %>
+      </div>
+      <%= form.submit "Lưu mật khẩu", class: "btn btn-primary btn-block mt-2" %>
+    <% end %>
+  </div>
+</div>

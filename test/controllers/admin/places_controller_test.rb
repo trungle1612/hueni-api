@@ -5,7 +5,7 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
   setup { travel_to Time.zone.local(2026, 10, 1, 12) }
 
   def log_in(user)
-    post session_path, params: { email_address: user.email_address, password: "password123" }
+    post session_path, params: { phone_number: user.phone_number, password: "password123" }
   end
 
   test "owner sees their homestay with rooms, prices and today's status" do

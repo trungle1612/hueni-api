@@ -1,0 +1,27 @@
+<% content_for :title, "Người dùng · hueni admin" %>
+
+<div class="flex justify-between items-center mb-4">
+  <h1 class="text-xl font-semibold">Người dùng</h1>
+  <%= link_to "+ Thêm", new_admin_user_path, class: "btn btn-primary btn-sm" %>
+</div>
+
+<div class="flex flex-col gap-3">
+  <% @users.each do |user| %>
+    <%= link_to edit_admin_user_path(user), id: dom_id(user), class: "card bg-base-100 shadow-sm hover:shadow-md transition-shadow" do %>
+      <div class="card-body p-4 gap-1">
+        <div class="flex justify-between items-start gap-2">
+          <div class="font-semibold"><%= user.name %><%= " (bạn)" if user == Current.user %></div>
+          <span class="badge badge-soft badge-sm <%= user.admin? ? "badge-primary" : "badge-neutral" %>"><%= user.role_label %></span>
+        </div>
+        <div class="text-sm opacity-70"><%= phone(user.phone_number) %></div>
+        <% if user.admin? %>
+          <div class="text-xs opacity-60">Tất cả homestay</div>
+        <% elsif user.places.any? %>
+          <div class="text-xs opacity-60"><%= user.places.map(&:name).sort.join(", ") %></div>
+        <% else %>
+          <div class="text-xs text-warning">Chưa gán homestay</div>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+</div>
