@@ -8,3 +8,7 @@ vi:
         name: Tên phòng
         max_guests: Số khách tối đa
         price: Giá mỗi đêm
+      booking:
+        start_date: Ngày nhận phòng
+        end_date: Ngày trả phòng
+        status: Trạng thái

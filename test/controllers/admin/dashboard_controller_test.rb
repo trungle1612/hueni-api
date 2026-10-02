@@ -34,8 +34,9 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     get admin_root_path
 
     assert_select "aside a[href='/admin']", text: /Tổng quan/
-    assert_select "aside", text: /Lịch phòng/
-    assert_select "aside a", text: /Lịch phòng/, count: 0
+    assert_select "aside a[href='/admin/calendar']", text: /Lịch phòng/
+    assert_select "aside", text: /Kênh OTA/
+    assert_select "aside a", text: /Kênh OTA/, count: 0
     assert_select "aside", text: /Người dùng/, count: 0
     assert_select ".dock a[href='/admin']"
   end

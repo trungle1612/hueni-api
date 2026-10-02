@@ -37,6 +37,7 @@ CI (`.github/workflows/ci.yml`) runs brakeman, bundler-audit, importmap audit, r
 - `places.slug` = hueni's `Place.id`. Other place columns (address, phone, rating, lat/lng, …) are a **read-only copy** of hueni's `homestay.json`, overwritten by `places:import`. hueni stays the source of truth; never edit them here.
 - `bookings`: `end_date` is **exclusive** (checkout day is free). `status` = `hold` | `confirmed` | `cancelled`; `source` = `manual` | `ical`. Values are enforced by DB check constraints *and* `enum ..., validate: true`. Cancelled rows are kept as history, not deleted.
 - `Booking.blocking_on(date)` (hold + confirmed covering `date`) is the single definition of "room occupied" — vacancy and the admin timeline both build on it.
+- A manual hold/confirmed booking can't overlap another blocking booking on its room (validation). iCal bookings skip it (the OTA already sold the nights); an iCal booking overlapping a manual one is shown on the calendar as a conflict for the owner to resolve.
 
 **Vacancy** (`app/models/vacancy.rb`): `Vacancy.on(date)` computes `{ slug => { left:, max_guests: } }`; `Vacancy.cached` wraps it in `Rails.cache` under `["vacancy", Date.current]` for 5 min. Every `Place`, `Room`, `Booking` and `CalendarFeed` has `after_commit { Vacancy.bust }`. **Bulk writes that skip callbacks (`delete_all`, `upsert_all`, the iCal sync) must call `Vacancy.bust` themselves.**
 

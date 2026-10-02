@@ -24,7 +24,8 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
 
   test "hold shows Giữ chỗ, confirmed wins over hold, switched-off shows Đã tắt" do
     Booking.create!(room: rooms(:garden), start_date: "2026-10-01", end_date: "2026-10-02", status: "hold")
-    Booking.create!(room: rooms(:limdim), start_date: "2026-10-01", end_date: "2026-10-02", status: "hold")
+    # Overlaps limdim_confirmed: manual overlaps are rejected, so this only happens alongside an iCal booking.
+    Booking.new(room: rooms(:limdim), start_date: "2026-10-01", end_date: "2026-10-02", status: "hold").save!(validate: false)
     log_in users(:owner)
     get admin_place_path("tomo-homestay")
     assert_select "#room_#{rooms(:garden).id} .badge", "Giữ chỗ"

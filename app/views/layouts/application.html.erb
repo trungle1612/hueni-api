@@ -25,7 +25,7 @@
           <ul class="menu w-full gap-1">
             <% admin_menu_items.each do |item| %>
               <% if item[:path] %>
-                <li><%= link_to item[:path], class: ("menu-active" if current_page?(item[:path])) do %><%= render "shared/icon", name: item[:icon] %><%= item[:label] %><% end %></li>
+                <li><%= link_to item[:path], class: ("menu-active" if item[:active]) do %><%= render "shared/icon", name: item[:icon] %><%= item[:label] %><% end %></li>
               <% else %>
                 <li class="menu-disabled"><span><%= render "shared/icon", name: item[:icon] %><%= item[:label] %> <span class="badge badge-ghost badge-xs">Sắp có</span></span></li>
               <% end %>
@@ -64,7 +64,7 @@
       <div class="dock dock-sm bg-base-100 border-t border-base-300 lg:hidden">
         <% admin_menu_items.each do |item| %>
           <% if item[:path] %>
-            <%= link_to item[:path], class: ("dock-active text-primary" if current_page?(item[:path])) do %><%= render "shared/icon", name: item[:icon] %><span class="dock-label"><%= item[:label] %></span><% end %>
+            <%= link_to item[:path], class: ("dock-active text-primary" if item[:active]) do %><%= render "shared/icon", name: item[:icon] %><span class="dock-label"><%= item[:label] %></span><% end %>
           <% else %>
             <span class="opacity-40" aria-disabled="true"><%= render "shared/icon", name: item[:icon] %><span class="dock-label"><%= item[:label] %></span></span>
           <% end %>

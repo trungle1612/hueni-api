@@ -2,8 +2,8 @@ module ApplicationHelper
   # Single source for the admin dock (phone) and sidebar (desktop). path: nil = page not built yet.
   def admin_menu_items
     items = [
-      { label: "Tổng quan", icon: "home", path: admin_root_path },
-      { label: "Lịch phòng", icon: "calendar", path: nil },
+      { label: "Tổng quan", icon: "home", path: admin_root_path, active: current_page?(admin_root_path) },
+      { label: "Lịch phòng", icon: "calendar", path: admin_calendar_path, active: controller_name.in?(%w[calendars bookings]) },
       { label: "Kênh OTA", icon: "refresh", path: nil }
     ]
     items << { label: "Người dùng", icon: "users", path: nil } if Current.user&.admin?
