@@ -12,6 +12,7 @@ class Admin::CalendarFeedsController < Admin::BaseController
   # Syncs inline so the owner sees straight away whether the link works.
   def create
     @room = Current.user.accessible_rooms.find(params[:room_id])
+    authorize!(:manage, @place = @room.place)
     @calendar_feed = @room.calendar_feeds.build(params.expect(calendar_feed: [ :provider, :url ]))
     if @calendar_feed.save
       if @calendar_feed.sync
@@ -20,22 +21,22 @@ class Admin::CalendarFeedsController < Admin::BaseController
         redirect_to edit_admin_room_path(@room), alert: "Đã thêm, nhưng đồng bộ lỗi: #{@calendar_feed.last_error}"
       end
     else
-      @place = @room.place
       render "admin/rooms/edit", status: :unprocessable_entity
     end
   end
 
   def sync
     if @feed.synced_recently?
-      redirect_to edit_admin_room_path(@feed.room), alert: "Vừa đồng bộ, thử lại sau 1 phút."
+      redirect_back_or_to admin_calendar_feeds_path, alert: "Vừa đồng bộ, thử lại sau 1 phút."
     elsif @feed.sync
-      redirect_to edit_admin_room_path(@feed.room), notice: "Đã đồng bộ."
+      redirect_back_or_to admin_calendar_feeds_path, notice: "Đã đồng bộ."
     else
-      redirect_to edit_admin_room_path(@feed.room), alert: "Đồng bộ lỗi: #{@feed.last_error}"
+      redirect_back_or_to admin_calendar_feeds_path, alert: "Đồng bộ lỗi: #{@feed.last_error}"
     end
   end
 
   def destroy
+    authorize!(:manage, @place = @feed.room.place)
     @feed.destroy!
     redirect_to edit_admin_room_path(@feed.room), notice: "Đã xoá kênh #{@feed.provider_label}."
   end
