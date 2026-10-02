@@ -1,0 +1,83 @@
+<% content_for :title, "Lịch phòng · #{@place.name} · hueni admin" %>
+<% grid = "grid grid-cols-[4.75rem_repeat(14,2.75rem)]" %>
+<% conflict_ids = @conflicts.flatten.map(&:id).to_set %>
+
+<%= render "admin/rooms/header", back: admin_place_path(@place.slug), back_label: @place.name, title: "Lịch phòng" %>
+
+<% if @places.size > 1 %>
+  <%= form_with url: admin_calendar_path, method: :get, class: "mb-3", data: { controller: "autosubmit" } do %>
+    <%= select_tag :slug, options_for_select(@places.map { [ it.name, it.slug ] }, @place.slug),
+          class: "select select-sm w-full", aria: { label: "Homestay" }, data: { action: "change->autosubmit#submit" } %>
+  <% end %>
+<% end %>
+
+<div class="flex items-center gap-1 mb-3">
+  <%= link_to "‹", admin_place_calendar_path(@place.slug, from: @days.begin - @days.count), class: "btn btn-sm btn-square", aria: { label: "Trước" } %>
+  <%= link_to "›", admin_place_calendar_path(@place.slug, from: @days.end), class: "btn btn-sm btn-square", aria: { label: "Sau" } %>
+  <span class="text-sm ml-1"><%= @days.begin.strftime("%d/%m") %> – <%= (@days.end - 1).strftime("%d/%m/%Y") %></span>
+  <%= link_to "Hôm nay", admin_place_calendar_path(@place.slug), class: "btn btn-ghost btn-sm" unless @days.cover?(Date.current) %>
+  <%= link_to "+ Đặt phòng", new_admin_place_booking_path(@place.slug), class: "btn btn-primary btn-sm ml-auto" %>
+</div>
+
+<% @conflicts.each do |ical, manual| %>
+  <div role="alert" class="alert alert-error alert-soft mb-3 text-sm">
+    ⚠ <%= ical.room.name %>: <%= booking_label(ical) %> <%= ical.start_date.strftime("%d/%m") %>–<%= ical.end_date.strftime("%d/%m") %>
+    trùng với “<%= booking_label(manual) %>”. Sửa hoặc huỷ đặt phòng thủ công.
+  </div>
+<% end %>
+
+<% if @rooms.any? %>
+  <div class="overflow-x-auto bg-base-100 rounded-box shadow-sm">
+    <div class="w-max text-xs">
+      <div class="<%= grid %> border-b border-base-300">
+        <div class="sticky left-0 z-10 bg-base-100 border-r border-base-300"></div>
+        <% @days.each do |day| %>
+          <div data-day="<%= day.iso8601 %>" class="text-center py-1 leading-tight <%= day == Date.current ? "bg-base-200 font-semibold" : "opacity-70" %>">
+            <%= %w[CN T2 T3 T4 T5 T6 T7][day.wday] %><div class="text-sm"><%= day.day %></div>
+          </div>
+        <% end %>
+      </div>
+
+      <% @rooms.each do |room| %>
+        <% lanes = timeline_lanes(@bookings.fetch(room.id, [])) %>
+        <div data-room="<%= room.id %>" class="<%= grid %> border-b border-base-200 last:border-b-0" style="grid-template-rows: repeat(<%= [ lanes.map(&:last).max.to_i + 1, 1 ].max %>, 2.5rem)">
+          <div class="row-span-full sticky left-0 z-10 bg-base-100 border-r border-base-300 px-2 py-3 font-semibold truncate">
+            <%= room.name %><% if lanes.any? { |booking, _| conflict_ids.include?(booking.id) } %> <span class="text-error">⚠</span><% end %>
+          </div>
+          <% @days.each_with_index do |day, i| %>
+            <%= link_to "", new_admin_place_booking_path(@place.slug, room_id: room.id, start_date: day.iso8601),
+                  class: "row-span-full border-l border-base-200 hover:bg-base-200 #{"bg-base-200/60" if day == Date.current}",
+                  style: "grid-column: #{i + 2}", aria: { label: "Đặt #{room.name} ngày #{day.strftime("%d/%m")}" } %>
+          <% end %>
+          <% lanes.each do |booking, lane| %>
+            <% from = ([ booking.start_date, @days.begin ].max - @days.begin).to_i + 2 %>
+            <% to = ([ booking.end_date, @days.end ].min - @days.begin).to_i + 2 %>
+            <% conflict = conflict_ids.include?(booking.id) %>
+            <% options = { id: dom_id(booking), title: booking_label(booking), style: "grid-column: #{from} / #{to}; grid-row: #{lane + 1}",
+                 class: "z-[1] m-0.5 rounded px-1.5 flex items-center truncate #{booking_bar_class(booking)} #{"ring-2 ring-error" if conflict}",
+                 data: { conflict: (true if conflict) } } %>
+            <% if booking.manual? %>
+              <%= link_to booking_label(booking), edit_admin_booking_path(booking), options %>
+            <% else %>
+              <%= tag.div booking_label(booking), **options %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs mt-3 opacity-80">
+    <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new) %>"></i>Đã xác nhận</span>
+    <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(status: "hold")) %>"></i>Giữ chỗ</span>
+    <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(source: "ical")) %>"></i>Airbnb / Booking (chỉ xem)</span>
+    <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm ring-2 ring-error"></i>Trùng lịch</span>
+  </div>
+<% else %>
+  <div class="card bg-base-100 border border-dashed border-base-300">
+    <div class="card-body items-center text-center py-10">
+      <div class="font-semibold">Chưa có phòng nào đang mở</div>
+      <%= link_to "Quản lý phòng", admin_place_path(@place.slug), class: "btn btn-primary btn-sm mt-2" %>
+    </div>
+  </div>
+<% end %>

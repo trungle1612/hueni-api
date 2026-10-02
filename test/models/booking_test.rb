@@ -62,4 +62,30 @@ class BookingTest < ActiveSupport::TestCase
     assert_empty Booking.blocking_on(Date.new(2026, 10, 3)) # checkout day is free
     assert_empty Booking.blocking_on(Date.new(2026, 9, 30))
   end
+
+  test "manual booking cannot overlap a blocking booking on the same room" do
+    booking = build(room: rooms(:limdim), start_date: "2026-10-02", end_date: "2026-10-04", status: "hold") # limdim_confirmed: 10-01..10-03
+    assert_not booking.valid?
+    assert_includes booking.errors[:base], "Phòng đã có người đặt trong khoảng ngày này"
+  end
+
+  test "overlap ignores touching dates, other rooms, cancelled bookings and itself" do
+    assert build(room: rooms(:limdim), start_date: "2026-10-03", end_date: "2026-10-05").valid? # checkout day is free
+    assert build(room: rooms(:limdim), start_date: "2026-09-29", end_date: "2026-10-01").valid?
+    assert build(start_date: "2026-10-01", end_date: "2026-10-03").valid? # garden
+    assert build(room: rooms(:limdim), status: "cancelled").valid?
+    assert bookings(:limdim_confirmed).valid?
+
+    bookings(:limdim_confirmed).update!(status: "cancelled")
+    assert build(room: rooms(:limdim)).valid?
+  end
+
+  test "manual booking cannot overlap an iCal booking, but iCal bookings skip the check" do
+    build(room: rooms(:limdim), start_date: "2026-10-05", end_date: "2026-10-07", source: "ical",
+      calendar_feed: calendar_feeds(:limdim_airbnb), uid: "a").save!
+    assert_not build(room: rooms(:limdim), start_date: "2026-10-06", end_date: "2026-10-08").valid?
+
+    ical = build(room: rooms(:limdim), source: "ical", calendar_feed: calendar_feeds(:limdim_airbnb), uid: "b")
+    assert ical.valid? # overlaps limdim_confirmed: the OTA already sold the nights
+  end
 end

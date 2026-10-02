@@ -15,10 +15,14 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root "dashboard#show"
+    get "calendar", to: "calendars#index"
     resources :places, only: :show, param: :slug do
+      resource :calendar, only: :show
       resources :rooms, only: %i[new create]
+      resources :bookings, only: %i[new create]
     end
     resources :rooms, only: %i[edit update]
+    resources :bookings, only: %i[edit update]
   end
 
   root to: redirect("/admin")

@@ -1,0 +1,3 @@
+<% content_for :title, "Đặt phòng · hueni admin" %>
+<%= render "admin/rooms/header", back: admin_place_calendar_path(@place.slug), back_label: "Lịch phòng", title: "Đặt phòng" %>
+<%= render "form", booking: @booking, place: @place %>

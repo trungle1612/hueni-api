@@ -1,0 +1,49 @@
+<%= form_with model: booking, url: (booking.new_record? ? admin_place_bookings_path(place.slug) : admin_booking_path(booking)), class: "card bg-base-100 shadow-sm" do |form| %>
+  <div class="card-body p-4 gap-3">
+    <% if booking.errors.any? %>
+      <div role="alert" class="alert alert-error alert-soft">
+        <ul><% booking.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul>
+      </div>
+    <% end %>
+    <div>
+      <%= form.label :room_id, "Phòng", class: "label text-sm mb-1" %>
+      <% if booking.new_record? %>
+        <%= form.select :room_id, place.rooms.where(active: true).order(:name).map { [ it.name, it.id ] }, {}, required: true, class: "select w-full" %>
+      <% else %>
+        <div class="font-semibold"><%= booking.room.name %></div>
+      <% end %>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <%= form.label :start_date, "Nhận phòng", class: "label text-sm mb-1" %>
+        <%= form.date_field :start_date, required: true, class: "input w-full" %>
+      </div>
+      <div>
+        <%= form.label :end_date, "Trả phòng", class: "label text-sm mb-1" %>
+        <%= form.date_field :end_date, required: true, class: "input w-full" %>
+      </div>
+    </div>
+    <div class="flex gap-4">
+      <label class="flex items-center gap-2 text-sm"><%= form.radio_button :status, "hold", class: "radio radio-sm radio-warning" %> Giữ chỗ</label>
+      <label class="flex items-center gap-2 text-sm"><%= form.radio_button :status, "confirmed", class: "radio radio-sm radio-primary" %> Đã xác nhận</label>
+    </div>
+    <div>
+      <%= form.label :guest_name, "Tên khách", class: "label text-sm mb-1" %>
+      <%= form.text_field :guest_name, class: "input w-full" %>
+    </div>
+    <div>
+      <%= form.label :guest_phone, "Số điện thoại", class: "label text-sm mb-1" %>
+      <div class="flex gap-2">
+        <%= form.telephone_field :guest_phone, class: "input w-full" %>
+        <% if booking.persisted? && booking.guest_phone_was.present? %>
+          <%= link_to "Gọi", "tel:#{booking.guest_phone_was.delete(" ")}", class: "btn btn-outline" %>
+        <% end %>
+      </div>
+    </div>
+    <div>
+      <%= form.label :note, "Ghi chú", class: "label text-sm mb-1" %>
+      <%= form.text_area :note, rows: 2, class: "textarea w-full" %>
+    </div>
+    <%= form.submit "Lưu", class: "btn btn-primary btn-block mt-2" %>
+  </div>
+<% end %>

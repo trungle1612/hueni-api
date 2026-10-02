@@ -9,8 +9,20 @@ class Booking < ApplicationRecord
 
   validates :start_date, presence: true
   validates :end_date, presence: true, comparison: { greater_than: :start_date }, if: :start_date
+  # iCal bookings skip this: the OTA already sold those nights, so an overlap is shown as a conflict instead.
+  validate :room_is_free, if: -> { manual? && (hold? || confirmed?) && room && start_date && end_date }
 
   # Holds and confirmed stays occupy the room from start_date up to, not including, end_date.
   scope :blocking, -> { where(status: [ :hold, :confirmed ]) }
   scope :blocking_on, ->(date) { blocking.where(start_date: ..date, end_date: date.next_day..) }
+  # Bookings occupying any night in from...to (to exclusive).
+  scope :overlapping, ->(from, to) { where(start_date: ...to, end_date: from.next_day..) }
+
+  def overlaps?(other) = start_date < other.end_date && other.start_date < end_date
+
+  private
+    def room_is_free
+      taken = room.bookings.blocking.overlapping(start_date, end_date).where.not(id: id).exists?
+      errors.add(:base, "Phòng đã có người đặt trong khoảng ngày này") if taken
+    end
 end
