@@ -21,7 +21,12 @@ Rails.application.routes.draw do
       resources :rooms, only: %i[new create]
       resources :bookings, only: %i[new create]
     end
-    resources :rooms, only: %i[edit update]
+    resources :rooms, only: %i[edit update] do
+      resources :calendar_feeds, only: :create
+    end
+    resources :calendar_feeds, only: %i[index destroy] do
+      post :sync, on: :member
+    end
     resources :bookings, only: %i[edit update]
   end
 

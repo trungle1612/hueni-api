@@ -2,6 +2,7 @@ require "resolv"
 require "net/http"
 
 class CalendarFeed < ApplicationRecord
+  PROVIDER_LABELS = { "airbnb" => "Airbnb", "booking" => "Booking.com", "other" => "iCal" }.freeze
   MAX_BYTES = 2.megabytes
   MAX_REDIRECTS = 3
   TIMEOUT = 15
@@ -13,7 +14,7 @@ class CalendarFeed < ApplicationRecord
 
   enum :provider, { airbnb: "airbnb", booking: "booking", other: "other" }, validate: true
 
-  validates :url, presence: true
+  validates :url, presence: true, uniqueness: { scope: :room_id }
   validate :url_is_public_http, if: -> { url.present? }
 
   def self.public_ip?(address)
@@ -29,6 +30,18 @@ class CalendarFeed < ApplicationRecord
     addresses = Resolv.getaddresses(uri.hostname)
     addresses.all? { public_ip?(it) } ? addresses : []
   end
+
+  def provider_label = PROVIDER_LABELS.fetch(provider, "iCal")
+
+  # Only the host is shown: the rest of the URL carries the OTA's access token.
+  def url_host
+    URI.parse(url).host
+  rescue URI::InvalidURIError
+    nil
+  end
+
+  # "Sync now" limit: a sync, successful or not, finished less than a minute ago.
+  def synced_recently? = [ last_synced_at, last_error_at ].compact.max&.after?(1.minute.ago) || false
 
   # Replaces this feed's bookings with the feed's events. On any error no bookings change;
   # the error is recorded in last_error instead. Returns true on success.

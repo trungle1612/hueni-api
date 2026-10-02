@@ -12,3 +12,6 @@ vi:
         start_date: Ngày nhận phòng
         end_date: Ngày trả phòng
         status: Trạng thái
+      calendar_feed:
+        url: Link iCal
+        provider: Kênh

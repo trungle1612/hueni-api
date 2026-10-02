@@ -4,7 +4,7 @@ module ApplicationHelper
     items = [
       { label: "Tổng quan", icon: "home", path: admin_root_path, active: current_page?(admin_root_path) },
       { label: "Lịch phòng", icon: "calendar", path: admin_calendar_path, active: controller_name.in?(%w[calendars bookings]) },
-      { label: "Kênh OTA", icon: "refresh", path: nil }
+      { label: "Kênh OTA", icon: "refresh", path: admin_calendar_feeds_path, active: controller_name == "calendar_feeds" }
     ]
     items << { label: "Người dùng", icon: "users", path: nil } if Current.user&.admin?
     items
