@@ -29,14 +29,13 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "owner sees menu without users item; disabled items are not links" do
+  test "owner sees menu without users item" do
     log_in users(:owner)
     get admin_root_path
 
     assert_select "aside a[href='/admin']", text: /Tổng quan/
     assert_select "aside a[href='/admin/calendar']", text: /Lịch phòng/
-    assert_select "aside", text: /Kênh OTA/
-    assert_select "aside a", text: /Kênh OTA/, count: 0
+    assert_select "aside a[href='/admin/calendar_feeds']", text: /Kênh OTA/
     assert_select "aside", text: /Người dùng/, count: 0
     assert_select ".dock a[href='/admin']"
   end
@@ -45,6 +44,7 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     log_in users(:admin)
     get admin_root_path
     assert_select "aside", text: /Người dùng/
+    assert_select "aside a", text: /Người dùng/, count: 0 # not built yet
   end
 
   test "shows name, role and avatar initial, including Vietnamese letters" do

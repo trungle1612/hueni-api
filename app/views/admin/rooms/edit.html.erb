@@ -1,3 +1,4 @@
 <% content_for :title, "Sửa phòng · hueni admin" %>
-<%= render "header", back: admin_place_path(@place.slug), back_label: @place.name, title: "Sửa phòng" %>
-<%= render "form", room: @room, place: @place %>
+<%= render "admin/rooms/header", back: admin_place_path(@place.slug), back_label: @place.name, title: "Sửa phòng" %>
+<%= render "admin/rooms/form", room: @room, place: @place %>
+<%= render "admin/calendar_feeds/section", room: @room, calendar_feed: @calendar_feed || CalendarFeed.new(provider: "airbnb") %>

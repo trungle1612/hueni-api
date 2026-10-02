@@ -1,0 +1,43 @@
+<% content_for :title, "Kênh OTA · hueni admin" %>
+
+<h1 class="text-xl font-semibold mb-1">Kênh OTA</h1>
+<p class="text-sm opacity-70 mb-4">Lịch Airbnb / Booking.com tự đồng bộ mỗi giờ. Chạm vào phòng để thêm kênh hoặc đồng bộ ngay.</p>
+
+<% if @rooms_by_place.any? %>
+  <% @rooms_by_place.each do |place, rooms| %>
+    <h2 class="text-sm font-semibold opacity-70 mt-4 mb-2"><%= place.name %></h2>
+    <div class="flex flex-col gap-3">
+      <% rooms.each do |room| %>
+        <% errors = room.calendar_feeds.count(&:last_error) %>
+        <%= link_to edit_admin_room_path(room), data: { room: room.id }, class: "card bg-base-100 shadow-sm hover:shadow-md transition-shadow #{"opacity-60" unless room.active?}" do %>
+          <div class="card-body p-4 gap-1">
+            <div class="flex justify-between items-start gap-2">
+              <div class="font-semibold"><%= room.name %></div>
+              <% if errors.positive? %>
+                <span class="badge badge-soft badge-sm badge-error"><%= errors %> lỗi</span>
+              <% elsif room.calendar_feeds.any? %>
+                <span class="badge badge-soft badge-sm badge-success">OK</span>
+              <% else %>
+                <span class="badge badge-soft badge-sm badge-ghost">Chưa có kênh</span>
+              <% end %>
+            </div>
+            <% room.calendar_feeds.sort_by(&:created_at).each do |feed| %>
+              <div class="text-xs opacity-70">
+                <%= feed.provider_label %> ·
+                <% if feed.last_error %>lỗi <%= time_ago_in_words(feed.last_error_at) %> trước
+                <% elsif feed.last_synced_at %><%= time_ago_in_words(feed.last_synced_at) %> trước
+                <% else %>chưa đồng bộ<% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+<% else %>
+  <div class="card bg-base-100 border border-dashed border-base-300">
+    <div class="card-body items-center text-center py-10">
+      <div class="font-semibold">Chưa có phòng nào</div>
+    </div>
+  </div>
+<% end %>

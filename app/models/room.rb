@@ -1,6 +1,7 @@
 class Room < ApplicationRecord
   belongs_to :place
   has_many :bookings
+  has_many :calendar_feeds
 
   after_commit { Vacancy.bust }
 

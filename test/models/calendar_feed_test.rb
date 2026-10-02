@@ -37,6 +37,28 @@ class CalendarFeedTest < ActiveSupport::TestCase
   test "url is unique per room" do
     dup = CalendarFeed.new(room: rooms(:limdim), url: calendar_feeds(:limdim_airbnb).url, provider: "airbnb")
     assert_raises(ActiveRecord::RecordNotUnique) { dup.save(validate: false) }
+
+    feed = CalendarFeed.create!(room: rooms(:garden), url: "https://1.1.1.1/a.ics", provider: "airbnb")
+    assert_not CalendarFeed.new(room: rooms(:garden), url: feed.url, provider: "airbnb").valid?
+    assert CalendarFeed.new(room: rooms(:limdim), url: feed.url, provider: "airbnb").valid?
+  end
+
+  test "synced_recently? looks at the last success or failure" do
+    travel_to Time.zone.local(2026, 10, 5, 12)
+    feed = calendar_feeds(:limdim_airbnb)
+    assert_not feed.synced_recently?
+    feed.last_synced_at = 30.seconds.ago
+    assert feed.synced_recently?
+    feed.last_synced_at = 2.minutes.ago
+    assert_not feed.synced_recently?
+    feed.last_error_at = 10.seconds.ago
+    assert feed.synced_recently?
+  end
+
+  test "provider label and link host" do
+    feed = calendar_feeds(:limdim_airbnb)
+    assert_equal [ "Airbnb", "www.airbnb.com" ], [ feed.provider_label, feed.url_host ]
+    assert_equal "Booking.com", CalendarFeed.new(provider: "booking").provider_label
   end
 
   test "deleting a feed deletes its bookings" do

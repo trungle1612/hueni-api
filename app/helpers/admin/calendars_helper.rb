@@ -1,6 +1,4 @@
 module Admin::CalendarsHelper
-  PROVIDER_LABELS = { "airbnb" => "Airbnb", "booking" => "Booking.com", "other" => "iCal" }.freeze
-
   # [[booking, lane], ...]: each booking goes in the first lane free by its start date, so overlaps stack.
   def timeline_lanes(bookings)
     lane_ends = []
@@ -13,7 +11,7 @@ module Admin::CalendarsHelper
 
   def booking_label(booking)
     booking.guest_name.presence || booking.note.presence ||
-      (booking.ical? ? PROVIDER_LABELS.fetch(booking.calendar_feed&.provider, "iCal") : "Khách")
+      (booking.ical? ? booking.calendar_feed&.provider_label || "iCal" : "Khách")
   end
 
   def booking_bar_class(booking)
