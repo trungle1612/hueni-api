@@ -2,7 +2,7 @@ require "test_helper"
 
 class UserTest < ActiveSupport::TestCase
   def build(**attrs)
-    User.new(email_address: "new@example.com", name: "Chị Mai", password: "password123", **attrs)
+    User.new(phone_number: "0987654321", name: "Chị Mai", password: "password123", **attrs)
   end
 
   test "valid with defaults; role defaults to owner" do
@@ -11,16 +11,26 @@ class UserTest < ActiveSupport::TestCase
     assert user.owner?
   end
 
-  test "requires name and email" do
-    user = build(name: "", email_address: "")
+  test "requires name and phone number" do
+    user = build(name: "", phone_number: "")
     assert_not user.valid?
     assert_includes user.errors.attribute_names, :name
-    assert_includes user.errors.attribute_names, :email_address
+    assert_includes user.errors.attribute_names, :phone_number
   end
 
-  test "normalizes and uniquely indexes email" do
-    assert_equal "lan@example.com", build(email_address: "  LAN@Example.com ").email_address
-    assert_not build(email_address: "LAN@example.com").valid?
+  test "normalizes phone numbers to 10 digits starting with 0, unique" do
+    [ "0987654321", "0987 654 321", "0987.654.321", "+84 987 654 321", "84987654321", " 098-765-4321 " ].each do |input|
+      assert_equal "0987654321", build(phone_number: input).phone_number, input
+    end
+    assert_not build(phone_number: "+84 912 345 678").valid? # users(:owner)
+  end
+
+  test "rejects phone numbers that aren't 10 digits starting with 0" do
+    [ "987654321", "09876543210", "1234567890", "abc" ].each do |input|
+      user = build(phone_number: input)
+      assert_not user.valid?, input
+      assert_includes user.errors.attribute_names, :phone_number
+    end
   end
 
   test "password needs at least 8 characters" do

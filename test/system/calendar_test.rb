@@ -4,7 +4,7 @@ class CalendarTest < ApplicationSystemTestCase
   setup do
     travel_to Time.zone.local(2026, 10, 1, 12) # limdim_confirmed occupies Limdim 10-01..10-03
     visit new_session_path
-    fill_in "Email", with: "lan@example.com"
+    fill_in "Số điện thoại", with: "0912 345 678"
     fill_in "Mật khẩu", with: "password123"
     click_button "Đăng nhập"
     assert_selector "h1", text: "Tổng quan"

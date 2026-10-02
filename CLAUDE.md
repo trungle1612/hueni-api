@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Rails 8 backend for **hueni** (`https://hueni.me`, private repo `trungle1612/hue-ni`, usually checked out at `../hue-ni`), a static React travel guide for Huế. It provides:
 
 1. `GET /v1/vacancy` — public JSON of free homestay rooms today, consumed by hueni's "Phòng trống" tab.
-2. `/admin` — owner admin (Hotwire; login + frame built, pages in #18–#23): owners manage rooms, calendar feeds and bookings.
+2. `/admin` — owner admin (Hotwire): owners manage rooms, calendar feeds and bookings; admins also manage users.
 3. iCal sync pulling bookings from owners' Airbnb / Booking.com calendars: `CalendarFeed#sync` + `SyncCalendarFeedJob` (hourly schedule is #15).
 
 **Design spec:** `../hue-ni/docs/superpowers/specs/2026-09-26-hueni-api-design.md` (lives in the hue-ni repo). Work is tracked as GitHub issues grouped under epics #12 (Step 1), #16 (Step 2), #24 (Step 3), #28 (Step 4). **Issue bodies are newer than the spec** where they differ — see "Deviations" below. If code, issue and spec disagree, ask.
@@ -43,7 +43,9 @@ CI (`.github/workflows/ci.yml`) runs brakeman, bundler-audit, importmap audit, r
 
 **Public API** (`app/controllers/v1/`): controllers inherit `ActionController::API`, not `ApplicationController` (which has `allow_browser :modern` and would block curl/uptime checks). CORS is a hand-set `Access-Control-Allow-Origin` for `https://hueni.me` and `http://localhost:5173` only — no `rack-cors`. `/v1/*` must never expose guest fields, feed URLs or `uid`s; the request test asserts this.
 
-**Auth & admin:** Rails 8 authentication generator (`Authentication` concern in `ApplicationController`, DB-backed `sessions`) — every controller requires login unless it calls `allow_unauthenticated_access`. `users.role` = `admin` | `owner`. Admin controllers inherit `Admin::BaseController` (scoping in #18). The admin menu is one list, `ApplicationHelper#admin_menu_items`, rendered as a bottom dock on phones and a sidebar on `lg+`; `path: nil` items show as "Sắp có". No password reset / mailer yet (#23).
+**Auth & admin:** Rails 8 authentication generator (`Authentication` concern in `ApplicationController`, DB-backed `sessions`) — every controller requires login unless it calls `allow_unauthenticated_access`. `users.role` = `admin` | `owner`. Admin controllers inherit `Admin::BaseController` (scoping in #18). The admin menu is one list, `ApplicationHelper#admin_menu_items`, rendered as a bottom dock on phones and a sidebar on `lg+`; `path: nil` items show as "Sắp có".
+
+**Login is phone number + password** (Zalo login planned; no email or mailer). `users.phone_number` is normalized to 10 digits starting with 0 (`+84 912 345 678` → `0912345678`); `normalizes` also rewrites values in `where(phone_number: …)`, so use raw SQL to match non-phone strings. Admins create users and reset passwords at `/admin/users`: the password is `User.generate_password`, shown once via `flash[:new_password]` (the layout renders only `notice` / `alert`). `bin/rails db:seed` loads made-up demo data in development (`db/seeds/development.rb`).
 
 **Time:** `config.time_zone = "Asia/Ho_Chi_Minh"`. Always `Date.current` / `Time.current`. A Huế day starts at 17:00 UTC; tests use `travel_to`.
 

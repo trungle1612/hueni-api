@@ -3,7 +3,7 @@ require "test_helper"
 # users(:owner) is a member of tomo (rooms limdim + garden, feed limdim_airbnb, booking limdim_confirmed).
 class UserAccessTest < ActiveSupport::TestCase
   setup do
-    @owner_b = User.create!(email_address: "b@example.com", name: "Anh Bình", password: "password123")
+    @owner_b = User.create!(phone_number: "0987000001", name: "Anh Bình", password: "password123")
     @owner_b.places << places(:hiuhill)
     @b_room = Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 2)
     @b_feed = CalendarFeed.create!(room: @b_room, url: "https://1.1.1.1/b.ics", provider: "booking")
@@ -33,7 +33,7 @@ class UserAccessTest < ActiveSupport::TestCase
   end
 
   test "owner without memberships sees nothing" do
-    loner = User.create!(email_address: "c@example.com", name: "Chú Cường", password: "password123")
+    loner = User.create!(phone_number: "0987000002", name: "Chú Cường", password: "password123")
     assert_empty loner.accessible_places
     assert_empty loner.accessible_rooms
     assert_empty loner.accessible_calendar_feeds

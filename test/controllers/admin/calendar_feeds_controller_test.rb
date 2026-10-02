@@ -4,7 +4,7 @@ class Admin::CalendarFeedsControllerTest < ActionDispatch::IntegrationTest
   URL = "https://1.1.1.1/calendar/ical/42.ics?s=secret-token"
 
   def log_in(user)
-    post session_path, params: { email_address: user.email_address, password: "password123" }
+    post session_path, params: { phone_number: user.phone_number, password: "password123" }
   end
 
   setup do

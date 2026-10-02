@@ -1,0 +1,34 @@
+<%= form_with model: user, url: (user.new_record? ? admin_users_path : admin_user_path(user)), class: "card bg-base-100 shadow-sm" do |form| %>
+  <div class="card-body p-4 gap-3">
+    <% if user.errors.any? %>
+      <div role="alert" class="alert alert-error alert-soft">
+        <ul><% user.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul>
+      </div>
+    <% end %>
+    <div>
+      <%= form.label :name, "Tên", class: "label text-sm mb-1" %>
+      <%= form.text_field :name, required: true, class: "input w-full" %>
+    </div>
+    <div>
+      <%= form.label :phone_number, "Số điện thoại (dùng để đăng nhập)", class: "label text-sm mb-1" %>
+      <%= form.telephone_field :phone_number, required: true, value: phone(user.phone_number), class: "input w-full" %>
+      <div class="text-xs opacity-60 mt-1">Nhập kiểu nào cũng được: 0912345678, 0912 345 678, +84 912 345 678</div>
+    </div>
+    <div>
+      <%= form.label :role, "Vai trò", class: "label text-sm mb-1" %>
+      <%= form.select :role, User::ROLE_LABELS.invert, {}, class: "select w-full", disabled: user == Current.user %>
+      <% if user == Current.user %><div class="text-xs opacity-60 mt-1">Không thể đổi vai trò của chính bạn.</div><% end %>
+    </div>
+    <fieldset>
+      <legend class="label text-sm mb-1">Homestay</legend>
+      <div class="text-xs opacity-60 mb-2">Quản trị viên luôn thấy mọi homestay.</div>
+      <div class="flex flex-col gap-1 max-h-72 overflow-y-auto">
+        <%= form.collection_check_boxes :place_ids, Place.order(:name), :id, :name do |box| %>
+          <label class="flex items-center gap-2 text-sm"><%= box.check_box(class: "checkbox checkbox-sm") %> <%= box.text %></label>
+        <% end %>
+      </div>
+    </fieldset>
+    <% if user.new_record? %><div class="text-xs opacity-60">Mật khẩu được tạo tự động sau khi lưu.</div><% end %>
+    <%= form.submit user.new_record? ? "Tạo tài khoản" : "Lưu", class: "btn btn-primary btn-block mt-2" %>
+  </div>
+<% end %>

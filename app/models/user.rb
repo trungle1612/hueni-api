@@ -6,13 +6,16 @@ class User < ApplicationRecord
   has_many :place_memberships, dependent: :destroy
   has_many :places, through: :place_memberships
 
-  normalizes :email_address, with: ->(e) { e.strip.downcase }
+  # Stored as 10 digits starting with 0: spaces/dots/dashes dropped, +84 / 84 prefix turned into 0.
+  normalizes :phone_number, with: ->(phone) { phone.gsub(/\D/, "").sub(/\A84(?=\d{9}\z)/, "0") }
 
   enum :role, { admin: "admin", owner: "owner" }, validate: true
 
   validates :name, presence: true
-  validates :email_address, presence: true, uniqueness: true
+  validates :phone_number, presence: true, uniqueness: true, format: { with: /\A0\d{9}\z/, allow_blank: true }
   validates :password, length: { minimum: 8 }, allow_nil: true
+
+  def self.generate_password = SecureRandom.base58(12) # no 0/O/I/l look-alikes
 
   def role_label = ROLE_LABELS.fetch(role)
 

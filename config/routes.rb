@@ -24,6 +24,9 @@ Rails.application.routes.draw do
     resources :rooms, only: %i[edit update] do
       resources :calendar_feeds, only: :create
     end
+    resources :users, only: %i[index new create edit update] do
+      post :reset_password, on: :member
+    end
     resources :calendar_feeds, only: %i[index destroy] do
       post :sync, on: :member
     end

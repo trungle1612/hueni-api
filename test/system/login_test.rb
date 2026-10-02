@@ -5,7 +5,7 @@ class LoginTest < ApplicationSystemTestCase
     visit admin_root_path
     assert_current_path new_session_path
 
-    fill_in "Email", with: "lan@example.com"
+    fill_in "Số điện thoại", with: "0912 345 678"
     fill_in "Mật khẩu", with: "password123"
     click_button "Đăng nhập"
 
@@ -19,10 +19,10 @@ class LoginTest < ApplicationSystemTestCase
 
   test "wrong password shows the error" do
     visit new_session_path
-    fill_in "Email", with: "lan@example.com"
+    fill_in "Số điện thoại", with: "0912 345 678"
     fill_in "Mật khẩu", with: "wrong-password"
     click_button "Đăng nhập"
 
-    assert_text "Email hoặc mật khẩu không đúng"
+    assert_text "Số điện thoại hoặc mật khẩu không đúng"
   end
 end
