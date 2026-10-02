@@ -22,6 +22,9 @@ Rails.application.routes.draw do
       resource :calendar, only: :show
       resources :rooms, only: %i[new create]
       resources :bookings, only: %i[new create]
+      resources :members, only: %i[new create edit update destroy] do
+        post :setup_link, on: :member
+      end
     end
     resources :rooms, only: %i[edit update] do
       resources :calendar_feeds, only: :create

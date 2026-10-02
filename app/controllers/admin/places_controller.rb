@@ -3,6 +3,7 @@ class Admin::PlacesController < Admin::BaseController
     @place = Current.user.accessible_places.find_by!(slug: params[:slug])
     @rooms = @place.rooms.order(:name)
     @statuses = today_statuses(@rooms)
+    @memberships = @place.place_memberships.includes(:user).sort_by { [ it.owner? ? 0 : 1, it.user.name ] } if allowed_to?(:manage, @place)
   end
 
   private
