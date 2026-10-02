@@ -1,5 +1,5 @@
 class User < ApplicationRecord
-  ROLE_LABELS = { "admin" => "Quản trị viên", "owner" => "Chủ homestay" }.freeze
+  ROLE_LABELS = { "admin" => "Quản trị viên", "user" => "Thành viên" }.freeze
 
   has_secure_password
   has_many :sessions, dependent: :destroy
@@ -9,7 +9,7 @@ class User < ApplicationRecord
   # Stored as 10 digits starting with 0: spaces/dots/dashes dropped, +84 / 84 prefix turned into 0.
   normalizes :phone_number, with: ->(phone) { phone.gsub(/\D/, "").sub(/\A84(?=\d{9}\z)/, "0") }
 
-  enum :role, { admin: "admin", owner: "owner" }, validate: true
+  enum :role, { admin: "admin", user: "user" }, validate: true
 
   validates :name, presence: true
   validates :phone_number, presence: true, uniqueness: true, format: { with: /\A0\d{9}\z/, allow_blank: true }
@@ -34,4 +34,18 @@ class User < ApplicationRecord
   def accessible_rooms = Room.where(place_id: accessible_places.select(:id))
   def accessible_calendar_feeds = CalendarFeed.where(room_id: accessible_rooms.select(:id))
   def accessible_bookings = Booking.where(room_id: accessible_rooms.select(:id))
+
+  # "owner" | "staff" | nil at this homestay. Admins count as owners everywhere.
+  def role_at(place)
+    admin? ? "owner" : place_memberships.find_by(place:)&.role
+  end
+
+  # The one authorization rule, shaped like Pundit / Action Policy so a later switch is mechanical.
+  # Scoping (accessible_*) still decides what you can see at all.
+  def allowed_to?(action, place)
+    case action
+    when :manage then role_at(place) == "owner"
+    else raise ArgumentError, "unknown action #{action.inspect}"
+    end
+  end
 end

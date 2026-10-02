@@ -8,7 +8,7 @@ class Admin::UsersController < Admin::BaseController
   end
 
   def new
-    @user = User.new(role: "owner")
+    @user = User.new(role: "user")
   end
 
   def create

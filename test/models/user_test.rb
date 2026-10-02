@@ -5,10 +5,10 @@ class UserTest < ActiveSupport::TestCase
     User.new(phone_number: "0987654321", name: "Chị Mai", password: "password123", **attrs)
   end
 
-  test "valid with defaults; role defaults to owner" do
+  test "valid with defaults; role defaults to user" do
     user = build
     assert user.valid?
-    assert user.owner?
+    assert user.user?
   end
 
   test "requires name and phone number" do
@@ -45,8 +45,25 @@ class UserTest < ActiveSupport::TestCase
 
   test "role label and initial" do
     assert_equal "Quản trị viên", users(:admin).role_label
-    assert_equal "Chủ homestay", users(:owner).role_label
+    assert_equal "Thành viên", users(:owner).role_label
     assert_equal "C", users(:owner).initial
     assert_equal "Á", build(name: "ánh").initial
+  end
+
+  test "role_at and allowed_to?(:manage) per homestay; admins manage everything" do
+    staff = User.create!(name: "Em Hằng", phone_number: "0987111222", password: "password123")
+    staff.place_memberships.create!(place: places(:tomo), role: "staff")
+    users(:admin).place_memberships.create!(place: places(:tomo), role: "staff") # admin who is also staff
+
+    assert_equal "owner", users(:owner).role_at(places(:tomo))
+    assert_equal "staff", staff.role_at(places(:tomo))
+    assert_nil users(:owner).role_at(places(:hiuhill))
+    assert_equal "owner", users(:admin).role_at(places(:tomo))
+    assert users(:owner).allowed_to?(:manage, places(:tomo))
+    assert_not staff.allowed_to?(:manage, places(:tomo))
+    assert_not users(:owner).allowed_to?(:manage, places(:hiuhill))
+    assert users(:admin).allowed_to?(:manage, places(:tomo))
+    assert users(:admin).allowed_to?(:manage, places(:hiuhill))
+    assert_raises(ArgumentError) { users(:owner).allowed_to?(:delete, places(:tomo)) }
   end
 end

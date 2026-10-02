@@ -37,12 +37,12 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
 
   test "creating a user shows a one-time link to set their password" do
     assert_difference -> { User.count }, 1 do
-      post admin_users_path, params: { user: { name: "Chị Hoa", phone_number: "+84 987 654 321", role: "owner",
+      post admin_users_path, params: { user: { name: "Chị Hoa", phone_number: "+84 987 654 321", role: "user",
         place_ids: [ "", places(:tomo).id, places(:hiuhill).id ] } }
     end
     user = User.find_by!(phone_number: "0987654321")
     assert_equal [ places(:hiuhill), places(:tomo) ], user.places.order(:name).to_a
-    assert user.owner?
+    assert user.user?
     assert_redirected_to edit_admin_user_path(user)
     assert_equal user, User.find_by_token_for(:password_setup, setup_token)
     link = flash[:setup_link]
@@ -57,7 +57,7 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
   test "invalid or duplicate phone number re-renders with an error" do
     [ "123", "0912 345 678" ].each do |phone_number|
       assert_no_difference -> { User.count } do
-        post admin_users_path, params: { user: { name: "X", phone_number:, role: "owner" } }
+        post admin_users_path, params: { user: { name: "X", phone_number:, role: "user" } }
       end
       assert_response :unprocessable_entity
       assert_select "[role=alert]", text: /Số điện thoại/
@@ -80,7 +80,7 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "admins can't change their own role" do
-    patch admin_user_path(users(:admin)), params: { user: { name: "Trung", role: "owner" } }
+    patch admin_user_path(users(:admin)), params: { user: { name: "Trung", role: "user" } }
     assert users(:admin).reload.admin?
   end
 
