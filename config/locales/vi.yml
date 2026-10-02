@@ -1,0 +1,10 @@
+vi:
+  errors:
+    messages:
+      blank: không thể để trống # rails-i18n says "để trắng"
+  activerecord:
+    attributes:
+      room:
+        name: Tên phòng
+        max_guests: Số khách tối đa
+        price: Giá mỗi đêm
