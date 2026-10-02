@@ -5,7 +5,8 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     post session_path, params: { phone_number: user.phone_number, password: }
   end
 
-  def new_password = flash[:new_password]
+  # The one-time link shown to the admin; its token is the last path segment.
+  def setup_token = flash[:setup_link].to_s.split("/").last
 
   setup { log_in users(:admin) }
 
@@ -23,6 +24,7 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     post reset_password_admin_user_path(users(:admin))
     assert_response :not_found
     assert_not User.exists?(phone_number: "0987000009")
+    assert users(:admin).reload.authenticate("password123")
   end
 
   test "list shows users with role, phone and homestays" do
@@ -33,7 +35,7 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_select "aside a.menu-active", text: /Người dùng/
   end
 
-  test "creating a user generates a password shown once, which works for login" do
+  test "creating a user shows a one-time link to set their password" do
     assert_difference -> { User.count }, 1 do
       post admin_users_path, params: { user: { name: "Chị Hoa", phone_number: "+84 987 654 321", role: "owner",
         place_ids: [ "", places(:tomo).id, places(:hiuhill).id ] } }
@@ -42,17 +44,14 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ places(:hiuhill), places(:tomo) ], user.places.order(:name).to_a
     assert user.owner?
     assert_redirected_to edit_admin_user_path(user)
-    password = new_password
-    assert_match(/\A[1-9A-HJ-NP-Za-km-z]{12}\z/, password)
+    assert_equal user, User.find_by_token_for(:password_setup, setup_token)
+    link = flash[:setup_link]
+    assert_equal password_setup_url(token: setup_token), link
 
     follow_redirect!
-    assert_select "[data-new-password]", text: password
+    assert_select "[data-setup-link]", text: link
     get edit_admin_user_path(user)
-    assert_select "[data-new-password]", 0 # only once
-
-    delete session_path
-    log_in user, password
-    assert_redirected_to admin_root_url
+    assert_select "[data-setup-link]", 0 # only once
   end
 
   test "invalid or duplicate phone number re-renders with an error" do
@@ -85,13 +84,17 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     assert users(:admin).reload.admin?
   end
 
-  test "new password replaces the old one and logs the user out everywhere" do
+  test "a new link locks the old password, older links and every session" do
     users(:owner).sessions.create!(ip_address: "1.1.1.1", user_agent: "phone")
     post reset_password_admin_user_path(users(:owner))
+    old_token = setup_token
+    post reset_password_admin_user_path(users(:owner))
+
     assert_redirected_to edit_admin_user_path(users(:owner))
     assert_empty users(:owner).sessions.reload
     assert_not users(:owner).reload.authenticate("password123")
-    assert users(:owner).authenticate(new_password)
+    assert_nil User.find_by_token_for(:password_setup, old_token)
+    assert_equal users(:owner), User.find_by_token_for(:password_setup, setup_token)
   end
 
   test "admins can't reset their own password here" do
@@ -99,6 +102,6 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     assert users(:admin).reload.authenticate("password123")
     get edit_admin_user_path(users(:admin))
-    assert_select "button", text: /Tạo mật khẩu mới/, count: 0
+    assert_select "button", text: /Tạo link đặt lại mật khẩu/, count: 0
   end
 end

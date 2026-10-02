@@ -28,7 +28,7 @@
         <% end %>
       </div>
     </fieldset>
-    <% if user.new_record? %><div class="text-xs opacity-60">Mật khẩu được tạo tự động sau khi lưu.</div><% end %>
+    <% if user.new_record? %><div class="text-xs opacity-60">Sau khi lưu, bạn nhận một link để gửi qua Zalo; người dùng mở link và tự chọn mật khẩu.</div><% end %>
     <%= form.submit user.new_record? ? "Tạo tài khoản" : "Lưu", class: "btn btn-primary btn-block mt-2" %>
   </div>
 <% end %>

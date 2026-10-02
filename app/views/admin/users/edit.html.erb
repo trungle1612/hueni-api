@@ -1,14 +1,15 @@
 <% content_for :title, "#{@user.name} · hueni admin" %>
 <%= render "admin/rooms/header", back: admin_users_path, back_label: "Người dùng", title: @user.name %>
 
-<% if (password = flash[:new_password]) %>
+<% if (link = flash[:setup_link]) %>
   <div class="card bg-success/10 border border-success mb-4">
     <div class="card-body p-4 gap-2">
-      <div class="font-semibold">Mật khẩu của <%= @user.name %></div>
-      <div data-new-password class="font-mono text-xl tracking-wider text-center bg-base-100 rounded-box py-2 select-all"><%= password %></div>
+      <div class="font-semibold">Link đặt mật khẩu cho <%= @user.name %></div>
+      <div data-setup-link class="font-mono text-xs break-all bg-base-100 rounded-box p-2 select-all"><%= link %></div>
       <div class="text-xs opacity-70">
-        Chạm để chọn, sao chép và gửi qua Zalo cùng số đăng nhập <b><%= phone(@user.phone_number) %></b>.
-        Mật khẩu <b>chỉ hiện một lần</b> — tải lại trang là mất.
+        Chạm để chọn, sao chép và gửi qua Zalo. <%= @user.name %> mở link, tự chọn mật khẩu và đăng nhập ngay bằng số
+        <b><%= phone(@user.phone_number) %></b>. Link dùng được <b>một lần</b>, hết hạn ngày <b><%= l(7.days.from_now.to_date, format: "%d/%m") %></b>,
+        và <b>chỉ hiện ở đây một lần</b>.
       </div>
     </div>
   </div>
@@ -20,9 +21,9 @@
   <div class="card bg-base-100 shadow-sm mt-4">
     <div class="card-body p-4 gap-2">
       <div class="font-semibold">Quên mật khẩu?</div>
-      <div class="text-sm opacity-70">Tạo mật khẩu mới và đăng xuất <%= @user.name %> khỏi mọi thiết bị.</div>
-      <%= button_to "Tạo mật khẩu mới", reset_password_admin_user_path(@user), class: "btn btn-outline btn-error btn-block",
-            form: { data: { turbo_confirm: "Tạo mật khẩu mới cho #{@user.name}? Mật khẩu cũ sẽ không dùng được nữa." } } %>
+      <div class="text-sm opacity-70">Tạo link mới để <%= @user.name %> tự đặt lại mật khẩu. Mật khẩu cũ và các link cũ hết dùng được; <%= @user.name %> bị đăng xuất khỏi mọi thiết bị.</div>
+      <%= button_to "Tạo link đặt lại mật khẩu", reset_password_admin_user_path(@user), class: "btn btn-outline btn-error btn-block",
+            form: { data: { turbo_confirm: "Khoá mật khẩu hiện tại của #{@user.name} và tạo link mới?" } } %>
     </div>
   </div>
 <% end %>

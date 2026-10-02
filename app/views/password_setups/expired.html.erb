@@ -1,0 +1,9 @@
+<% content_for :title, "Link hết hạn · hueni admin" %>
+
+<div class="card bg-base-100 shadow-md">
+  <div class="card-body">
+    <h1 class="card-title">Link đã hết hạn hoặc đã được dùng</h1>
+    <p class="text-sm">Mỗi link đặt mật khẩu chỉ dùng được một lần, trong 7 ngày. Nhờ quản trị viên gửi link mới.</p>
+    <%= link_to "Đăng nhập", new_session_path, class: "btn btn-primary btn-block mt-2" %>
+  </div>
+</div>

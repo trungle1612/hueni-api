@@ -1,4 +1,4 @@
-# Admin only. No email yet: passwords are generated here and the admin sends them to the owner (Zalo login later).
+# Admin only. No email yet: the admin sends each user a one-time link to set their own password (Zalo login later).
 class Admin::UsersController < Admin::BaseController
   before_action :require_admin
   before_action :set_user, only: %i[edit update reset_password]
@@ -12,10 +12,10 @@ class Admin::UsersController < Admin::BaseController
   end
 
   def create
-    @user = User.new(user_params.merge(password: User.generate_password))
+    @user = User.new(user_params.merge(password: User.unknown_password))
     @user.places = selected_places
     if @user.save
-      redirect_to edit_admin_user_path(@user), notice: "Đã tạo tài khoản.", flash: { new_password: @user.password }
+      redirect_to edit_admin_user_path(@user), notice: "Đã tạo tài khoản.", flash: { setup_link: setup_link }
     else
       render :new, status: :unprocessable_entity
     end
@@ -36,15 +36,14 @@ class Admin::UsersController < Admin::BaseController
     end
   end
 
-  # Also logs the user out everywhere: a reset usually means a lost phone or a leaked password.
-  # Not for yourself: your own session would end before you could read the new password.
+  # Locks the old password and older links and logs the user out everywhere: a reset usually means a
+  # forgotten password, a lost phone or a leaked one. Not for yourself: it would end your own session.
   def reset_password
     raise ActiveRecord::RecordNotFound if @user == Current.user
-    password = User.generate_password
-    @user.update!(password:)
+    @user.update!(password: User.unknown_password)
     @user.sessions.destroy_all
-    redirect_to edit_admin_user_path(@user), notice: "Đã tạo mật khẩu mới và đăng xuất #{@user.name} khỏi mọi thiết bị.",
-      flash: { new_password: password }
+    redirect_to edit_admin_user_path(@user), notice: "Đã khoá mật khẩu cũ và đăng xuất #{@user.name} khỏi mọi thiết bị.",
+      flash: { setup_link: setup_link }
   end
 
   private
@@ -60,6 +59,8 @@ class Admin::UsersController < Admin::BaseController
     def user_params
       params.expect(user: @user == Current.user ? %i[name phone_number] : %i[name phone_number role])
     end
+
+    def setup_link = password_setup_url(token: @user.generate_token_for(:password_setup))
 
     def selected_places
       Current.user.accessible_places.where(id: params.dig(:user, :place_ids))
