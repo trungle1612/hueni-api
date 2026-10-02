@@ -7,6 +7,8 @@ class Admin::BaseController < ApplicationController
   class Forbidden < StandardError; end
 
   rescue_from Forbidden, with: -> { render "admin/forbidden", status: :forbidden }
+  # Out of scope (or gone): a friendly 404 inside the admin layout, also in development.
+  rescue_from ActiveRecord::RecordNotFound, with: -> { render "admin/not_found", status: :not_found }
 
   helper_method :allowed_to?
 

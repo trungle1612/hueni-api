@@ -40,6 +40,9 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     log_in users(:owner)
     get admin_place_path("hiuhill-homestay")
     assert_response :not_found
+    assert_select "h1", "Không tìm thấy"
+    assert_select "aside a", text: /Tổng quan/ # inside the admin layout, not the bare Rails page
+    assert_select "body", text: /SELECT|place_memberships/, count: 0
   end
 
   test "admin can open any homestay" do
