@@ -15,7 +15,7 @@ class CalendarFeedsTest < ApplicationSystemTestCase
 
   test "owner adds a feed from the OTA overview, sees it synced, then deletes it" do
     click_on "Kênh OTA", match: :first
-    find("[data-room='#{rooms(:garden).id}']").click
+    click_on "Garden"
     select "Airbnb", from: "Kênh"
     fill_in "Link iCal", with: URL
     click_button "Thêm và đồng bộ"

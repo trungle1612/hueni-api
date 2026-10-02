@@ -12,6 +12,7 @@
             <div class="text-sm opacity-60" data-address><%= place.address %></div>
           <% end %>
           <div class="flex flex-wrap gap-2 mt-1">
+            <%= place_role_badge(place) %>
             <%= vacancy_badge(@vacancy.dig(place.slug, :left), @active_rooms[place.id]) %>
             <% if (errors = @feed_errors[place.id].to_i).positive? %>
               <span class="badge badge-soft badge-error">Lỗi đồng bộ (<%= errors %>)</span>

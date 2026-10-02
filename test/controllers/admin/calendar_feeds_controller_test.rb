@@ -130,4 +130,18 @@ class Admin::CalendarFeedsControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
     assert CalendarFeed.exists?(@feed.id)
   end
+
+  test "overview: everyone gets sync buttons, only owners get links to the room page" do
+    get admin_calendar_feeds_path
+    assert_select "form[action=?] button", sync_admin_calendar_feed_path(@feed)
+    assert_select "a[href=?]", edit_admin_room_path(rooms(:limdim))
+
+    staff = User.create!(name: "Em Hằng", phone_number: "0987111222", password: "password123")
+    staff.place_memberships.create!(place: places(:tomo), role: "staff")
+    delete session_path
+    log_in staff
+    get admin_calendar_feeds_path
+    assert_select "form[action=?] button", sync_admin_calendar_feed_path(@feed)
+    assert_select "a[href=?]", edit_admin_room_path(rooms(:limdim)), 0
+  end
 end

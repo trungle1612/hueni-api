@@ -10,6 +10,13 @@ module ApplicationHelper
     items
   end
 
+  # "Chủ" / "Nhân viên" at this homestay; nothing for admins (they manage everything).
+  def place_role_badge(place)
+    return if Current.user.admin?
+    role = Current.user.role_at(place) or return
+    tag.span(PlaceMembership::ROLE_LABELS.fetch(role), class: "badge badge-soft badge-sm #{role == "owner" ? "badge-primary" : "badge-info"}")
+  end
+
   # "0912345678" → "0912 345 678"
   def phone(number)
     number.to_s.sub(/\A(\d{4})(\d{3})(\d{3})\z/, '\1 \2 \3')

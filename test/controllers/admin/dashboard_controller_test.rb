@@ -117,4 +117,15 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     get admin_root_path
     assert_select "main", text: /Chưa có homestay nào/
   end
+
+  test "dashboard cards show the role at each homestay; admins see none" do
+    log_in users(:owner)
+    get admin_root_path
+    assert_select ".card", text: /tomo homestay.*Chủ/m
+
+    delete session_path
+    log_in users(:admin)
+    get admin_root_path
+    assert_select ".badge", text: "Chủ", count: 0
+  end
 end
