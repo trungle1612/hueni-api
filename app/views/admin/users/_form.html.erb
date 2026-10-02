@@ -21,10 +21,16 @@
     </div>
     <fieldset>
       <legend class="label text-sm mb-1">Homestay</legend>
-      <div class="text-xs opacity-60 mb-2">Quản trị viên luôn thấy mọi homestay.</div>
-      <div class="flex flex-col gap-1 max-h-72 overflow-y-auto">
-        <%= form.collection_check_boxes :place_ids, Place.order(:name), :id, :name do |box| %>
-          <label class="flex items-center gap-2 text-sm"><%= box.check_box(class: "checkbox checkbox-sm") %> <%= box.text %></label>
+      <div class="text-xs opacity-60 mb-2">Quản trị viên luôn quản lý được mọi homestay.</div>
+      <% roles = user.place_memberships.to_h { [ it.place_id, it.role ] } %>
+      <div class="flex flex-col gap-2 max-h-80 overflow-y-auto">
+        <% Place.order(:name).each do |place| %>
+          <label class="flex items-center justify-between gap-2 text-sm">
+            <span class="truncate"><%= place.name %></span>
+            <%= select_tag "memberships[#{place.id}]",
+                  options_for_select([ [ "—", "" ] ] + PlaceMembership::ROLE_LABELS.invert.to_a, params.dig(:memberships, place.id.to_s) || roles[place.id]),
+                  class: "select select-sm w-36", aria: { label: "Vai trò tại #{place.name}" } %>
+          </label>
         <% end %>
       </div>
     </fieldset>
