@@ -25,7 +25,13 @@
             </div>
             <%= room_status_badge(room, @statuses[room.id]) %>
           </div>
-          <div class="flex justify-end items-center">
+          <div class="flex justify-between items-center">
+            <%= form_with model: room, url: admin_room_path(room), method: :patch, data: { controller: "autosubmit" } do |form| %>
+              <label class="flex items-center gap-2 text-sm">
+                <%= form.check_box :active, class: "toggle toggle-sm toggle-success", data: { action: "change->autosubmit#submit" } %>
+                <%= room.active? ? "Đang mở" : "Đã tắt" %>
+              </label>
+            <% end %>
             <%= link_to "Sửa", edit_admin_room_path(room), class: "btn btn-ghost btn-xs" %>
           </div>
         </div>

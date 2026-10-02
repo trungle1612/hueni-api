@@ -52,4 +52,10 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     get admin_place_path("tomo-homestay")
     assert_redirected_to new_session_path
   end
+
+  test "each room has an on/off switch that submits to the room" do
+    log_in users(:owner)
+    get admin_place_path("tomo-homestay")
+    assert_select "#room_#{rooms(:garden).id} form[action='#{admin_room_path(rooms(:garden))}'][data-controller=autosubmit] input[type=checkbox][name='room[active]'][data-action='change->autosubmit#submit']"
+  end
 end

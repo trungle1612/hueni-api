@@ -1,0 +1,3 @@
+<% content_for :title, "Thêm phòng · hueni admin" %>
+<%= render "header", back: admin_place_path(@place.slug), back_label: @place.name, title: "Thêm phòng" %>
+<%= render "form", room: @room, place: @place %>
