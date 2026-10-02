@@ -9,9 +9,10 @@ class Room < ApplicationRecord
   validates :price, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validate :photo_urls_are_http_urls
 
-  # Owners type prices like "450.000" or "450 000 ₫"; keep only the digits so "." isn't read as a decimal point.
+  # Owners type prices like "450.000" or "450 000 ₫": drop thousands separators and the currency mark so "."
+  # isn't read as a decimal point. Anything else (e.g. "450k") is left for validation to reject.
   def price=(value)
-    super(value.is_a?(String) ? value.gsub(/\D/, "").presence : value)
+    super(value.is_a?(String) ? value.gsub(/vn[dđ]|[.,\s₫đ]/i, "").presence : value)
   end
 
   private

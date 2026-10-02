@@ -67,4 +67,13 @@ class RoomTest < ActiveSupport::TestCase
     assert_includes room.errors.full_messages, "Tên phòng không thể để trống"
     assert room.errors.full_messages.any? { it.start_with?("Số khách tối đa") }
   end
+
+  test "price typos are rejected instead of silently saving a wrong number" do
+    [ "450k", "-100", "abc", "1e6" ].each do |input|
+      room = rooms(:garden)
+      room.price = input
+      assert_not room.valid?, "input #{input.inspect} should be invalid"
+      assert_includes room.errors.attribute_names, :price
+    end
+  end
 end
