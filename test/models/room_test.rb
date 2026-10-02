@@ -53,4 +53,27 @@ class RoomTest < ActiveSupport::TestCase
       Room.new(place_id: 0, name: "Ghost", max_guests: 2).save(validate: false)
     end
   end
+
+  test "price accepts Vietnamese-formatted input" do
+    { "450.000" => 450_000, "450,000" => 450_000, "450 000 ₫" => 450_000, "450000" => 450_000, "" => nil, 450_000 => 450_000 }.each do |input, expected|
+      price = Room.new(price: input).price
+      expected.nil? ? assert_nil(price, "input #{input.inspect}") : assert_equal(expected, price, "input #{input.inspect}")
+    end
+  end
+
+  test "validation messages use Vietnamese attribute names" do
+    room = Room.new(place: places(:tomo), name: "", max_guests: 0)
+    room.valid?
+    assert_includes room.errors.full_messages, "Tên phòng không thể để trống"
+    assert room.errors.full_messages.any? { it.start_with?("Số khách tối đa") }
+  end
+
+  test "price typos are rejected instead of silently saving a wrong number" do
+    [ "450k", "-100", "abc", "1e6" ].each do |input|
+      room = rooms(:garden)
+      room.price = input
+      assert_not room.valid?, "input #{input.inspect} should be invalid"
+      assert_includes room.errors.attribute_names, :price
+    end
+  end
 end

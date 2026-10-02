@@ -10,6 +10,6 @@ class ApplicationConfigTest < ActiveSupport::TestCase
   end
 
   test "has Vietnamese translations for built-in messages" do
-    assert_equal "không thể để trắng", I18n.t("errors.messages.blank", locale: :vi)
+    assert_equal "không thể để trống", I18n.t("errors.messages.blank", locale: :vi)
   end
 end

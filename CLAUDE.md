@@ -59,7 +59,7 @@ CI (`.github/workflows/ci.yml`) runs brakeman, bundler-audit, importmap audit, r
 - `calendar_feeds.url` embeds OTA tokens: never render it in `/v1/*`, keep `:url` in `filter_parameters`.
 - SSRF: feed URLs must be http(s) and resolve only to public IPs (`CalendarFeed.public_ip?`), checked on save **and again at fetch time** (DNS rebinding).
 - iCal sync failure must change no bookings; record `last_error` / `last_error_at` instead. `CalendarFeed#sync` fetches and parses *before* opening the transaction.
-- Admin rule: every admin lookup goes through `Current.user.accessible_places / _rooms / _calendar_feeds / _bookings` (admins: everything; owners: places they are members of). Never `Place.find` / `Room.find` etc. in admin controllers. Out of scope → `RecordNotFound` → 404. Each new admin page adds a request test that another owner's record returns 404.
+- Admin rule: every admin lookup goes through `Current.user.accessible_places / _rooms / _calendar_feeds / _bookings` (admins: everything; owners: places they are members of). Never `Place.find` / `Room.find` etc. in admin controllers. Use `find` / `find_by!` (never `find_by`, which returns nil → 500). Never permit `place_id` / `room_id` / `calendar_feed_id` in params; build children through a scoped parent (`Current.user.accessible_rooms.find(params[:room_id]).bookings.build(...)`). Out of scope → `RecordNotFound` → 404. Each new admin page adds a request test that another owner's record returns 404.
 
 ## Conventions
 

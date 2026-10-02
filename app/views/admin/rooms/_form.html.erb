@@ -1,0 +1,26 @@
+<%= form_with model: room, url: (room.new_record? ? admin_place_rooms_path(place.slug) : admin_room_path(room)), class: "card bg-base-100 shadow-sm" do |form| %>
+  <div class="card-body p-4 gap-3">
+    <% if room.errors.any? %>
+      <div role="alert" class="alert alert-error alert-soft">
+        <ul><% room.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul>
+      </div>
+    <% end %>
+    <div>
+      <%= form.label :name, "Tên phòng", class: "label text-sm mb-1" %>
+      <%= form.text_field :name, required: true, class: "input w-full" %>
+    </div>
+    <div>
+      <%= form.label :max_guests, "Số khách tối đa", class: "label text-sm mb-1" %>
+      <%= form.number_field :max_guests, min: 1, required: true, class: "input w-full" %>
+    </div>
+    <div>
+      <%= form.label :price, "Giá mỗi đêm (₫)", class: "label text-sm mb-1" %>
+      <%= form.text_field :price, inputmode: "numeric", class: "input w-full" %>
+      <div class="text-xs opacity-60 mt-1">Chỉ hiển thị trong trang quản trị</div>
+    </div>
+    <label class="flex items-center gap-2 text-sm">
+      <%= form.check_box :active, class: "toggle toggle-success" %> Đang mở cho khách đặt
+    </label>
+    <%= form.submit "Lưu", class: "btn btn-primary btn-block mt-2" %>
+  </div>
+<% end %>

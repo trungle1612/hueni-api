@@ -15,6 +15,10 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root "dashboard#show"
+    resources :places, only: :show, param: :slug do
+      resources :rooms, only: %i[new create]
+    end
+    resources :rooms, only: %i[edit update]
   end
 
   root to: redirect("/admin")
