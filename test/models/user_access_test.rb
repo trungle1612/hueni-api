@@ -63,7 +63,7 @@ class UserAccessTest < ActiveSupport::TestCase
   test "removing a membership removes access immediately" do
     owner = users(:owner)
     assert owner.accessible_places.exists?(places(:tomo).id)
-    owner.place_memberships.destroy_all
+    owner.place_memberships.delete_all # skips the last-owner rule (tested in PlaceMembershipTest)
     assert_not owner.accessible_places.exists?(places(:tomo).id)
     assert_empty owner.accessible_rooms
   end

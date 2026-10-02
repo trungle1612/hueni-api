@@ -26,4 +26,27 @@ class PlaceMembershipTest < ActiveSupport::TestCase
       users(:owner).destroy!
     end
   end
+
+  test "role is owner by default, staff allowed, anything else rejected" do
+    membership = PlaceMembership.new(user: users(:admin), place: places(:hiuhill))
+    assert membership.owner?
+    membership.role = "staff"
+    assert membership.valid?
+    membership.role = "boss"
+    assert_not membership.valid?
+    assert_raises(ActiveRecord::StatementInvalid) { place_memberships(:owner_tomo).update_column(:role, "boss") }
+  end
+
+  test "a homestay keeps at least one owner" do
+    only_owner = place_memberships(:owner_tomo)
+    assert_not only_owner.update(role: "staff")
+    assert_includes only_owner.errors[:base], "Homestay cần ít nhất một chủ."
+    assert_not only_owner.reload.destroy
+    assert PlaceMembership.exists?(only_owner.id)
+
+    co_owner = User.create!(name: "Anh Tuấn", phone_number: "0905222333", password: "password123")
+    co_owner.place_memberships.create!(place: places(:tomo))
+    assert only_owner.update(role: "staff")
+    assert only_owner.destroy
+  end
 end

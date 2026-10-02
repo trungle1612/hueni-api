@@ -1,19 +1,7 @@
 <% content_for :title, "#{@user.name} · hueni admin" %>
 <%= render "admin/rooms/header", back: admin_users_path, back_label: "Người dùng", title: @user.name %>
 
-<% if (link = flash[:setup_link]) %>
-  <div class="card bg-success/10 border border-success mb-4">
-    <div class="card-body p-4 gap-2">
-      <div class="font-semibold">Link đặt mật khẩu cho <%= @user.name %></div>
-      <div data-setup-link class="font-mono text-xs break-all bg-base-100 rounded-box p-2 select-all"><%= link %></div>
-      <div class="text-xs opacity-70">
-        Chạm để chọn, sao chép và gửi qua Zalo. <%= @user.name %> mở link, tự chọn mật khẩu và đăng nhập ngay bằng số
-        <b><%= phone(@user.phone_number) %></b>. Link dùng được <b>một lần</b>, hết hạn ngày <b><%= l(7.days.from_now.to_date, format: "%d/%m") %></b>,
-        và <b>chỉ hiện ở đây một lần</b>.
-      </div>
-    </div>
-  </div>
-<% end %>
+<% if (link = flash[:setup_link]) %><%= render "admin/members/setup_link", user: @user, link: %><% end %>
 
 <%= render "form", user: @user %>
 

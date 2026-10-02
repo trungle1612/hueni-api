@@ -1,7 +1,7 @@
 <% content_for :title, "Kênh OTA · hueni admin" %>
 
 <h1 class="text-xl font-semibold mb-1">Kênh OTA</h1>
-<p class="text-sm opacity-70 mb-4">Lịch Airbnb / Booking.com tự đồng bộ mỗi giờ. Chạm vào phòng để thêm kênh hoặc đồng bộ ngay.</p>
+<p class="text-sm opacity-70 mb-4">Lịch Airbnb / Booking.com tự đồng bộ mỗi giờ. Chủ homestay chạm vào tên phòng để thêm hoặc xoá kênh.</p>
 
 <% if @rooms_by_place.any? %>
   <% @rooms_by_place.each do |place, rooms| %>
@@ -9,10 +9,14 @@
     <div class="flex flex-col gap-3">
       <% rooms.each do |room| %>
         <% errors = room.calendar_feeds.count(&:last_error) %>
-        <%= link_to edit_admin_room_path(room), data: { room: room.id }, class: "card bg-base-100 shadow-sm hover:shadow-md transition-shadow #{"opacity-60" unless room.active?}" do %>
+        <div data-room="<%= room.id %>" class="card bg-base-100 shadow-sm <%= "opacity-60" unless room.active? %>">
           <div class="card-body p-4 gap-1">
             <div class="flex justify-between items-start gap-2">
-              <div class="font-semibold"><%= room.name %></div>
+              <% if allowed_to?(:manage, place) %>
+                <%= link_to room.name, edit_admin_room_path(room), class: "font-semibold link link-hover" %>
+              <% else %>
+                <div class="font-semibold"><%= room.name %></div>
+              <% end %>
               <% if errors.positive? %>
                 <span class="badge badge-soft badge-sm badge-error"><%= errors %> lỗi</span>
               <% elsif room.calendar_feeds.any? %>
@@ -22,15 +26,18 @@
               <% end %>
             </div>
             <% room.calendar_feeds.sort_by(&:created_at).each do |feed| %>
-              <div class="text-xs opacity-70">
-                <%= feed.provider_label %> ·
-                <% if feed.last_error %>lỗi <%= time_ago_in_words(feed.last_error_at) %> trước
-                <% elsif feed.last_synced_at %><%= time_ago_in_words(feed.last_synced_at) %> trước
-                <% else %>chưa đồng bộ<% end %>
+              <div class="flex justify-between items-center gap-2 text-xs">
+                <span class="opacity-70">
+                  <%= feed.provider_label %> ·
+                  <% if feed.last_error %>lỗi <%= time_ago_in_words(feed.last_error_at) %> trước
+                  <% elsif feed.last_synced_at %><%= time_ago_in_words(feed.last_synced_at) %> trước
+                  <% else %>chưa đồng bộ<% end %>
+                </span>
+                <%= button_to "↻ Đồng bộ ngay", sync_admin_calendar_feed_path(feed), class: "btn btn-ghost btn-xs", data: { turbo_submits_with: "Đang đồng bộ…" } %>
               </div>
             <% end %>
           </div>
-        <% end %>
+        </div>
       <% end %>
     </div>
   <% end %>

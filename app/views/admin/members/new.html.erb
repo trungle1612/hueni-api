@@ -1,0 +1,31 @@
+<% content_for :title, "Thêm thành viên · hueni admin" %>
+<%= render "admin/rooms/header", back: admin_place_path(@place.slug), back_label: @place.name, title: "Thêm thành viên" %>
+
+<%= form_with scope: :member, url: admin_place_members_path(@place.slug), class: "card bg-base-100 shadow-sm" do |form| %>
+  <div class="card-body p-4 gap-3">
+    <% if (messages = @user.errors.full_messages + @membership.errors.full_messages).any? %>
+      <div role="alert" class="alert alert-error alert-soft">
+        <ul><% messages.each do |message| %><li><%= message %></li><% end %></ul>
+      </div>
+    <% end %>
+    <div>
+      <%= form.label :name, "Tên", class: "label text-sm mb-1" %>
+      <%= form.text_field :name, value: @user.name, required: true, class: "input w-full" %>
+    </div>
+    <div>
+      <%= form.label :phone_number, "Số điện thoại", class: "label text-sm mb-1" %>
+      <%= form.telephone_field :phone_number, value: phone(@user.phone_number), required: true, class: "input w-full" %>
+    </div>
+    <fieldset>
+      <legend class="label text-sm mb-1">Vai trò</legend>
+      <div class="flex gap-4">
+        <% PlaceMembership::ROLE_LABELS.each do |role, label| %>
+          <label class="flex items-center gap-2 text-sm"><%= form.radio_button :role, role, checked: @membership.role == role, class: "radio radio-sm" %> <%= label %></label>
+        <% end %>
+      </div>
+      <div class="text-xs opacity-60 mt-1">Nhân viên: xem lịch, đặt / sửa / huỷ đặt phòng, đồng bộ OTA. Không sửa phòng, giá, kênh OTA, thành viên.</div>
+    </fieldset>
+    <div class="text-xs opacity-60">Sau khi lưu, bạn nhận một link để gửi qua Zalo; thành viên mở link và tự chọn mật khẩu.</div>
+    <%= form.submit "Thêm và lấy link", class: "btn btn-primary btn-block mt-2" %>
+  </div>
+<% end %>

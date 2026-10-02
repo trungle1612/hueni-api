@@ -3,7 +3,8 @@
 #
 #   bin/rails db:seed
 #
-# Logins (password "password123"): 0900 000 001 (admin, sees everything), 0900 000 002 (owner of 3 homestays).
+# Logins (password "password123"): 0900 000 001 (admin, sees everything), 0900 000 002 (owner of 3 homestays),
+# 0900 000 003 (staff at the first homestay).
 
 # db/places/*.json is git-ignored (copied from hue-ni), so a fresh clone may have no places: make some up.
 if Place.none?
@@ -14,8 +15,10 @@ end
 places = Place.order(:name).first(3)
 
 User.find_or_create_by!(phone_number: "0900000001") { it.assign_attributes(name: "Quản trị", role: "admin", password: "password123") }
-owner = User.find_or_create_by!(phone_number: "0900000002") { it.assign_attributes(name: "Chị Hoa", role: "owner", password: "password123") }
+owner = User.find_or_create_by!(phone_number: "0900000002") { it.assign_attributes(name: "Chị Hoa", role: "user", password: "password123") }
 places.each { |place| owner.place_memberships.find_or_create_by!(place:) }
+staff = User.find_or_create_by!(phone_number: "0900000003") { it.assign_attributes(name: "Em Hằng", role: "user", password: "password123") }
+staff.place_memberships.find_or_create_by!(place: places.first) { it.role = "staff" }
 
 ROOMS = [
   [ "Sen", 2, 350_000 ], [ "Cúc", 2, 300_000 ], [ "Lan", 4, 550_000 ], [ "Đào", 3, 450_000 ], [ "Mai", 6, 800_000 ]
@@ -58,4 +61,4 @@ end
 
 Vacancy.bust
 puts "Seeded #{places.map(&:name).join(", ")}: #{Room.count} rooms, #{Booking.count} bookings, #{CalendarFeed.count} feeds."
-puts "Log in at /session/new as 0900 000 002 (owner) or 0900 000 001 (admin), password password123."
+puts "Log in at /session/new as 0900 000 002 (owner), 0900 000 003 (staff) or 0900 000 001 (admin), password password123."

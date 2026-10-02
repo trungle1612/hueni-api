@@ -40,6 +40,9 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     log_in users(:owner)
     get admin_place_path("hiuhill-homestay")
     assert_response :not_found
+    assert_select "h1", "Không tìm thấy"
+    assert_select "aside a", text: /Tổng quan/ # inside the admin layout, not the bare Rails page
+    assert_select "body", text: /SELECT|place_memberships/, count: 0
   end
 
   test "admin can open any homestay" do
@@ -58,5 +61,28 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     log_in users(:owner)
     get admin_place_path("tomo-homestay")
     assert_select "#room_#{rooms(:garden).id} form[action='#{admin_room_path(rooms(:garden))}'][data-controller=autosubmit] input[type=checkbox][name='room[active]'][data-action='change->autosubmit#submit']"
+  end
+
+  test "staff see rooms without prices or owner controls, and a Nhân viên badge" do
+    rooms(:garden).update!(price: 300_000)
+    staff = User.create!(name: "Em Hằng", phone_number: "0987111222", password: "password123")
+    staff.place_memberships.create!(place: places(:tomo), role: "staff")
+    log_in staff
+    get admin_place_path("tomo-homestay")
+
+    assert_response :success
+    assert_select ".badge", text: "Nhân viên"
+    assert_select "body", text: /300\.000/, count: 0
+    assert_select "a", text: /Thêm phòng/, count: 0
+    assert_select "a", text: "Sửa", count: 0
+    assert_select "input[type=checkbox][name='room[active]']", 0
+    assert_select "#room_#{rooms(:garden).id}", text: /Đang mở/
+  end
+
+  test "owners see a Chủ badge and the owner controls" do
+    log_in users(:owner)
+    get admin_place_path("tomo-homestay")
+    assert_select ".badge", text: "Chủ"
+    assert_select "a", text: /Thêm phòng/
   end
 end

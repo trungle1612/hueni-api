@@ -52,7 +52,7 @@ class Admin::CalendarFeedsControllerTest < ActionDispatch::IntegrationTest
     stub_request(:get, feed.url).to_return(body: file_fixture("airbnb.ics").read)
 
     post sync_admin_calendar_feed_path(feed)
-    assert_redirected_to edit_admin_room_path(rooms(:limdim))
+    assert_redirected_to admin_calendar_feeds_path
     assert_equal "Đã đồng bộ.", flash[:notice]
 
     travel 30.seconds
@@ -111,5 +111,37 @@ class Admin::CalendarFeedsControllerTest < ActionDispatch::IntegrationTest
     assert_select "body", text: /Đồi/, count: 0
     assert_select "aside a.menu-active", text: /Kênh OTA/
     assert_no_match "secret-token", response.body
+  end
+
+  test "staff can sync from the overview but can't add or delete feeds" do
+    staff = User.create!(name: "Em Hằng", phone_number: "0987111222", password: "password123")
+    staff.place_memberships.create!(place: places(:tomo), role: "staff")
+    delete session_path
+    log_in staff
+    stub_request(:get, @feed.url).to_return(body: file_fixture("airbnb.ics").read)
+
+    post sync_admin_calendar_feed_path(@feed), headers: { "Referer" => admin_calendar_feeds_url }
+    assert_redirected_to admin_calendar_feeds_url
+    assert_equal "Đã đồng bộ.", flash[:notice]
+
+    post admin_room_calendar_feeds_path(rooms(:garden)), params: { calendar_feed: { provider: "airbnb", url: URL } }
+    assert_response :forbidden
+    delete admin_calendar_feed_path(@feed)
+    assert_response :forbidden
+    assert CalendarFeed.exists?(@feed.id)
+  end
+
+  test "overview: everyone gets sync buttons, only owners get links to the room page" do
+    get admin_calendar_feeds_path
+    assert_select "form[action=?] button", sync_admin_calendar_feed_path(@feed)
+    assert_select "a[href=?]", edit_admin_room_path(rooms(:limdim))
+
+    staff = User.create!(name: "Em Hằng", phone_number: "0987111222", password: "password123")
+    staff.place_memberships.create!(place: places(:tomo), role: "staff")
+    delete session_path
+    log_in staff
+    get admin_calendar_feeds_path
+    assert_select "form[action=?] button", sync_admin_calendar_feed_path(@feed)
+    assert_select "a[href=?]", edit_admin_room_path(rooms(:limdim)), 0
   end
 end

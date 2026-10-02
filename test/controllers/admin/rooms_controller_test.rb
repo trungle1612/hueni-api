@@ -76,4 +76,27 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     assert_equal [ "Đồi", true ], [ other.reload.name, other.active? ]
   end
+
+  test "staff can't add or edit rooms (403); a non-member gets 404" do
+    staff = User.create!(name: "Em Hằng", phone_number: "0987111222", password: "password123")
+    staff.place_memberships.create!(place: places(:tomo), role: "staff")
+    other = Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 2)
+    delete session_path
+    log_in staff
+
+    get new_admin_place_room_path("tomo-homestay")
+    assert_response :forbidden
+    assert_select "h1", "Bạn không có quyền"
+    post admin_place_rooms_path("tomo-homestay"), params: { room: { name: "X", max_guests: 2 } }
+    assert_response :forbidden
+    get edit_admin_room_path(rooms(:garden))
+    assert_response :forbidden
+    patch admin_room_path(rooms(:garden)), params: { room: { active: "0", price: "1" } }
+    assert_response :forbidden
+    assert rooms(:garden).reload.active?
+    assert_not Room.exists?(name: "X")
+
+    get edit_admin_room_path(other) # homestay she isn't a member of
+    assert_response :not_found
+  end
 end

@@ -1,10 +1,12 @@
 <% content_for :title, "#{@place.name} · hueni admin" %>
+<% manage = allowed_to?(:manage, @place) %>
 
 <div class="flex items-center gap-2 mb-4">
   <%= link_to admin_root_path, class: "btn btn-ghost btn-square btn-sm", aria: { label: "Tổng quan" } do %>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-5" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
   <% end %>
   <h1 class="text-xl font-semibold truncate"><%= @place.name %></h1>
+  <%= place_role_badge(@place) %>
 </div>
 
 <% free_today = @rooms.count { |room| room.active? && @statuses[room.id].nil? } %>
@@ -12,7 +14,9 @@
   <div class="text-sm opacity-70"><%= @rooms.size %> phòng · còn <%= free_today %> phòng hôm nay</div>
   <div class="flex gap-2">
     <%= link_to "Lịch", admin_place_calendar_path(@place.slug), class: "btn btn-sm" %>
-    <%= link_to new_admin_place_room_path(@place.slug), class: "btn btn-primary btn-sm" do %>+ Thêm phòng<% end %>
+    <% if manage %>
+      <%= link_to new_admin_place_room_path(@place.slug), class: "btn btn-primary btn-sm" do %>+ Thêm phòng<% end %>
+    <% end %>
   </div>
 </div>
 
@@ -24,18 +28,22 @@
           <div class="flex justify-between items-start gap-2">
             <div>
               <div class="font-semibold"><%= room.name %></div>
-              <div class="text-xs opacity-60"><%= room.max_guests %> khách · <%= room.price ? "#{vnd(room.price)}/đêm" : "chưa có giá" %></div>
+              <div class="text-xs opacity-60"><%= room.max_guests %> khách<% if manage %> · <%= room.price ? "#{vnd(room.price)}/đêm" : "chưa có giá" %><% end %></div>
             </div>
             <%= room_status_badge(room, @statuses[room.id]) %>
           </div>
           <div class="flex justify-between items-center">
-            <%= form_with model: room, url: admin_room_path(room), method: :patch, data: { controller: "autosubmit" } do |form| %>
-              <label class="flex items-center gap-2 text-sm">
-                <%= form.check_box :active, class: "toggle toggle-sm toggle-success", data: { action: "change->autosubmit#submit" } %>
-                <%= room.active? ? "Đang mở" : "Đã tắt" %>
-              </label>
+            <% if manage %>
+              <%= form_with model: room, url: admin_room_path(room), method: :patch, data: { controller: "autosubmit" } do |form| %>
+                <label class="flex items-center gap-2 text-sm">
+                  <%= form.check_box :active, class: "toggle toggle-sm toggle-success", data: { action: "change->autosubmit#submit" } %>
+                  <%= room.active? ? "Đang mở" : "Đã tắt" %>
+                </label>
+              <% end %>
+              <%= link_to "Sửa", edit_admin_room_path(room), class: "btn btn-ghost btn-xs" %>
+            <% else %>
+              <span class="text-sm opacity-70"><%= room.active? ? "Đang mở" : "Đã tắt" %></span>
             <% end %>
-            <%= link_to "Sửa", edit_admin_room_path(room), class: "btn btn-ghost btn-xs" %>
           </div>
         </div>
       </div>
@@ -45,7 +53,32 @@
   <div class="card bg-base-100 border border-dashed border-base-300">
     <div class="card-body items-center text-center py-10">
       <div class="font-semibold">Chưa có phòng nào</div>
-      <%= link_to "Thêm phòng", new_admin_place_room_path(@place.slug), class: "btn btn-primary btn-sm mt-2" %>
+      <% if manage %><%= link_to "Thêm phòng", new_admin_place_room_path(@place.slug), class: "btn btn-primary btn-sm mt-2" %><% end %>
     </div>
   </div>
+<% end %>
+
+<% if @memberships %>
+  <section id="members" class="mt-6">
+    <div class="flex justify-between items-center mb-2">
+      <h2 class="font-semibold">Thành viên</h2>
+      <%= link_to "+ Thêm", new_admin_place_member_path(@place.slug), class: "btn btn-primary btn-sm" %>
+    </div>
+    <div class="flex flex-col gap-2">
+      <% @memberships.each do |membership| %>
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body p-3 gap-1">
+            <div class="flex justify-between items-center gap-2">
+              <div class="font-semibold"><%= membership.user.name %><%= " (bạn)" if membership.user == Current.user %></div>
+              <span class="badge badge-soft badge-sm <%= membership.owner? ? "badge-primary" : "badge-info" %>"><%= membership.role_label %></span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm opacity-70"><%= phone(membership.user.phone_number) %></span>
+              <%= link_to "Sửa", edit_admin_place_member_path(@place.slug, membership), class: "btn btn-ghost btn-xs" %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </section>
 <% end %>

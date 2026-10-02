@@ -15,7 +15,7 @@ class UsersTest < ApplicationSystemTestCase
     click_on "+ Thêm"
     fill_in "Tên", with: "Chị Hoa"
     fill_in "Số điện thoại (dùng để đăng nhập)", with: "+84 987 654 321"
-    check "Hiu Hill Homestay"
+    select "Chủ", from: "memberships[#{places(:hiuhill).id}]"
     click_button "Tạo tài khoản"
 
     assert_text "Đã tạo tài khoản."

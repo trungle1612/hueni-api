@@ -16,8 +16,8 @@
         <div class="text-sm opacity-70"><%= phone(user.phone_number) %></div>
         <% if user.admin? %>
           <div class="text-xs opacity-60">Tất cả homestay</div>
-        <% elsif user.places.any? %>
-          <div class="text-xs opacity-60"><%= user.places.map(&:name).sort.join(", ") %></div>
+        <% elsif user.place_memberships.any? %>
+          <div class="text-xs opacity-60"><%= user.place_memberships.sort_by { it.place.name }.map { "#{it.place.name} (#{it.role_label})" }.join(", ") %></div>
         <% else %>
           <div class="text-xs text-warning">Chưa gán homestay</div>
         <% end %>

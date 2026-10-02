@@ -4,17 +4,16 @@ class Admin::UsersController < Admin::BaseController
   before_action :set_user, only: %i[edit update reset_password]
 
   def index
-    @users = User.includes(:places).order(:role, :name)
+    @users = User.includes(place_memberships: :place).order(:role, :name)
   end
 
   def new
-    @user = User.new(role: "owner")
+    @user = User.new(role: "user")
   end
 
   def create
     @user = User.new(user_params.merge(password: User.unknown_password))
-    @user.places = selected_places
-    if @user.save
+    if save_with_memberships { @user.save }
       redirect_to edit_admin_user_path(@user), notice: "Đã tạo tài khoản.", flash: { setup_link: setup_link }
     else
       render :new, status: :unprocessable_entity
@@ -25,11 +24,7 @@ class Admin::UsersController < Admin::BaseController
   end
 
   def update
-    saved = User.transaction do
-      @user.places = selected_places
-      @user.update(user_params) or raise ActiveRecord::Rollback
-    end
-    if saved
+    if save_with_memberships { @user.update(user_params) }
       redirect_to admin_users_path, notice: "Đã lưu #{@user.name}."
     else
       render :edit, status: :unprocessable_entity
@@ -62,7 +57,22 @@ class Admin::UsersController < Admin::BaseController
 
     def setup_link = password_setup_url(token: @user.generate_token_for(:password_setup))
 
-    def selected_places
-      Current.user.accessible_places.where(id: params.dig(:user, :place_ids))
+    # Saves the user (block) and memberships[<place_id>] = "owner" | "staff" | "" together, or nothing.
+    # The last-owner rule surfaces as a form error.
+    def save_with_memberships
+      User.transaction do
+        yield or raise ActiveRecord::Rollback
+        Current.user.accessible_places.find_each do |place|
+          role = params.dig(:memberships, place.id.to_s).presence
+          membership = @user.place_memberships.find_or_initialize_by(place:)
+          if role then membership.update!(role:)
+          elsif membership.persisted? then membership.destroy!
+          end
+        end
+        true
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotDestroyed => error
+        @user.errors.add(:base, error.record.errors.full_messages.to_sentence)
+        raise ActiveRecord::Rollback
+      end
     end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_02_080449) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_03_000002) do
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -49,8 +49,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_080449) do
     t.integer "place_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "role", default: "owner", null: false
     t.index ["place_id"], name: "index_place_memberships_on_place_id"
     t.index ["user_id", "place_id"], name: "index_place_memberships_on_user_id_and_place_id", unique: true
+    t.check_constraint "role IN ('owner', 'staff')", name: "place_memberships_role_values"
   end
 
   create_table "places", force: :cascade do |t|
@@ -94,11 +96,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_080449) do
     t.string "phone_number", null: false
     t.string "password_digest", null: false
     t.string "name", null: false
-    t.string "role", default: "owner", null: false
+    t.string "role", default: "user", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["phone_number"], name: "index_users_on_phone_number", unique: true
-    t.check_constraint "role IN ('admin', 'owner')", name: "users_role_values"
+    t.check_constraint "role IN ('admin', 'user')", name: "users_role_values"
   end
 
   add_foreign_key "bookings", "calendar_feeds"

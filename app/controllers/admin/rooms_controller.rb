@@ -1,6 +1,7 @@
 class Admin::RoomsController < Admin::BaseController
   before_action :set_place, only: %i[new create]
   before_action :set_room, only: %i[edit update]
+  before_action -> { authorize!(:manage, @place) }
 
   def new
     @room = @place.rooms.build(active: true)

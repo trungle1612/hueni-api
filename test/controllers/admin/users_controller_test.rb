@@ -30,19 +30,20 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
   test "list shows users with role, phone and homestays" do
     get admin_users_path
     assert_response :success
-    assert_select "#user_#{users(:owner).id}", text: /Chị Lan.*0912 345 678.*tomo homestay/m
+    assert_select "#user_#{users(:owner).id}", text: /Chị Lan.*0912 345 678.*tomo homestay \(Chủ\)/m
     assert_select "#user_#{users(:admin).id}", text: /Quản trị viên/
     assert_select "aside a.menu-active", text: /Người dùng/
   end
 
   test "creating a user shows a one-time link to set their password" do
     assert_difference -> { User.count }, 1 do
-      post admin_users_path, params: { user: { name: "Chị Hoa", phone_number: "+84 987 654 321", role: "owner",
-        place_ids: [ "", places(:tomo).id, places(:hiuhill).id ] } }
+      post admin_users_path, params: { user: { name: "Chị Hoa", phone_number: "+84 987 654 321", role: "user" },
+        memberships: { places(:tomo).id => "owner", places(:hiuhill).id => "staff" } }
     end
     user = User.find_by!(phone_number: "0987654321")
-    assert_equal [ places(:hiuhill), places(:tomo) ], user.places.order(:name).to_a
-    assert user.owner?
+    assert_equal({ "hiuhill-homestay" => "staff", "tomo-homestay" => "owner" },
+      user.place_memberships.includes(:place).to_h { [ it.place.slug, it.role ] })
+    assert user.user?
     assert_redirected_to edit_admin_user_path(user)
     assert_equal user, User.find_by_token_for(:password_setup, setup_token)
     link = flash[:setup_link]
@@ -57,30 +58,40 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
   test "invalid or duplicate phone number re-renders with an error" do
     [ "123", "0912 345 678" ].each do |phone_number|
       assert_no_difference -> { User.count } do
-        post admin_users_path, params: { user: { name: "X", phone_number:, role: "owner" } }
+        post admin_users_path, params: { user: { name: "X", phone_number:, role: "user" } }
       end
       assert_response :unprocessable_entity
       assert_select "[role=alert]", text: /Số điện thoại/
     end
   end
 
-  test "edits name, phone, role and homestays" do
-    patch admin_user_path(users(:owner)), params: { user: { name: "Chị Lan Anh", phone_number: "0912 000 111", role: "admin",
-      place_ids: [ "", places(:hiuhill).id ] } }
+  test "edits name, phone, role and per-homestay roles" do
+    patch admin_user_path(users(:owner)), params: { user: { name: "Chị Lan Anh", phone_number: "0912 000 111", role: "admin" },
+      memberships: { places(:tomo).id => "owner", places(:hiuhill).id => "staff" } }
     assert_redirected_to admin_users_path
     users(:owner).reload
-    assert_equal [ "Chị Lan Anh", "0912000111", "admin", [ places(:hiuhill) ] ],
-      [ users(:owner).name, users(:owner).phone_number, users(:owner).role, users(:owner).places.to_a ]
+    assert_equal [ "Chị Lan Anh", "0912000111", "admin" ], [ users(:owner).name, users(:owner).phone_number, users(:owner).role ]
+    assert_equal({ "hiuhill-homestay" => "staff", "tomo-homestay" => "owner" },
+      users(:owner).place_memberships.includes(:place).to_h { [ it.place.slug, it.role ] })
+  end
+
+  test "removing a homestay's last owner fails and nothing is saved" do
+    patch admin_user_path(users(:owner)), params: { user: { name: "Đổi tên" }, memberships: { places(:tomo).id => "", places(:hiuhill).id => "owner" } }
+    assert_response :unprocessable_entity
+    assert_select "[role=alert]", text: /Homestay cần ít nhất một chủ\./
+    users(:owner).reload
+    assert_equal "Chị Lan", users(:owner).name
+    assert_equal [ places(:tomo) ], users(:owner).places.to_a
   end
 
   test "failed edit keeps the old homestays" do
-    patch admin_user_path(users(:owner)), params: { user: { name: "", place_ids: [ "" ] } }
+    patch admin_user_path(users(:owner)), params: { user: { name: "" }, memberships: { places(:tomo).id => "" } }
     assert_response :unprocessable_entity
     assert_equal [ places(:tomo) ], users(:owner).reload.places.to_a
   end
 
   test "admins can't change their own role" do
-    patch admin_user_path(users(:admin)), params: { user: { name: "Trung", role: "owner" } }
+    patch admin_user_path(users(:admin)), params: { user: { name: "Trung", role: "user" } }
     assert users(:admin).reload.admin?
   end
 

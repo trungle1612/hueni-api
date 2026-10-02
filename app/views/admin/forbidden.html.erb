@@ -1,0 +1,12 @@
+<% content_for :title, "Bạn không có quyền · hueni admin" %>
+
+<div class="card bg-base-100 shadow-sm">
+  <div class="card-body items-center text-center py-10 gap-2">
+    <div class="text-4xl" aria-hidden="true">🔒</div>
+    <h1 class="text-xl font-semibold">Bạn không có quyền</h1>
+    <p class="text-sm opacity-70">
+      Chỉ chủ homestay<%= " #{@place.name}" if @place %> mới sửa được phòng, kênh OTA và thành viên. Hỏi chủ nhà nếu cần thay đổi.
+    </p>
+    <%= link_to "‹ Về trang homestay", (@place ? admin_place_path(@place.slug) : admin_root_path), class: "btn btn-sm mt-2" %>
+  </div>
+</div>
