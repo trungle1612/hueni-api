@@ -1,5 +1,27 @@
 <% content_for :title, "Sửa đặt phòng · hueni admin" %>
 <%= render "admin/rooms/header", back: admin_place_calendar_path(@place.slug), back_label: "Lịch phòng", title: "Sửa đặt phòng" %>
+<% if @booking.checked_in_at || @booking.can_check_in? %>
+  <div id="stay" class="card bg-base-100 shadow-sm mb-3">
+    <div class="card-body p-4 flex-row justify-between items-center gap-2">
+      <div class="text-sm">
+        <% if @booking.checked_out_at %>
+          Đã trả phòng lúc <%= @booking.checked_out_at.strftime("%H:%M %d/%m") %>
+        <% elsif @booking.checked_in_at %>
+          Đã nhận phòng lúc <%= @booking.checked_in_at.strftime("%H:%M %d/%m") %>
+        <% else %>
+          Khách chưa nhận phòng<% if @booking.room.dirty? %> · <span class="text-warning">Phòng chưa dọn</span><% end %>
+        <% end %>
+      </div>
+      <% if @booking.can_check_in? %>
+        <%= check_in_button(@booking, size: "btn-sm") %>
+      <% elsif @booking.can_check_out? %>
+        <%= check_out_button(@booking, size: "btn-sm") %>
+      <% end %>
+    </div>
+  </div>
+<% end %>
 <%= render "form", booking: @booking, place: @place %>
-<%= button_to "Huỷ đặt phòng", admin_booking_path(@booking), method: :patch, params: { booking: { status: "cancelled" } },
-      class: "btn btn-ghost btn-block text-error mt-3", form: { data: { turbo_confirm: "Huỷ đặt phòng này? Phòng sẽ trống lại." } } %>
+<% unless @booking.checked_in_at %>
+  <%= button_to "Huỷ đặt phòng", admin_booking_path(@booking), method: :patch, params: { booking: { status: "cancelled" } },
+        class: "btn btn-ghost btn-block text-error mt-3", form: { data: { turbo_confirm: "Huỷ đặt phòng này? Phòng sẽ trống lại." } } %>
+<% end %>

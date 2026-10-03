@@ -136,4 +136,32 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[role=alert]", text: /Khách đã nhận phòng, không huỷ được/
     assert booking.reload.confirmed?
   end
+
+  test "edit page shows the guest count field and a confirmed check-in button" do
+    booking = bookings(:limdim_confirmed)
+    get edit_admin_booking_path(booking)
+    assert_select "input[name='booking[guests]'][type=number][max='4']"
+    assert_select "#stay form[action='#{check_in_admin_booking_path(booking)}'][data-turbo-confirm='Anh Minh nhận phòng Limdim?']"
+    assert_select "form[action='#{check_out_admin_booking_path(booking)}']", count: 0
+    assert_select "button", text: "Huỷ đặt phòng"
+  end
+
+  test "edit page of a checked-in guest shows the time and check-out, hides cancel" do
+    booking = bookings(:limdim_confirmed)
+    booking.check_in
+    get edit_admin_booking_path(booking)
+    assert_select "#stay", text: /Đã nhận phòng lúc 12:00 01\/10/
+    assert_select "#stay form[action='#{check_out_admin_booking_path(booking)}']"
+    assert_select "button", text: "Huỷ đặt phòng", count: 0
+
+    booking.check_out
+    get edit_admin_booking_path(booking)
+    assert_select "#stay", text: /Đã trả phòng lúc 12:00 01\/10/
+    assert_select "#stay form", count: 0
+  end
+
+  test "creates a booking with a guest count" do
+    post admin_place_bookings_path("tomo-homestay"), params: { booking: { room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06", guests: 2 } }
+    assert_equal 2, Booking.last.guests
+  end
 end
