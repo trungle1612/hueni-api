@@ -1,15 +1,23 @@
 <% names = activity_names(versions) %>
 <% rooms = show_room ? activity_room_names(versions) : {} %>
-<% versions.group_by { it.created_at.to_date }.each do |date, day_versions| %>
-  <h3 class="text-xs font-bold uppercase tracking-wide text-primary mt-4 mb-1"><%= activity_day(date) %></h3>
-  <ul class="list bg-base-100 rounded-box shadow-sm">
-    <% day_versions.each do |version| %>
-      <li id="version_<%= version.id %>" class="list-row block py-2">
-        <div class="text-xs opacity-60">
-          <span class="font-semibold"><%= names[version.whodunnit] %></span> · <%= version.created_at.strftime("%H:%M") %><%= " · #{rooms[version.room_id]}" if show_room && rooms[version.room_id] %>
-        </div>
-        <div class="text-sm <%= "text-error" if activity_error?(version) %>"><%= activity_text(version) %></div>
-      </li>
-    <% end %>
-  </ul>
-<% end %>
+<div class="max-w-2xl">
+  <% versions.group_by { it.created_at.to_date }.each do |date, day_versions| %>
+    <h3 class="text-xs font-bold uppercase tracking-wide text-primary mt-4 mb-1"><%= activity_day(date) %></h3>
+    <ul class="list bg-base-100 rounded-box shadow-sm">
+      <% day_versions.each do |version| %>
+        <% entry = activity_entry(version) %>
+        <li id="version_<%= version.id %>" class="list-row items-start py-2.5">
+          <%= activity_icon(entry[:kind]) %>
+          <div class="list-col-grow min-w-0">
+            <div class="text-sm">
+              <% if rooms[version.room_id] %><span class="badge badge-soft badge-neutral badge-sm mr-1">Phòng <%= rooms[version.room_id] %></span><% end %>
+              <span class="font-semibold <%= { error: "text-error", ok: "text-success" }[entry[:kind]] %>"><%= entry[:action] %></span><% if entry[:detail] %> · <%= entry[:detail] %><% end %>
+            </div>
+            <div class="text-xs opacity-60 mt-0.5"><%= names[version.whodunnit] %></div>
+          </div>
+          <div class="text-xs opacity-60 pt-0.5"><%= version.created_at.strftime("%H:%M") %></div>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>

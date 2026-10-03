@@ -30,10 +30,8 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_select "h3", "Hôm nay"
     rows = css_select("[id^=version_]")
     assert_equal 2, rows.size
-    assert_match "Airbnb · 14:05 · Limdim", rows[0].text
-    assert_match "thêm đặt phòng 12/10–14/10", rows[0].text
-    assert_match "Em Hằng · 14:05 · Garden", rows[1].text
-    assert_match "giữ chỗ Chị Mai 05/10–07/10", rows[1].text
+    assert_equal "Phòng Limdim Đặt phòng · 12/10–14/10 Airbnb 14:05", rows[0].text.squish
+    assert_equal "Phòng Garden Giữ chỗ · Chị Mai 05/10–07/10 Em Hằng 14:05", rows[1].text.squish
     assert_no_match "Không phải của tôi", response.body
     assert_select "a", text: "Xem cũ hơn", count: 0
   end
@@ -80,8 +78,9 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
 
     log_in users(:owner)
     get admin_place_activity_path("tomo-homestay")
-    assert_match "thêm kênh Booking.com", response.body
-    assert_match "đồng bộ lỗi", response.body
+    rows = css_select("[id^=version_]").map { it.text.squish }
+    assert_equal [ "Phòng Garden Đồng bộ lỗi · RuntimeError: HTTP 404 Booking.com 14:05",
+      "Phòng Garden Thêm kênh · Booking.com Hệ thống 14:05" ], rows
     assert_no_match "secret-token", response.body
   end
 
@@ -102,7 +101,7 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     log_in users(:owner)
     get edit_admin_booking_path(booking)
     assert_select "#history h2", "Lịch sử"
-    assert_select "#history", text: /Chị Lan · 14:05\s*sửa ghi chú/
+    assert_equal "Sửa đặt phòng · Anh Minh: sửa ghi chú Chị Lan 14:05", css_select("#history [id^=version_]").first.text.squish
 
     log_in staff
     get edit_admin_booking_path(booking)
@@ -121,7 +120,8 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     get edit_admin_room_path(rooms(:garden))
     assert_select "#history [id^=version_]", 2
     assert_select "#history", text: /giá chưa có → 350.000 ₫/
-    assert_select "#history", text: /thêm đặt phòng Chị Mai 06\/10–07\/10/
+    assert_select "#history", text: /Đặt phòng · Chị Mai 06\/10–07\/10/
+    assert_select "#history", text: /Phòng Garden/, count: 0
     assert_select "#history a[href=?]", admin_place_activity_path("tomo-homestay"), text: /Xem tất cả hoạt động/
 
     21.times { |i| rooms(:garden).update!(max_guests: i + 3) }
