@@ -156,4 +156,54 @@ class CalendarFeedSyncTest < ActiveSupport::TestCase
     assert_equal Time.current, existing.checked_in_at
     assert_equal 2, existing.guests
   end
+
+  test "sync logs adds, moves and removals as the provider; a quiet re-sync logs nothing" do
+    moved = ical_booking("1418fb94e984-reserved-1@airbnb.com", "2026-10-09", "2026-10-11")
+    gone = ical_booking("gone@airbnb.com", "2026-10-28", "2026-10-30")
+    stub_feed("airbnb.ics")
+    before = PaperTrail::Version.maximum(:id)
+
+    assert @feed.sync
+
+    versions = PaperTrail::Version.where(id: before.next..).order(:id)
+    assert_equal [ [ "Booking", "update", moved.id ], [ "Booking", "create", @feed.bookings.find_by!(uid: "1418fb94e984-blocked-1@airbnb.com").id ], [ "Booking", "destroy", gone.id ] ].sort,
+      versions.map { [ it.item_type, it.event, it.item_id ] }.sort
+    assert versions.all? { it.whodunnit == "airbnb" && it.place_id == places(:tomo).id && it.room_id == rooms(:garden).id }
+
+    assert_no_difference(-> { PaperTrail::Version.count }) { assert @feed.sync }
+  end
+
+  test "the same sync error twice logs once; recovery logs once" do
+    stub_feed(body: "", status: 404)
+    assert_difference(-> { @feed.versions.count }, 1) { assert_not @feed.sync }
+    assert_equal [ nil, "RuntimeError: HTTP 404" ], @feed.versions.last.object_changes["last_error"]
+
+    travel 2.minutes
+    assert_no_difference(-> { @feed.versions.count }) { assert_not @feed.sync }
+
+    stub_feed("airbnb.ics")
+    assert_difference(-> { @feed.versions.count }, 1) { assert @feed.sync }
+    assert_equal [ "RuntimeError: HTTP 404", nil ], @feed.versions.last.object_changes["last_error"]
+    assert_equal "airbnb", @feed.versions.last.whodunnit
+  end
+
+  test "sync from an admin request logs the provider and restores the user afterwards" do
+    stub_feed("airbnb.ics")
+    PaperTrail.request(whodunnit: users(:owner).id.to_s) do
+      assert @feed.sync
+      assert_equal users(:owner).id.to_s, PaperTrail.request.whodunnit
+    end
+    assert_equal [ "airbnb" ], PaperTrail::Version.where(item_type: "Booking").distinct.pluck(:whodunnit)
+  end
+
+  test "no version stores the feed URL" do
+    stub_feed(body: "", status: 404)
+    @feed.sync
+    stub_feed("airbnb.ics")
+    @feed.sync
+    @feed.destroy!
+    PaperTrail::Version.find_each do |version|
+      assert_not_includes version.attributes.to_json, "s=token"
+    end
+  end
 end

@@ -48,25 +48,34 @@ class CalendarFeed < ApplicationRecord
 
   # Replaces this feed's bookings with the feed's events. On any error no bookings change;
   # the error is recorded in last_error instead. Returns true on success.
+  # Changes are logged as the OTA (whodunnit = provider), whoever started the sync.
   def sync
-    events = parse(fetch)
-    transaction do
-      uids = events.map do |event|
-        bookings.find_or_initialize_by(uid: event[:uid])
-          .update!(room:, start_date: event[:start_date], end_date: event[:end_date], source: "ical", status: "confirmed")
-        event[:uid]
+    PaperTrail.request(whodunnit: provider) do
+      events = parse(fetch)
+      transaction do
+        uids = events.map do |event|
+          bookings.find_or_initialize_by(uid: event[:uid])
+            .update!(room:, start_date: event[:start_date], end_date: event[:end_date], source: "ical", status: "confirmed")
+          event[:uid]
+        end
+        bookings.where(end_date: Date.current.next_day..).where.not(uid: uids).find_each(&:destroy!)
+        record_sync(last_synced_at: Time.current, last_error: nil, last_error_at: nil)
       end
-      bookings.where(end_date: Date.current.next_day..).where.not(uid: uids).delete_all
-      update_columns(last_synced_at: Time.current, last_error: nil, last_error_at: nil)
+      Vacancy.bust
+      true
+    rescue StandardError => error
+      record_sync(last_error: "#{error.class}: #{error.message}".truncate(500), last_error_at: Time.current)
+      false
     end
-    Vacancy.bust
-    true
-  rescue StandardError => error
-    update_columns(last_error: "#{error.class}: #{error.message}".truncate(500), last_error_at: Time.current)
-    false
   end
 
   private
+    # Versioned (only when last_error changes), but skips validation: no DNS lookup on every sync.
+    def record_sync(attributes)
+      assign_attributes(attributes)
+      save!(validate: false)
+    end
+
     def url_is_public_http
       errors.add(:url, :invalid) if self.class.public_addresses(URI.parse(url)).empty?
     rescue URI::InvalidURIError
