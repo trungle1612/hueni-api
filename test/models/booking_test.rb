@@ -123,6 +123,34 @@ class BookingTest < ActiveSupport::TestCase
     assert_not_includes Booking.not_checked_in, staying
   end
 
+  test "no-show cancels a late manual booking and notes it" do
+    booking = saved(room: rooms(:garden), start_date: "2026-10-01", end_date: "2026-10-04", note: "Đặt qua Zalo")
+    travel_to Time.zone.local(2026, 10, 2, 9) do
+      assert booking.can_no_show?
+      assert booking.no_show
+    end
+    booking.reload
+    assert booking.cancelled?
+    assert_equal "Đặt qua Zalo · Không đến", booking.note
+  end
+
+  test "no-show is refused unless the guest is late, the booking manual and not checked in" do
+    travel_to Time.zone.local(2026, 10, 2, 9) do
+      today = saved(room: rooms(:garden), start_date: "2026-10-02", end_date: "2026-10-03")
+      assert_refused today, :no_show, "Chưa qua ngày nhận phòng"
+
+      ical = calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:garden), uid: "x", start_date: "2026-10-01", end_date: "2026-10-02", source: "ical")
+      assert_refused ical, :no_show, "Đặt phòng OTA: huỷ trên Airbnb / Booking.com"
+
+      booking = bookings(:limdim_confirmed) # 1/10–3/10
+      booking.update_columns(checked_in_at: 1.day.ago)
+      assert_refused booking, :no_show, "Khách đã nhận phòng rồi"
+      assert_not booking.reload.cancelled?
+
+      booking.update_columns(checked_in_at: nil, status: "cancelled")
+      assert_refused booking, :no_show, "Đặt phòng đã huỷ"
+    end
+  end
   def saved(**attrs) = build(**attrs).tap(&:save!)
 
   def assert_refused(booking, action, message)

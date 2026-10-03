@@ -1,7 +1,7 @@
 class Admin::BookingsController < Admin::BaseController
   before_action :set_place, only: %i[new create]
   before_action :set_booking, only: %i[edit update]
-  before_action :set_any_booking, only: %i[check_in check_out]
+  before_action :set_any_booking, only: %i[check_in check_out no_show]
 
   def new
     start_date = date_param(:start_date) || Date.current
@@ -40,6 +40,14 @@ class Admin::BookingsController < Admin::BaseController
   def check_out
     if @booking.check_out
       redirect_back_or_to admin_root_path, notice: "Đã trả phòng: #{stay_label}. Phòng chuyển sang chưa dọn."
+    else
+      redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
+    end
+  end
+
+  def no_show
+    if @booking.no_show
+      redirect_back_or_to admin_root_path, notice: "Đã huỷ (không đến): #{stay_label}"
     else
       redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
     end

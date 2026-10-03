@@ -11,7 +11,9 @@ module Admin::ActivityHelper
     room: [ "home", "bg-warning/15 text-warning" ],
     feed: [ "link", "bg-accent/15 text-accent" ],
     error: [ "alert", "bg-error/15 text-error" ],
-    ok: [ "check", "bg-success/15 text-success" ]
+    ok: [ "check", "bg-success/15 text-success" ],
+    stay: [ "users", "bg-accent/15 text-accent" ],
+    hold: [ "calendar", "bg-warning/15 text-warning" ]
   }.freeze
 
   # whodunnit => who: a user's name, an OTA ("airbnb" → "Airbnb"), or "Hệ thống" (console, seeds, unknown).
@@ -50,9 +52,9 @@ module Admin::ActivityHelper
     { kind:, action:, detail: detail.presence }
   end
 
-  def activity_icon(kind)
+  def activity_icon(kind, size: "size-9")
     icon, classes = ACTIVITY_KINDS.fetch(kind)
-    tag.div(render("shared/icon", name: icon), class: "size-9 rounded-full flex items-center justify-center #{classes}")
+    tag.div(render("shared/icon", name: icon), class: "#{size} shrink-0 rounded-full flex items-center justify-center #{classes}")
   end
 
   private
