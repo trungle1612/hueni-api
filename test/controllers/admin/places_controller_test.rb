@@ -115,6 +115,16 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#{limdim} form[action='#{check_out_admin_booking_path(bookings(:limdim_confirmed))}']"
   end
 
+  test "admins can check in at a homestay they are not a member of" do
+    booking = bookings(:limdim_confirmed)
+    log_in users(:admin)
+    get admin_place_path("tomo-homestay")
+    assert_select "#room_#{rooms(:limdim).id} form[action='#{check_in_admin_booking_path(booking)}']"
+
+    post check_in_admin_booking_path(booking)
+    assert booking.reload.checked_in_at
+  end
+
   test "dirty rooms show Chưa dọn and a Dọn xong button, also for staff" do
     rooms(:garden).dirty!
     staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
