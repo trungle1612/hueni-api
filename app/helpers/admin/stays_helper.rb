@@ -24,8 +24,14 @@ module Admin::StaysHelper
 
   # No undo exists, so both ask first.
   def check_in_button(booking, size: nil)
-    button_to "Check-in", check_in_admin_booking_path(booking), class: [ "btn btn-primary", size ].compact.join(" "),
-      form: { data: { turbo_confirm: "#{booking_label(booking)} nhận phòng #{booking.room.name}?" } }
+    label, confirm =
+      if booking.early_check_in?
+        [ "Nhận phòng sớm", "#{booking_label(booking)} nhận phòng sớm #{booking.room.name}? Ngày đến đổi #{booking.start_date.strftime("%d/%m")} → #{Date.current.strftime("%d/%m")}" ]
+      else
+        [ "Check-in", "#{booking_label(booking)} nhận phòng #{booking.room.name}?" ]
+      end
+    button_to label, check_in_admin_booking_path(booking), class: [ "btn btn-primary", size ].compact.join(" "),
+      form: { data: { turbo_confirm: confirm } }
   end
 
   def check_out_button(booking, size: nil)

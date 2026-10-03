@@ -52,6 +52,15 @@ class Admin::CalendarsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[role=alert]", text: /Limdim.*Airbnb.*Anh Minh/m
   end
 
+  test "checked-out bookings are muted with a tick, and the legend says so" do
+    booking = bookings(:limdim_confirmed)
+    booking.check_in
+    booking.check_out
+    get admin_place_calendar_path("tomo-homestay")
+    assert_select "a#booking_#{booking.id}.bg-primary\\/15", text: "✓ Anh Minh"
+    assert_select "span", text: "✓ Đã trả phòng"
+  end
+
   test "from moves the range and bad dates fall back to today" do
     get admin_place_calendar_path("tomo-homestay", from: "2026-10-15")
     assert_select "[data-day='2026-10-15']"

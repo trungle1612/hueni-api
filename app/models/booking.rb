@@ -19,29 +19,40 @@ class Booking < ApplicationRecord
   validate :guests_fit_room, if: -> { guests && room }
   validate :not_cancelled_after_check_in, if: -> { cancelled? && checked_in_at }
 
-  # Holds and confirmed stays occupy the room from start_date up to, not including, end_date.
+  # Holds and confirmed stays occupy the room from start_date up to, not including, end_date —
+  # or, once checked out, up to the check-out day: the remaining nights are free to sell.
   scope :blocking, -> { where(status: [ :hold, :confirmed ]) }
-  scope :blocking_on, ->(date) { blocking.where(start_date: ..date, end_date: date.next_day..) }
-  # Bookings occupying any night in from...to (to exclusive).
+  scope :blocking_on, ->(date) { occupying(date, date.next_day) }
+  # Bookings whose dates touch any night in from...to (to exclusive), checked out or not.
   scope :overlapping, ->(from, to) { where(start_date: ...to, end_date: from.next_day..) }
+  # Blocking bookings still holding a night in from...to.
+  scope :occupying, ->(from, to) {
+    blocking.overlapping(from, to).where("checked_out_at IS NULL OR checked_out_at >= ?", from.next_day.beginning_of_day)
+  }
   scope :in_house, -> { where.not(checked_in_at: nil).where(checked_out_at: nil) }
   scope :not_checked_in, -> { where(checked_in_at: nil) }
 
-  def overlaps?(other) = start_date < other.end_date && other.start_date < end_date
+  # The last night this booking holds is the one before this date.
+  def occupied_until = checked_out_at ? [ end_date, checked_out_at.to_date ].min : end_date
+  def overlaps?(other) = start_date < other.occupied_until && other.start_date < occupied_until
+  def early_check_in? = !checked_in_at && start_date > Date.current
 
   def can_check_in? = check_in_refusal.nil?
   def can_check_out? = checked_in_at.present? && checked_out_at.nil?
   def can_no_show? = no_show_refusal.nil?
 
   # The guest arrived: a hold becomes confirmed. Returns false with the reason in errors[:base].
+  # Arriving before start_date (Nhận phòng sớm) moves start_date to today, so the extra nights are booked.
   def check_in
     with_lock do
       next refuse(check_in_refusal) unless can_check_in?
+      self.start_date = Date.current if early_check_in?
       update(checked_in_at: Time.current, status: :confirmed)
     end
   end
 
-  # The guest left: the room needs cleaning. The remaining nights stay booked (edit the dates to resell them).
+  # The guest left: the room needs cleaning. The remaining nights stop blocking (see occupied_until);
+  # the dates stay as booked.
   # Records a fact, so it skips validations: a guest who has left must be checked out even if the booking
   # now conflicts with an OTA booking or exceeds a lowered max_guests.
   def check_out
@@ -64,7 +75,8 @@ class Booking < ApplicationRecord
 
   private
     def room_is_free
-      taken = room.bookings.blocking.overlapping(start_date, end_date).where.not(id: id).exists?
+      return if occupied_until <= start_date
+      taken = room.bookings.occupying(start_date, occupied_until).where.not(id: id).exists?
       errors.add(:base, "Phòng đã có người đặt trong khoảng ngày này") if taken
     end
 
@@ -79,8 +91,10 @@ class Booking < ApplicationRecord
     def check_in_refusal
       if cancelled? then "Đặt phòng đã huỷ"
       elsif checked_in_at then "Khách đã nhận phòng rồi"
-      elsif Date.current < start_date then "Chưa đến ngày nhận phòng"
       elsif Date.current >= end_date then "Đặt phòng đã kết thúc"
+      elsif early_check_in? && ical? then "Đặt phòng OTA: đổi ngày trên Airbnb / Booking.com"
+      elsif early_check_in? && room.bookings.occupying(Date.current, start_date).where.not(id: id).exists?
+        "Phòng chưa trống từ hôm nay"
       end
     end
 

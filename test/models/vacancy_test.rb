@@ -42,4 +42,11 @@ class VacancyTest < ActiveSupport::TestCase
       assert_equal 2, Vacancy.on["tomo-homestay"][:left]
     end
   end
+
+  test "a guest who checked out frees the room for the rest of the stay" do
+    booking = bookings(:limdim_confirmed) # 1/10–3/10
+    travel_to(Time.zone.local(2026, 10, 1, 14)) { booking.check_in }
+    travel_to(Time.zone.local(2026, 10, 2, 9)) { booking.check_out }
+    assert_equal({ left: 2, max_guests: 4 }, Vacancy.on(Date.new(2026, 10, 2))["tomo-homestay"])
+  end
 end

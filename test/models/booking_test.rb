@@ -169,9 +169,8 @@ class BookingTest < ActiveSupport::TestCase
     assert booking.confirmed?, "a hold becomes confirmed when the guest arrives"
   end
 
-  test "check-in is refused before start_date, from end_date (Huế time), when cancelled or twice" do
+  test "check-in is refused from end_date (Huế time), when cancelled or twice" do
     booking = saved
-    travel_to(Time.zone.local(2026, 9, 30, 12)) { assert_refused booking, :check_in, "Chưa đến ngày nhận phòng" }
     travel_to(Time.utc(2026, 10, 2, 17, 30)) { assert_refused booking, :check_in, "Đặt phòng đã kết thúc" } # 00:30 on 3/10 in Huế
 
     travel_to Time.zone.local(2026, 10, 1, 12) do
@@ -220,5 +219,65 @@ class BookingTest < ActiveSupport::TestCase
     end
     assert booking.reload.checked_out_at
     assert rooms(:limdim).reload.dirty?
+  end
+
+  test "a checked-out booking stops blocking from its check-out day; its dates stay" do
+    booking = saved(start_date: "2026-10-01", end_date: "2026-10-04") # garden, 3 nights
+    travel_to(Time.zone.local(2026, 10, 1, 14)) { booking.check_in }
+    travel_to(Time.utc(2026, 10, 1, 17, 30)) { booking.check_out } # 00:30 on 2/10 in Huế: left after one night
+
+    assert_equal [ Date.new(2026, 10, 1), Date.new(2026, 10, 4) ], booking.reload.values_at(:start_date, :end_date)
+    assert_equal Date.new(2026, 10, 2), booking.occupied_until
+    assert_includes Booking.blocking_on(Date.new(2026, 10, 1)), booking
+    assert_not_includes Booking.blocking_on(Date.new(2026, 10, 2)), booking
+    assert_not_includes Booking.blocking_on(Date.new(2026, 10, 3)), booking
+
+    assert saved(start_date: "2026-10-02", end_date: "2026-10-05").persisted?
+    assert_not build(start_date: "2026-09-30", end_date: "2026-10-02").valid? # 1/10 is still held
+    booking.update!(note: "Về sớm") # still saves next to the new booking
+  end
+
+  test "checked out on the arrival day frees that night too" do
+    booking = saved(start_date: "2026-10-01", end_date: "2026-10-02")
+    travel_to Time.zone.local(2026, 10, 1, 15) do
+      booking.check_in
+      booking.check_out
+    end
+    assert_empty Booking.blocking_on(Date.new(2026, 10, 1)).where(id: booking.id)
+    assert saved(start_date: "2026-10-01", end_date: "2026-10-02").persisted?
+    booking.update!(note: "Ở 1 tiếng")
+  end
+
+  test "early check-in moves start_date to today and is logged" do
+    booking = saved(start_date: "2026-10-05", end_date: "2026-10-07", status: "hold")
+    travel_to Time.zone.local(2026, 10, 3, 21) do
+      assert booking.early_check_in?
+      assert booking.can_check_in?
+      assert booking.check_in
+    end
+    booking.reload
+    assert_equal Date.new(2026, 10, 3), booking.start_date
+    assert booking.confirmed?
+    assert_equal Time.zone.local(2026, 10, 3, 21), booking.checked_in_at
+    assert_equal %w[2026-10-05 2026-10-03], booking.versions.reorder(:id).last.changeset["start_date"]
+  end
+
+  test "early check-in is refused when the room is not free from today, or for iCal" do
+    saved(start_date: "2026-10-03", end_date: "2026-10-04", guest_name: "Đang ở")
+    booking = saved(start_date: "2026-10-04", end_date: "2026-10-06")
+    travel_to(Time.zone.local(2026, 10, 2, 12)) { assert_refused booking, :check_in, "Phòng chưa trống từ hôm nay" }
+    assert_equal Date.new(2026, 10, 4), booking.reload.start_date
+
+    ical = calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:limdim), uid: "x", start_date: "2026-10-10", end_date: "2026-10-12", source: "ical")
+    travel_to(Time.zone.local(2026, 10, 5, 12)) { assert_refused ical, :check_in, "Đặt phòng OTA: đổi ngày trên Airbnb / Booking.com" }
+  end
+
+  test "iCal conflicts ignore the nights after a manual guest checked out" do
+    manual = bookings(:limdim_confirmed) # 1/10–3/10
+    travel_to(Time.zone.local(2026, 10, 1, 14)) { manual.check_in }
+    ical = calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:limdim), uid: "x", start_date: "2026-10-02", end_date: "2026-10-03", source: "ical")
+    assert manual.overlaps?(ical)
+    travel_to(Time.zone.local(2026, 10, 2, 9)) { manual.check_out }
+    assert_not manual.overlaps?(ical)
   end
 end
