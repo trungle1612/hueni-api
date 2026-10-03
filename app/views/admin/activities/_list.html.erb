@@ -1,0 +1,15 @@
+<% names = activity_names(versions) %>
+<% rooms = show_room ? activity_room_names(versions) : {} %>
+<% versions.group_by { it.created_at.to_date }.each do |date, day_versions| %>
+  <h3 class="text-xs font-bold uppercase tracking-wide text-primary mt-4 mb-1"><%= activity_day(date) %></h3>
+  <ul class="list bg-base-100 rounded-box shadow-sm">
+    <% day_versions.each do |version| %>
+      <li id="version_<%= version.id %>" class="list-row block py-2">
+        <div class="text-xs opacity-60">
+          <span class="font-semibold"><%= names[version.whodunnit] %></span> · <%= version.created_at.strftime("%H:%M") %><%= " · #{rooms[version.room_id]}" if show_room && rooms[version.room_id] %>
+        </div>
+        <div class="text-sm <%= "text-error" if activity_error?(version) %>"><%= activity_text(version) %></div>
+      </li>
+    <% end %>
+  </ul>
+<% end %>

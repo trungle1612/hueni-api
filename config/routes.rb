@@ -20,6 +20,7 @@ Rails.application.routes.draw do
     get "calendar", to: "calendars#index"
     resources :places, only: :show, param: :slug do
       resource :calendar, only: :show
+      resource :activity, only: :show
       resources :rooms, only: %i[new create]
       resources :bookings, only: %i[new create]
       resources :members, only: %i[new create edit update destroy] do

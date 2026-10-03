@@ -14,6 +14,7 @@
   <div class="flex gap-2">
     <%= link_to "Lịch", admin_place_calendar_path(@place.slug), class: "btn btn-sm" %>
     <% if manage %>
+      <%= link_to "Hoạt động", admin_place_activity_path(@place.slug), class: "btn btn-sm" %>
       <%= link_to new_admin_place_room_path(@place.slug), class: "btn btn-primary btn-sm" do %>+ Thêm phòng<% end %>
     <% end %>
   </div>
