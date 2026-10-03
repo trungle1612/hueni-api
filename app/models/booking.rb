@@ -36,10 +36,14 @@ class Booking < ApplicationRecord
   end
 
   # The guest left: the room needs cleaning. The remaining nights stay booked (edit the dates to resell them).
+  # Records a fact, so it skips validations: a guest who has left must be checked out even if the booking
+  # now conflicts with an OTA booking or exceeds a lowered max_guests.
   def check_out
     with_lock do
       next refuse(checked_in_at ? "Khách đã trả phòng rồi" : "Khách chưa nhận phòng") unless can_check_out?
-      update(checked_out_at: Time.current) && room.dirty! && true
+      update_columns(checked_out_at: Time.current, updated_at: Time.current)
+      room.dirty!
+      true
     end
   end
 

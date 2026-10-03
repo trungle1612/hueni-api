@@ -180,4 +180,17 @@ class BookingTest < ActiveSupport::TestCase
     assert_equal Time.zone.local(2026, 10, 3, 10), booking.reload.checked_out_at
     assert rooms(:garden).reload.dirty?
   end
+
+  test "check-out works even when the booking no longer validates" do
+    booking = saved(room: rooms(:limdim), start_date: "2026-10-05", end_date: "2026-10-08", guests: 4)
+    travel_to(Time.zone.local(2026, 10, 5, 12)) { booking.check_in }
+    rooms(:limdim).update!(max_guests: 2)
+    calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:limdim), uid: "late@airbnb", start_date: "2026-10-07", end_date: "2026-10-09", source: "ical")
+
+    travel_to Time.zone.local(2026, 10, 6, 10) do
+      assert booking.check_out, booking.errors.full_messages.to_sentence
+    end
+    assert booking.reload.checked_out_at
+    assert rooms(:limdim).reload.dirty?
+  end
 end
