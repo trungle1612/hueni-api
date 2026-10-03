@@ -32,7 +32,6 @@ class Admin::StaysHelperTest < ActionView::TestCase
   test "room state label and colours" do
     day = RoomDay.for([ rooms(:limdim) ]).first
     assert_equal "Chờ khách", room_state_label(day)
-    assert_includes room_state_badge(day), "badge-primary"
     assert_includes room_tile_class(day), "bg-primary/15"
     assert_equal "01/10–03/10", stay_dates(day.booking)
   end

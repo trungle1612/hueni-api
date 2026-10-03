@@ -1,17 +1,16 @@
 module Admin::StaysHelper
-  # state => [label, badge colour, board tile fill]. Full class names so Tailwind picks them up.
+  # state => [label, tile / band fill]. Full class names so Tailwind picks them up.
   ROOM_STATES = {
-    off: [ "Đã tắt", "badge-ghost", "bg-base-200 opacity-60" ],
-    leaving: [ "Trả hôm nay", "badge-accent", "bg-accent/15" ],
-    occupied: [ "Đang có khách", "badge-info", "bg-info/15" ],
-    arriving: [ "Chờ khách", "badge-primary", "bg-primary/15" ],
-    held: [ "Giữ chỗ", "badge-warning", "bg-warning/15" ],
-    free: [ "Trống", "badge-success", "bg-success/15" ]
+    off: [ "Đã tắt", "bg-base-200" ],
+    leaving: [ "Trả hôm nay", "bg-accent/15" ],
+    occupied: [ "Đang có khách", "bg-info/15" ],
+    arriving: [ "Chờ khách", "bg-primary/15" ],
+    held: [ "Giữ chỗ", "bg-warning/15" ],
+    free: [ "Trống", "bg-success/15" ]
   }.freeze
 
   def room_state_label(day) = ROOM_STATES.fetch(day.state)[0]
-  def room_state_badge(day) = tag.span(room_state_label(day), class: "badge badge-soft #{ROOM_STATES.fetch(day.state)[1]}")
-  def room_tile_class(day) = ROOM_STATES.fetch(day.state)[2]
+  def room_tile_class(day) = ROOM_STATES.fetch(day.state)[1]
 
   def stay_dates(booking) = "#{booking.start_date.strftime("%d/%m")}–#{booking.end_date.strftime("%d/%m")}"
 
