@@ -1,5 +1,6 @@
 <%= form_with model: booking, url: (booking.new_record? ? admin_place_bookings_path(place.slug) : admin_booking_path(booking)), class: "card bg-base-100 shadow-sm" do |form| %>
-  <div class="card-body p-4 gap-3">
+  <%# A checked-out stay is history: shown, not editable. %>
+  <fieldset class="card-body p-4 gap-3" <%= "disabled" if booking.checked_out_at %>>
     <% if booking.errors.any? %>
       <div role="alert" class="alert alert-error alert-soft">
         <ul><% booking.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul>
@@ -48,6 +49,6 @@
       <%= form.label :note, "Ghi chú", class: "label text-sm mb-1" %>
       <%= form.text_area :note, rows: 2, class: "textarea w-full" %>
     </div>
-    <%= form.submit "Lưu", class: "btn btn-primary btn-block mt-2" %>
-  </div>
+    <%= form.submit "Lưu", class: "btn btn-primary btn-block mt-2" unless booking.checked_out_at %>
+  </fieldset>
 <% end %>

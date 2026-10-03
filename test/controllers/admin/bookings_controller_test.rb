@@ -156,8 +156,20 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
 
     booking.check_out
     get edit_admin_booking_path(booking)
-    assert_select "#stay", text: /Đã trả phòng lúc 12:00 01\/10/
+    assert_select "#stay", text: /Đã trả phòng lúc 12:00 01\/10 · không sửa được nữa/
     assert_select "#stay form", count: 0
+    assert_select "fieldset[disabled] input[name='booking[guest_name]']"
+    assert_select "input[type=submit][value='Lưu']", count: 0
+  end
+
+  test "a checked-out booking can't be updated" do
+    booking = bookings(:limdim_confirmed)
+    booking.check_in
+    booking.check_out
+    patch admin_booking_path(booking), params: { booking: { guest_name: "Đổi", end_date: "2026-10-10" } }
+    assert_redirected_to edit_admin_booking_path(booking)
+    assert_equal "Khách đã trả phòng, không sửa được đặt phòng.", flash[:alert]
+    assert_equal [ "Anh Minh", Date.new(2026, 10, 3) ], booking.reload.values_at(:guest_name, :end_date)
   end
 
   test "creates a booking with a guest count" do
