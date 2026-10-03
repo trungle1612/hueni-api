@@ -88,4 +88,38 @@ class BookingTest < ActiveSupport::TestCase
     ical = build(room: rooms(:limdim), source: "ical", calendar_feed: calendar_feeds(:limdim_airbnb), uid: "b")
     assert ical.valid? # overlaps limdim_confirmed: the OTA already sold the nights
   end
+
+  test "guests is optional and must fit the room" do
+    assert build(guests: nil).valid?
+    assert build(guests: 2).valid?
+    [ 0, 3 ].each do |guests|
+      booking = build(guests:)
+      assert_not booking.valid?
+      assert_includes booking.errors[:base], "Số khách phải từ 1 đến 2"
+    end
+  end
+
+  test "a checked-in booking cannot be cancelled" do
+    booking = build.tap(&:save!)
+    booking.update_column(:checked_in_at, Time.current)
+    assert_not booking.update(status: "cancelled")
+    assert_includes booking.errors[:base], "Khách đã nhận phòng, không huỷ được"
+  end
+
+  test "db rejects check-out without check-in" do
+    booking = build.tap(&:save!)
+    assert_raises(ActiveRecord::StatementInvalid) { booking.update_column(:checked_out_at, Time.current) }
+  end
+
+  test "in_house and not_checked_in scopes" do
+    waiting = build.tap(&:save!)
+    staying = build(room: rooms(:limdim), start_date: "2026-10-05", end_date: "2026-10-06").tap(&:save!)
+    staying.update_column(:checked_in_at, Time.current)
+    gone = build(start_date: "2026-10-05", end_date: "2026-10-06").tap(&:save!)
+    gone.update_columns(checked_in_at: Time.current, checked_out_at: Time.current)
+
+    assert_equal [ staying ], Booking.in_house.to_a
+    assert_includes Booking.not_checked_in, waiting
+    assert_not_includes Booking.not_checked_in, staying
+  end
 end

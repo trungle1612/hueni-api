@@ -76,4 +76,12 @@ class RoomTest < ActiveSupport::TestCase
       assert_includes room.errors.attribute_names, :price
     end
   end
+
+  test "rooms start clean and only take clean or dirty" do
+    room = rooms(:garden)
+    assert room.clean?
+    room.dirty!
+    assert room.reload.dirty?
+    assert_raises(ActiveRecord::StatementInvalid) { room.update_column(:housekeeping, "cleaning") }
+  end
 end
