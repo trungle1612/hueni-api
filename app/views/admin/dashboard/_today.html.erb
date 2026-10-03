@@ -1,0 +1,44 @@
+<% many_places = @places.size > 1 %>
+<% stays = ->(group, bookings) { render partial: "stay", collection: bookings, as: :booking, locals: { group:, many_places: } } %>
+<section id="today" class="card bg-base-100 shadow-sm mb-6">
+  <div class="card-body p-4 gap-4">
+    <h2 class="font-semibold">Hôm nay</h2>
+    <% if @departures.any? %>
+      <div id="departures">
+        <div class="text-sm font-semibold opacity-70">Trả phòng (<%= @departures.size %>)</div>
+        <div class="divide-y divide-base-200"><%= stays.(:departures, @departures) %></div>
+      </div>
+    <% end %>
+    <% if @dirty_rooms.any? %>
+      <div id="dirty_rooms">
+        <div class="text-sm font-semibold opacity-70">Cần dọn (<%= @dirty_rooms.size %>)</div>
+        <div class="divide-y divide-base-200">
+          <% @dirty_rooms.each do |room| %>
+            <div class="flex justify-between items-center gap-3 py-3">
+              <div class="min-w-0 truncate"><span class="font-semibold"><%= room.name %></span><% if many_places %> <span class="text-xs opacity-60">· <%= room.place.name %></span><% end %></div>
+              <%= clean_button(room, size: "shrink-0") %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    <% if @arrivals.any? %>
+      <div id="arrivals">
+        <div class="text-sm font-semibold opacity-70">Sắp đến (<%= @arrivals.size %>)</div>
+        <div class="divide-y divide-base-200"><%= stays.(:arrivals, @arrivals) %></div>
+      </div>
+    <% end %>
+    <% if @in_house.any? %>
+      <div id="in_house">
+        <div class="text-sm font-semibold opacity-70">Đang ở (<%= @in_house.size %>)</div>
+        <div class="divide-y divide-base-200"><%= stays.(:in_house, @in_house) %></div>
+      </div>
+    <% end %>
+    <% if @holds.any? %>
+      <details id="holds">
+        <summary class="text-sm font-semibold opacity-70 cursor-pointer">Đang giữ chỗ (<%= @holds.size %>)</summary>
+        <div class="divide-y divide-base-200"><%= stays.(:holds, @holds) %></div>
+      </details>
+    <% end %>
+  </div>
+</section>

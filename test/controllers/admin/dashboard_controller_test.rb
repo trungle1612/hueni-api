@@ -128,4 +128,86 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     get admin_root_path
     assert_select ".badge", text: "Chủ", count: 0
   end
+
+  test "Hôm nay groups follow the day: departures, cleaning, arrivals, in-house, holds" do
+    travel_to Time.zone.local(2026, 10, 2, 9)
+    # limdim_confirmed (1/10–3/10, Anh Minh) is not checked in: a late arrival.
+    bookings(:limdim_confirmed).update!(guest_phone: "0905 123 456")
+    leaving = rooms(:garden).bookings.create!(start_date: "2026-09-30", end_date: "2026-10-02", guest_name: "Chị Mai")
+    leaving.update_columns(checked_in_at: 2.days.ago)
+    overdue = rooms(:garden).bookings.create!(start_date: "2026-09-28", end_date: "2026-09-30", guest_name: "Anh Tú")
+    overdue.update_columns(checked_in_at: 4.days.ago)
+    staying = rooms(:garden).bookings.create!(start_date: "2026-10-02", end_date: "2026-10-04", guest_name: "Cô Ba", guests: 2)
+    staying.update_columns(checked_in_at: 1.hour.ago)
+    rooms(:garden).bookings.create!(start_date: "2026-10-10", end_date: "2026-10-12", status: "hold", guest_name: "Chị Hoa")
+    rooms(:limdim).dirty!
+
+    log_in users(:owner)
+    get admin_root_path
+
+    assert_equal %w[departures dirty_rooms arrivals in_house holds], css_select("#today .card-body > [id]").map { it["id"] }
+    assert_select "#departures", text: /Anh Tú.*Quá hạn 2 ngày/m
+    assert_select "#today_booking_#{leaving.id} .badge", count: 0
+    assert_select "#departures form[action='#{check_out_admin_booking_path(leaving)}'][data-turbo-confirm='Chị Mai trả phòng Garden?']"
+    assert_select "#dirty_rooms form[action='#{clean_admin_room_path(rooms(:limdim))}']"
+    assert_select "#arrivals", text: /Anh Minh.*Trễ 1 ngày.*Phòng chưa dọn/m
+    assert_select "#arrivals a[href='tel:0905123456']"
+    assert_select "#arrivals form[action='#{check_in_admin_booking_path(bookings(:limdim_confirmed))}']"
+    assert_select "#in_house", text: /Cô Ba · 2 khách/
+    assert_select "#in_house form", count: 0
+    assert_select "#holds summary", text: "Đang giữ chỗ (1)"
+  end
+
+  test "homestay name shows in rows only for users with several homestays" do
+    travel_to Time.zone.local(2026, 10, 1, 9)
+    log_in users(:owner)
+    get admin_root_path
+    assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /tomo homestay/, count: 0
+
+    delete session_path
+    log_in users(:admin)
+    get admin_root_path
+    assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /Limdim · tomo homestay/
+  end
+
+  test "manual rows link to the booking, iCal rows to the calendar" do
+    travel_to Time.zone.local(2026, 10, 1, 9)
+    ical = calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:garden), uid: "x@airbnb", start_date: "2026-10-01", end_date: "2026-10-02", source: "ical")
+    log_in users(:owner)
+    get admin_root_path
+    assert_select "#today_booking_#{bookings(:limdim_confirmed).id} a[href='#{edit_admin_booking_path(bookings(:limdim_confirmed))}']"
+    assert_select "#today_booking_#{ical.id} a[href='#{admin_place_calendar_path("tomo-homestay")}']", text: /Airbnb/
+  end
+
+  test "Hôm nay is hidden when there is nothing to do" do
+    travel_to Time.zone.local(2027, 1, 1, 9)
+    log_in users(:owner)
+    get admin_root_path
+    assert_select "#today", count: 0
+  end
+
+  test "Hôm nay and the board show only the user's homestays" do
+    travel_to Time.zone.local(2026, 10, 1, 9)
+    other_room = Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 2, housekeeping: "dirty")
+    other_room.bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02", guest_name: "Khách lạ")
+    log_in users(:owner)
+    get admin_root_path
+    assert_select "#today"
+    assert_select "main", text: /Khách lạ/, count: 0
+    assert_select "#tile_room_#{other_room.id}", count: 0
+  end
+
+  test "room board shows each room's state, guest and dirty badge, linking to the room" do
+    travel_to Time.zone.local(2026, 10, 2, 9)
+    rooms(:limdim).dirty!
+    rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-06", guest_name: "Chị Hoa")
+    log_in users(:owner)
+    get admin_root_path
+
+    limdim = "#tile_room_#{rooms(:limdim).id}"
+    assert_select limdim, text: /Limdim.*Chờ khách.*Anh Minh.*trả 03\/10/m
+    assert_select "#{limdim} .badge", text: "Chưa dọn"
+    assert_select "#{limdim}[href='#{admin_place_path("tomo-homestay", anchor: "room_#{rooms(:limdim).id}")}']"
+    assert_select "#tile_room_#{rooms(:garden).id}", text: /Garden.*Trống.*Khách tới: 05\/10/m
+  end
 end
