@@ -202,6 +202,9 @@ GEM
     nokogiri (1.19.4-x86_64-linux-musl)
       racc (~> 1.4)
     ostruct (0.6.3)
+    paper_trail (17.0.0)
+      activerecord (>= 7.1)
+      request_store (~> 1.4)
     parallel (2.2.0)
     parser (3.3.12.0)
       ast (~> 2.4.1)
@@ -274,6 +277,8 @@ GEM
     regexp_parser (2.13.0)
     reline (0.7.0)
       io-console (~> 0.5)
+    request_store (1.7.0)
+      rack (>= 1.4)
     rexml (3.4.4)
     rubocop (1.91.0)
       json (>= 2.3)
@@ -408,6 +413,7 @@ DEPENDENCIES
   icalendar (~> 2.12)
   importmap-rails
   kamal
+  paper_trail (~> 17.0)
   propshaft
   puma (>= 5.0)
   rails (~> 8.1.4)

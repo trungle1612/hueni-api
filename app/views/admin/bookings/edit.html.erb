@@ -25,3 +25,9 @@
   <%= button_to "Huỷ đặt phòng", admin_booking_path(@booking), method: :patch, params: { booking: { status: "cancelled" } },
         class: "btn btn-ghost btn-block text-error mt-3", form: { data: { turbo_confirm: "Huỷ đặt phòng này? Phòng sẽ trống lại." } } %>
 <% end %>
+<% if allowed_to?(:manage, @place) %>
+  <section id="history" class="mt-6">
+    <h2 class="font-semibold">Lịch sử</h2>
+    <%= render "admin/activities/list", versions: @booking.versions.reorder(id: :desc).to_a, show_room: false %>
+  </section>
+<% end %>

@@ -2,6 +2,9 @@ class Room < ApplicationRecord
   belongs_to :place
   has_many :bookings
   has_many :calendar_feeds
+  # Becoming dirty is part of check-out, so only "dọn xong" (→ clean) is logged.
+  has_paper_trail on: %i[create update destroy], only: [ :name, :max_guests, :price, :active, { housekeeping: ->(room) { room.clean? } } ],
+    meta: { place_id: :place_id, room_id: :id }
 
   after_commit { Vacancy.bust }
 

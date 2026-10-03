@@ -1,0 +1,16 @@
+<% content_for :title, "Hoạt động · #{@place.name} · hueni admin" %>
+<%= render "admin/rooms/header", back: admin_place_path(@place.slug), back_label: @place.name, title: "Hoạt động" %>
+<% if @versions.any? %>
+  <%= render "admin/activities/list", versions: @versions, show_room: true %>
+  <% if @versions.size == Admin::ActivitiesController::PER_PAGE %>
+    <div class="text-center mt-4">
+      <%= link_to "Xem cũ hơn", admin_place_activity_path(@place.slug, before: @versions.last.id), class: "btn btn-sm" %>
+    </div>
+  <% end %>
+<% else %>
+  <div class="card bg-base-100 border border-dashed border-base-300">
+    <div class="card-body items-center text-center py-10">
+      <div class="font-semibold">Chưa có hoạt động nào</div>
+    </div>
+  </div>
+<% end %>
