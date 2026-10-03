@@ -9,6 +9,9 @@ class CalendarFeed < ApplicationRecord
 
   belongs_to :room
   has_many :bookings, dependent: :delete_all
+  # skip keeps the URL (it carries the OTA token) out of every version.
+  has_paper_trail on: %i[create update destroy], only: %i[last_error provider], skip: [ :url ],
+    meta: { place_id: ->(feed) { feed.room.place_id }, room_id: :room_id }
 
   after_commit { Vacancy.bust }
 

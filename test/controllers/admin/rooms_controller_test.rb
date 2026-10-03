@@ -128,4 +128,11 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     patch admin_room_path(rooms(:garden)), params: { room: { name: "Garden", housekeeping: "dirty" } }
     assert rooms(:garden).reload.clean?
   end
+
+  test "changes made in admin are logged with the logged-in user" do
+    patch admin_room_path(rooms(:garden)), params: { room: { price: "350.000" } }
+    version = rooms(:garden).versions.last
+    assert_equal users(:owner).id.to_s, version.whodunnit
+    assert_equal [ nil, 350_000 ], version.object_changes["price"]
+  end
 end

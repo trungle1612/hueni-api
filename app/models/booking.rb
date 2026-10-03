@@ -1,6 +1,8 @@
 class Booking < ApplicationRecord
   belongs_to :room
   belongs_to :calendar_feed, optional: true
+  has_paper_trail on: %i[create update destroy], only: %i[start_date end_date status guests guest_name guest_phone note checked_in_at checked_out_at],
+    meta: { place_id: ->(booking) { booking.room.place_id }, room_id: :room_id }
 
   after_commit { Vacancy.bust }
 
@@ -41,7 +43,8 @@ class Booking < ApplicationRecord
   def check_out
     with_lock do
       next refuse(checked_in_at ? "Khách đã trả phòng rồi" : "Khách chưa nhận phòng") unless can_check_out?
-      update_columns(checked_out_at: Time.current, updated_at: Time.current)
+      self.checked_out_at = Time.current
+      save!(validate: false)
       room.dirty!
       true
     end
