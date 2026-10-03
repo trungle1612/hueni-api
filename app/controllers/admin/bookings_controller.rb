@@ -1,6 +1,7 @@
 class Admin::BookingsController < Admin::BaseController
   before_action :set_place, only: %i[new create]
   before_action :set_booking, only: %i[edit update]
+  before_action :set_any_booking, only: %i[check_in check_out]
 
   def new
     start_date = date_param(:start_date) || Date.current
@@ -28,6 +29,22 @@ class Admin::BookingsController < Admin::BaseController
     end
   end
 
+  def check_in
+    if @booking.check_in
+      redirect_back_or_to admin_root_path, notice: "Đã nhận phòng: #{stay_label}"
+    else
+      redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
+    end
+  end
+
+  def check_out
+    if @booking.check_out
+      redirect_back_or_to admin_root_path, notice: "Đã trả phòng: #{stay_label}. Phòng chuyển sang chưa dọn."
+    else
+      redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
+    end
+  end
+
   private
     def set_place
       @place = Current.user.accessible_places.find_by!(slug: params[:place_slug])
@@ -39,8 +56,15 @@ class Admin::BookingsController < Admin::BaseController
       @place = @booking.room.place
     end
 
+    # OTA guests arrive too, so unlike edit/update this includes iCal bookings.
+    def set_any_booking
+      @booking = Current.user.accessible_bookings.find(params[:id])
+    end
+
+    def stay_label = "#{helpers.booking_label(@booking)} · #{@booking.room.name}"
+
     def booking_params
-      params.expect(booking: [ :start_date, :end_date, :status, :guest_name, :guest_phone, :note ])
+      params.expect(booking: [ :start_date, :end_date, :status, :guests, :guest_name, :guest_phone, :note ])
     end
 
     # Back to the timeline, scrolled to the booking when it's outside the default range.

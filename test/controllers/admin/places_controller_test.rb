@@ -16,7 +16,7 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "tomo homestay"
     assert_select "#room_#{rooms(:limdim).id}", text: /4 khách · 450\.000 ₫\/đêm/
-    assert_select "#room_#{rooms(:limdim).id} .badge", "Đang có khách"
+    assert_select "#room_#{rooms(:limdim).id} .badge", "Chờ khách"
     assert_select "#room_#{rooms(:garden).id}", text: /chưa có giá/
     assert_select "#room_#{rooms(:garden).id} .badge", "Trống"
     assert_select "a[href='#{new_admin_place_room_path("tomo-homestay")}']", text: /Thêm phòng/
@@ -29,7 +29,7 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     log_in users(:owner)
     get admin_place_path("tomo-homestay")
     assert_select "#room_#{rooms(:garden).id} .badge", "Giữ chỗ"
-    assert_select "#room_#{rooms(:limdim).id} .badge", "Đang có khách"
+    assert_select "#room_#{rooms(:limdim).id} .badge", "Chờ khách"
 
     rooms(:garden).update!(active: false)
     get admin_place_path("tomo-homestay")
@@ -84,5 +84,37 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     get admin_place_path("tomo-homestay")
     assert_select ".badge", text: "Chủ"
     assert_select "a", text: /Thêm phòng/
+  end
+
+  test "room cards show the guest, the next booking and the right action" do
+    bookings(:limdim_confirmed).update!(guests: 3)
+    rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Chị Hoa")
+    log_in users(:owner)
+    get admin_place_path("tomo-homestay")
+
+    limdim = "#room_#{rooms(:limdim).id}"
+    assert_select limdim, text: /Anh Minh · 3 khách · 01\/10–03\/10/
+    assert_select "#{limdim} form[action='#{check_in_admin_booking_path(bookings(:limdim_confirmed))}']"
+    garden = "#room_#{rooms(:garden).id}"
+    assert_select garden, text: /Tiếp theo: Chị Hoa 05\/10/
+    assert_select "#{garden} form[action^='/admin/bookings'], #{garden} form[action$='/clean']", count: 0 # owners still get the on/off toggle form
+
+    bookings(:limdim_confirmed).check_in
+    get admin_place_path("tomo-homestay")
+    assert_select "#{limdim} .badge", "Đang có khách"
+    assert_select "#{limdim} form[action='#{check_out_admin_booking_path(bookings(:limdim_confirmed))}']"
+  end
+
+  test "dirty rooms show Chưa dọn and a Dọn xong button, also for staff" do
+    rooms(:garden).dirty!
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    log_in staff
+
+    get admin_place_path("tomo-homestay")
+    assert_select "#room_#{rooms(:garden).id} .badge", text: "Chưa dọn"
+    assert_select "#room_#{rooms(:garden).id} form[action='#{clean_admin_room_path(rooms(:garden))}']"
+    assert_select "#room_#{rooms(:limdim).id} .badge", text: "Chưa dọn", count: 0
+    assert_select "#room_#{rooms(:limdim).id} form[action='#{check_in_admin_booking_path(bookings(:limdim_confirmed))}']"
   end
 end

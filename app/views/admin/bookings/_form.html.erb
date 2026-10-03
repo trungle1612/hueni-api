@@ -28,6 +28,10 @@
       <label class="flex items-center gap-2 text-sm"><%= form.radio_button :status, "confirmed", class: "radio radio-sm radio-primary" %> Đã xác nhận</label>
     </div>
     <div>
+      <%= form.label :guests, "Số khách", class: "label text-sm mb-1" %>
+      <%= form.number_field :guests, min: 1, max: booking.room&.max_guests, class: "input w-full" %>
+    </div>
+    <div>
       <%= form.label :guest_name, "Tên khách", class: "label text-sm mb-1" %>
       <%= form.text_field :guest_name, class: "input w-full" %>
     </div>

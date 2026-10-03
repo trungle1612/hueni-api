@@ -2,24 +2,45 @@
 
 <h1 class="text-xl font-semibold mb-4">Tổng quan</h1>
 
+<%= render "today" if [ @departures, @dirty_rooms, @arrivals, @in_house, @holds ].any?(&:present?) %>
+
 <% if @places.any? %>
   <div class="flex flex-col gap-3">
     <% @places.each do |place| %>
-      <%= link_to admin_place_path(place.slug), class: "card bg-base-100 shadow-sm hover:shadow-md transition-shadow" do %>
-        <div class="card-body p-4 gap-1">
-          <div class="font-semibold"><%= place.name %></div>
-          <% if place.address.present? %>
-            <div class="text-sm opacity-60" data-address><%= place.address %></div>
-          <% end %>
-          <div class="flex flex-wrap gap-2 mt-1">
-            <%= place_role_badge(place) %>
-            <%= vacancy_badge(@vacancy.dig(place.slug, :left), @active_rooms[place.id]) %>
-            <% if (errors = @feed_errors[place.id].to_i).positive? %>
-              <span class="badge badge-soft badge-error">Lỗi đồng bộ (<%= errors %>)</span>
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-4 gap-3">
+          <%= link_to admin_place_path(place.slug), class: "flex flex-col gap-1" do %>
+            <div class="font-semibold"><%= place.name %></div>
+            <% if place.address.present? %>
+              <div class="text-sm opacity-60" data-address><%= place.address %></div>
             <% end %>
-          </div>
+            <div class="flex flex-wrap gap-2 mt-1">
+              <%= place_role_badge(place) %>
+              <%= vacancy_badge(@vacancy.dig(place.slug, :left), @active_rooms[place.id]) %>
+              <% if (errors = @feed_errors[place.id].to_i).positive? %>
+                <span class="badge badge-soft badge-error">Lỗi đồng bộ (<%= errors %>)</span>
+              <% end %>
+            </div>
+          <% end %>
+          <% if (days = @days_by_place[place.id]).present? %>
+            <div class="grid grid-cols-2 gap-2">
+              <% days.each do |day| %>
+                <%= link_to admin_place_path(place.slug, anchor: dom_id(day.room)), id: dom_id(day.room, :tile),
+                      class: "rounded-box border-l-4 p-3 min-w-0 #{room_tile_class(day)}" do %>
+                  <div class="font-semibold truncate"><%= day.room.name %></div>
+                  <div class="text-sm"><%= room_state_label(day) %></div>
+                  <% if day.booking %>
+                    <div class="text-xs opacity-70 truncate"><%= booking_label(day.booking) %> · trả <%= day.booking.end_date.strftime("%d/%m") %></div>
+                  <% elsif day.next_booking %>
+                    <div class="text-xs opacity-70 truncate">Khách tới: <%= day.next_booking.start_date.strftime("%d/%m") %></div>
+                  <% end %>
+                  <% if day.room.dirty? %><span class="badge badge-soft badge-warning badge-xs mt-1">Chưa dọn</span><% end %>
+                <% end %>
+              <% end %>
+            </div>
+          <% end %>
         </div>
-      <% end %>
+      </div>
     <% end %>
   </div>
 <% else %>

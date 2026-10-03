@@ -77,4 +77,91 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
       assert_not booking.reload.cancelled?
     end
   end
+
+  test "checks a guest in and out, then refuses a second tap" do
+    booking = bookings(:limdim_confirmed)
+    post check_in_admin_booking_path(booking), headers: { "HTTP_REFERER" => admin_root_url }
+    assert_redirected_to admin_root_url
+    assert_equal "Đã nhận phòng: Anh Minh · Limdim", flash[:notice]
+    assert booking.reload.checked_in_at
+
+    post check_in_admin_booking_path(booking)
+    assert_redirected_to admin_root_path
+    assert_equal "Khách đã nhận phòng rồi", flash[:alert]
+
+    post check_out_admin_booking_path(booking)
+    assert_equal "Đã trả phòng: Anh Minh · Limdim. Phòng chuyển sang chưa dọn.", flash[:notice]
+    assert rooms(:limdim).reload.dirty?
+
+    post check_out_admin_booking_path(booking)
+    assert_equal "Khách đã trả phòng rồi", flash[:alert]
+  end
+
+  test "iCal bookings can be checked in too" do
+    booking = calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:garden), uid: "x@airbnb", start_date: "2026-10-01", end_date: "2026-10-02", source: "ical")
+    post check_in_admin_booking_path(booking)
+    assert booking.reload.checked_in_at
+  end
+
+  test "cannot check in or out another owner's booking" do
+    other = @other_room.bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02")
+    post check_in_admin_booking_path(other)
+    assert_response :not_found
+    post check_out_admin_booking_path(other)
+    assert_response :not_found
+    assert_nil other.reload.checked_in_at
+  end
+
+  test "staff can check in and set the guest count" do
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    delete session_path
+    log_in staff
+
+    booking = bookings(:limdim_confirmed)
+    patch admin_booking_path(booking), params: { booking: { guests: 3 } }
+    assert_equal 3, booking.reload.guests
+    post check_in_admin_booking_path(booking)
+    assert booking.reload.checked_in_at
+  end
+
+  test "check-in fields can't be set through the form; a checked-in booking can't be cancelled" do
+    booking = bookings(:limdim_confirmed)
+    patch admin_booking_path(booking), params: { booking: { note: "x", checked_in_at: "2026-10-01 10:00", checked_out_at: "2026-10-01 11:00" } }
+    assert_nil booking.reload.checked_in_at
+
+    booking.check_in
+    patch admin_booking_path(booking), params: { booking: { status: "cancelled" } }
+    assert_response :unprocessable_entity
+    assert_select "[role=alert]", text: /Khách đã nhận phòng, không huỷ được/
+    assert booking.reload.confirmed?
+  end
+
+  test "edit page shows the guest count field and a confirmed check-in button" do
+    booking = bookings(:limdim_confirmed)
+    get edit_admin_booking_path(booking)
+    assert_select "input[name='booking[guests]'][type=number][max='4']"
+    assert_select "#stay form[action='#{check_in_admin_booking_path(booking)}'][data-turbo-confirm='Anh Minh nhận phòng Limdim?']"
+    assert_select "form[action='#{check_out_admin_booking_path(booking)}']", count: 0
+    assert_select "button", text: "Huỷ đặt phòng"
+  end
+
+  test "edit page of a checked-in guest shows the time and check-out, hides cancel" do
+    booking = bookings(:limdim_confirmed)
+    booking.check_in
+    get edit_admin_booking_path(booking)
+    assert_select "#stay", text: /Đã nhận phòng lúc 12:00 01\/10/
+    assert_select "#stay form[action='#{check_out_admin_booking_path(booking)}']"
+    assert_select "button", text: "Huỷ đặt phòng", count: 0
+
+    booking.check_out
+    get edit_admin_booking_path(booking)
+    assert_select "#stay", text: /Đã trả phòng lúc 12:00 01\/10/
+    assert_select "#stay form", count: 0
+  end
+
+  test "creates a booking with a guest count" do
+    post admin_place_bookings_path("tomo-homestay"), params: { booking: { room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06", guests: 2 } }
+    assert_equal 2, Booking.last.guests
+  end
 end

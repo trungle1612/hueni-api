@@ -88,4 +88,109 @@ class BookingTest < ActiveSupport::TestCase
     ical = build(room: rooms(:limdim), source: "ical", calendar_feed: calendar_feeds(:limdim_airbnb), uid: "b")
     assert ical.valid? # overlaps limdim_confirmed: the OTA already sold the nights
   end
+
+  test "guests is optional and must fit the room" do
+    assert build(guests: nil).valid?
+    assert build(guests: 2).valid?
+    [ 0, 3 ].each do |guests|
+      booking = build(guests:)
+      assert_not booking.valid?
+      assert_includes booking.errors[:base], "Số khách phải từ 1 đến 2"
+    end
+  end
+
+  test "a checked-in booking cannot be cancelled" do
+    booking = build.tap(&:save!)
+    booking.update_column(:checked_in_at, Time.current)
+    assert_not booking.update(status: "cancelled")
+    assert_includes booking.errors[:base], "Khách đã nhận phòng, không huỷ được"
+  end
+
+  test "db rejects check-out without check-in" do
+    booking = build.tap(&:save!)
+    assert_raises(ActiveRecord::StatementInvalid) { booking.update_column(:checked_out_at, Time.current) }
+  end
+
+  test "in_house and not_checked_in scopes" do
+    waiting = build.tap(&:save!)
+    staying = build(room: rooms(:limdim), start_date: "2026-10-05", end_date: "2026-10-06").tap(&:save!)
+    staying.update_column(:checked_in_at, Time.current)
+    gone = build(start_date: "2026-10-05", end_date: "2026-10-06").tap(&:save!)
+    gone.update_columns(checked_in_at: Time.current, checked_out_at: Time.current)
+
+    assert_equal [ staying ], Booking.in_house.to_a
+    assert_includes Booking.not_checked_in, waiting
+    assert_not_includes Booking.not_checked_in, staying
+  end
+
+  def saved(**attrs) = build(**attrs).tap(&:save!)
+
+  def assert_refused(booking, action, message)
+    assert_not booking.public_send(action)
+    assert_includes booking.errors[:base], message
+  end
+
+  test "check-in is allowed from start_date until the day before end_date" do
+    booking = saved(status: "hold")
+    travel_to Time.zone.local(2026, 10, 2, 23, 30) do
+      assert booking.can_check_in?
+      assert booking.check_in
+    end
+    booking.reload
+    assert_equal Time.zone.local(2026, 10, 2, 23, 30), booking.checked_in_at
+    assert booking.confirmed?, "a hold becomes confirmed when the guest arrives"
+  end
+
+  test "check-in is refused before start_date, from end_date (Huế time), when cancelled or twice" do
+    booking = saved
+    travel_to(Time.zone.local(2026, 9, 30, 12)) { assert_refused booking, :check_in, "Chưa đến ngày nhận phòng" }
+    travel_to(Time.utc(2026, 10, 2, 17, 30)) { assert_refused booking, :check_in, "Đặt phòng đã kết thúc" } # 00:30 on 3/10 in Huế
+
+    travel_to Time.zone.local(2026, 10, 1, 12) do
+      assert booking.check_in
+      assert_refused booking, :check_in, "Khách đã nhận phòng rồi"
+    end
+
+    cancelled = saved(start_date: "2026-10-05", end_date: "2026-10-06", status: "cancelled")
+    travel_to(Time.zone.local(2026, 10, 5, 12)) { assert_refused cancelled, :check_in, "Đặt phòng đã huỷ" }
+  end
+
+  test "check-in that would leave the booking invalid writes nothing" do
+    booking = saved(guests: 2)
+    rooms(:garden).update!(max_guests: 1)
+    travel_to Time.zone.local(2026, 10, 1, 12) do
+      assert_not booking.check_in
+      assert_includes booking.errors[:base], "Số khách phải từ 1 đến 1"
+    end
+    assert_nil booking.reload.checked_in_at
+  end
+
+  test "check-out sets the time and marks the room dirty" do
+    booking = saved
+    travel_to Time.zone.local(2026, 10, 1, 12) do
+      assert_refused booking, :check_out, "Khách chưa nhận phòng"
+      assert_not booking.can_check_out?
+      booking.check_in
+      assert booking.can_check_out?
+    end
+    travel_to Time.zone.local(2026, 10, 3, 10) do
+      assert booking.check_out
+      assert_refused booking, :check_out, "Khách đã trả phòng rồi"
+    end
+    assert_equal Time.zone.local(2026, 10, 3, 10), booking.reload.checked_out_at
+    assert rooms(:garden).reload.dirty?
+  end
+
+  test "check-out works even when the booking no longer validates" do
+    booking = saved(room: rooms(:limdim), start_date: "2026-10-05", end_date: "2026-10-08", guests: 4)
+    travel_to(Time.zone.local(2026, 10, 5, 12)) { booking.check_in }
+    rooms(:limdim).update!(max_guests: 2)
+    calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:limdim), uid: "late@airbnb", start_date: "2026-10-07", end_date: "2026-10-09", source: "ical")
+
+    travel_to Time.zone.local(2026, 10, 6, 10) do
+      assert booking.check_out, booking.errors.full_messages.to_sentence
+    end
+    assert booking.reload.checked_out_at
+    assert rooms(:limdim).reload.dirty?
+  end
 end
