@@ -92,4 +92,38 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     get admin_place_path("tomo-homestay")
     assert_select "a[href=?]", admin_place_activity_path("tomo-homestay"), count: 0
   end
+
+  test "booking edit shows the booking's history to owners, not to staff" do
+    booking = bookings(:limdim_confirmed)
+    PaperTrail.request(whodunnit: users(:owner).id.to_s) { booking.update!(note: "Đến muộn") }
+
+    log_in users(:owner)
+    get edit_admin_booking_path(booking)
+    assert_select "#history h2", "Lịch sử"
+    assert_select "#history", text: /Chị Lan · 14:05\s*sửa ghi chú/
+
+    log_in staff
+    get edit_admin_booking_path(booking)
+    assert_response :success
+    assert_select "#history", 0
+  end
+
+  test "room edit shows the last 20 changes of the room, its bookings and feeds" do
+    PaperTrail.request(whodunnit: users(:owner).id.to_s) do
+      rooms(:garden).update!(price: 350_000)
+      rooms(:garden).bookings.create!(start_date: "2026-10-06", end_date: "2026-10-07", guest_name: "Chị Mai")
+      rooms(:limdim).update!(price: 1)
+    end
+
+    log_in users(:owner)
+    get edit_admin_room_path(rooms(:garden))
+    assert_select "#history [id^=version_]", 2
+    assert_select "#history", text: /giá chưa có → 350.000 ₫/
+    assert_select "#history", text: /thêm đặt phòng Chị Mai 06\/10–07\/10/
+    assert_select "#history a[href=?]", admin_place_activity_path("tomo-homestay"), text: /Xem tất cả hoạt động/
+
+    21.times { |i| rooms(:garden).update!(max_guests: i + 3) }
+    get edit_admin_room_path(rooms(:garden))
+    assert_select "#history [id^=version_]", 20
+  end
 end
