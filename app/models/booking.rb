@@ -24,16 +24,49 @@ class Booking < ApplicationRecord
 
   def overlaps?(other) = start_date < other.end_date && other.start_date < end_date
 
+  def can_check_in? = check_in_refusal.nil?
+  def can_check_out? = checked_in_at.present? && checked_out_at.nil?
+
+  # The guest arrived: a hold becomes confirmed. Returns false with the reason in errors[:base].
+  def check_in
+    with_lock do
+      next refuse(check_in_refusal) unless can_check_in?
+      update(checked_in_at: Time.current, status: :confirmed)
+    end
+  end
+
+  # The guest left: the room needs cleaning. The remaining nights stay booked (edit the dates to resell them).
+  def check_out
+    with_lock do
+      next refuse(checked_in_at ? "Khách đã trả phòng rồi" : "Khách chưa nhận phòng") unless can_check_out?
+      update(checked_out_at: Time.current) && room.dirty! && true
+    end
+  end
+
   private
     def room_is_free
       taken = room.bookings.blocking.overlapping(start_date, end_date).where.not(id: id).exists?
       errors.add(:base, "Phòng đã có người đặt trong khoảng ngày này") if taken
     end
+
     def guests_fit_room
       errors.add(:base, "Số khách phải từ 1 đến #{room.max_guests}") unless guests.in?(1..room.max_guests)
     end
 
     def not_cancelled_after_check_in
       errors.add(:base, "Khách đã nhận phòng, không huỷ được")
+    end
+
+    def check_in_refusal
+      if cancelled? then "Đặt phòng đã huỷ"
+      elsif checked_in_at then "Khách đã nhận phòng rồi"
+      elsif Date.current < start_date then "Chưa đến ngày nhận phòng"
+      elsif Date.current >= end_date then "Đặt phòng đã kết thúc"
+      end
+    end
+
+    def refuse(reason)
+      errors.add(:base, reason)
+      false
     end
 end

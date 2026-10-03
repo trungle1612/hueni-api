@@ -144,4 +144,16 @@ class CalendarFeedSyncTest < ActiveSupport::TestCase
 
     assert_nothing_raised { SyncCalendarFeedJob.perform_now(0) }
   end
+
+  test "re-sync keeps check-in and guest count" do
+    existing = ical_booking("1418fb94e984-reserved-1@airbnb.com", "2026-10-09", "2026-10-11")
+    existing.update_columns(checked_in_at: Time.current, guests: 2)
+    stub_feed("airbnb.ics")
+
+    assert @feed.sync
+
+    existing.reload
+    assert_equal Time.current, existing.checked_in_at
+    assert_equal 2, existing.guests
+  end
 end
