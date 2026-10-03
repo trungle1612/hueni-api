@@ -32,7 +32,7 @@
             <div class="grid grid-cols-2 gap-2">
               <% days.each do |day| %>
                 <%= link_to admin_place_path(place.slug, anchor: dom_id(day.room)), id: dom_id(day.room, :tile),
-                      class: "rounded-box p-3 min-w-0 #{room_tile_class(day)}" do %>
+                      class: "rounded-box p-3 min-w-0 #{room_tile_class(day)} #{"opacity-60" unless day.room.active?}" do %>
                   <div class="font-semibold truncate"><%= day.room.name %></div>
                   <div class="text-sm font-semibold opacity-80"><%= room_state_label(day) %></div>
                   <% if day.booking %>

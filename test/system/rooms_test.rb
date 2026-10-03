@@ -20,7 +20,7 @@ class RoomsTest < ApplicationSystemTestCase
     assert_text "Đã lưu phòng."
     within "#room_#{Room.find_by!(name: "Mây").id}" do
       assert_text "300.000 ₫/đêm"
-      assert_selector ".badge", text: "Trống"
+      assert_selector "[data-state]", text: "Trống"
     end
   end
 
@@ -30,7 +30,7 @@ class RoomsTest < ApplicationSystemTestCase
       find("input[type=checkbox][name='room[active]']").click
     end
     within "#room_#{rooms(:garden).id}" do
-      assert_selector ".badge", text: "Đã tắt"
+      assert_selector "[data-state]", text: "Đã tắt"
     end
     assert_not rooms(:garden).reload.active?
   end
