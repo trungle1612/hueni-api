@@ -164,4 +164,27 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     post admin_place_bookings_path("tomo-homestay"), params: { booking: { room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06", guests: 2 } }
     assert_equal 2, Booking.last.guests
   end
+
+  test "staff can mark a late guest as a no-show; another owner's booking is not found" do
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    delete session_path
+    log_in staff
+    booking = bookings(:limdim_confirmed) # 1/10–3/10
+
+    travel_to Time.zone.local(2026, 10, 2, 9) do
+      post no_show_admin_booking_path(booking), headers: { "HTTP_REFERER" => admin_root_url }
+      assert_redirected_to admin_root_url
+      assert_equal "Đã huỷ (không đến): Anh Minh · Limdim", flash[:notice]
+      assert booking.reload.cancelled?
+
+      post no_show_admin_booking_path(booking)
+      assert_equal "Đặt phòng đã huỷ", flash[:alert]
+
+      other = @other_room.bookings.create!(start_date: "2026-10-01", end_date: "2026-10-03")
+      post no_show_admin_booking_path(other)
+      assert_response :not_found
+      assert_not other.reload.cancelled?
+    end
+  end
 end

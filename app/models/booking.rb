@@ -31,6 +31,7 @@ class Booking < ApplicationRecord
 
   def can_check_in? = check_in_refusal.nil?
   def can_check_out? = checked_in_at.present? && checked_out_at.nil?
+  def can_no_show? = no_show_refusal.nil?
 
   # The guest arrived: a hold becomes confirmed. Returns false with the reason in errors[:base].
   def check_in
@@ -53,6 +54,14 @@ class Booking < ApplicationRecord
     end
   end
 
+  # The guest never came: cancel and say so in the note. Returns false with the reason in errors[:base].
+  def no_show
+    with_lock do
+      next refuse(no_show_refusal) unless can_no_show?
+      update(status: :cancelled, note: [ note.presence, "Không đến" ].compact.join(" · "))
+    end
+  end
+
   private
     def room_is_free
       taken = room.bookings.blocking.overlapping(start_date, end_date).where.not(id: id).exists?
@@ -72,6 +81,15 @@ class Booking < ApplicationRecord
       elsif checked_in_at then "Khách đã nhận phòng rồi"
       elsif Date.current < start_date then "Chưa đến ngày nhận phòng"
       elsif Date.current >= end_date then "Đặt phòng đã kết thúc"
+      end
+    end
+
+    # iCal bookings are excluded: the sync would confirm them again, the OTA owns them.
+    def no_show_refusal
+      if cancelled? then "Đặt phòng đã huỷ"
+      elsif checked_in_at then "Khách đã nhận phòng rồi"
+      elsif ical? then "Đặt phòng OTA: huỷ trên Airbnb / Booking.com"
+      elsif Date.current <= start_date then "Chưa qua ngày nhận phòng"
       end
     end
 

@@ -36,4 +36,11 @@ class Admin::StaysHelperTest < ActionView::TestCase
     assert_includes room_tile_class(day), "border-primary"
     assert_equal "01/10–03/10", stay_dates(day.booking)
   end
+
+  test "no-show button asks first and cancels" do
+    button = no_show_button(bookings(:limdim_confirmed), size: "btn-sm")
+    assert_includes button, %(action="#{no_show_admin_booking_path(bookings(:limdim_confirmed))}")
+    assert_includes button, %(data-turbo-confirm="Anh Minh không đến? Đặt phòng sẽ bị huỷ, phòng trống lại.")
+    assert_includes button, "Không đến"
+  end
 end

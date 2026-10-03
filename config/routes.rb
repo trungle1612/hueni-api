@@ -41,6 +41,7 @@ Rails.application.routes.draw do
       member do
         post :check_in
         post :check_out
+        post :no_show
       end
     end
   end
