@@ -1,4 +1,7 @@
 class Admin::DashboardController < Admin::BaseController
+  # Hôm nay lists holds starting within this many days; the calendar has the rest.
+  HOLDS_DAYS = 3
+
   def show
     @places = Current.user.accessible_places.order(:name)
     @vacancy = Vacancy.cached[:places]
@@ -13,6 +16,6 @@ class Admin::DashboardController < Admin::BaseController
     @dirty_rooms = Current.user.accessible_rooms.dirty.includes(:place).order(:name).to_a
     @arrivals = bookings.blocking.not_checked_in.where(start_date: ..today, end_date: today.next_day..).to_a
     @in_house = bookings.in_house.where(end_date: today.next_day..).to_a
-    @holds = bookings.hold.where(end_date: today.next_day..).to_a
+    @holds = bookings.hold.where(start_date: ..(today + HOLDS_DAYS), end_date: today.next_day..).to_a
   end
 end

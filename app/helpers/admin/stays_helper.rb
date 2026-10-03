@@ -1,12 +1,12 @@
 module Admin::StaysHelper
-  # state => [label, badge colour, board tile classes]. Full class names so Tailwind picks them up.
+  # state => [label, badge colour, board tile fill]. Full class names so Tailwind picks them up.
   ROOM_STATES = {
-    off: [ "Đã tắt", "badge-ghost", "border-base-300 bg-base-200 opacity-60" ],
-    leaving: [ "Trả hôm nay", "badge-accent", "border-accent bg-accent/10" ],
-    occupied: [ "Đang có khách", "badge-info", "border-info bg-info/10" ],
-    arriving: [ "Chờ khách", "badge-primary", "border-primary bg-primary/10" ],
-    held: [ "Giữ chỗ", "badge-warning", "border-warning bg-warning/10" ],
-    free: [ "Trống", "badge-success", "border-success bg-success/10" ]
+    off: [ "Đã tắt", "badge-ghost", "bg-base-200 opacity-60" ],
+    leaving: [ "Trả hôm nay", "badge-accent", "bg-accent/15" ],
+    occupied: [ "Đang có khách", "badge-info", "bg-info/15" ],
+    arriving: [ "Chờ khách", "badge-primary", "bg-primary/15" ],
+    held: [ "Giữ chỗ", "badge-warning", "bg-warning/15" ],
+    free: [ "Trống", "badge-success", "bg-success/15" ]
   }.freeze
 
   def room_state_label(day) = ROOM_STATES.fetch(day.state)[0]

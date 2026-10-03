@@ -26,6 +26,8 @@ class MembersTest < ApplicationSystemTestCase
     fill_in "Mật khẩu mới", with: "hang-hue-2026"
     fill_in "Nhập lại mật khẩu", with: "hang-hue-2026"
     click_button "Lưu mật khẩu"
+    assert_selector "h1", text: "Tổng quan"
+    visit admin_place_path("tomo-homestay")
     assert_selector ".badge", text: "Nhân viên"
 
     visit admin_place_calendar_path("tomo-homestay")

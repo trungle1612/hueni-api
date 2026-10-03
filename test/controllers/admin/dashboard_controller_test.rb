@@ -62,23 +62,23 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     log_in users(:owner)
     get admin_root_path
     assert_select "main .card", text: /tomo homestay/
-    assert_select "main", text: /6\/24 Kim Long/
+    assert_select "main", text: /6\/24 Kim Long/, count: 0 # no address on the dashboard
     assert_select "main", text: /Hiu Hill Homestay/, count: 0
   end
 
-  test "admin sees every homestay, including ones without an address" do
+  test "admin sees every homestay" do
     log_in users(:admin)
     get admin_root_path
     assert_select "main .card", text: /tomo homestay/
     assert_select "main .card", text: /Hiu Hill Homestay/
-    assert_select "main [data-address]", count: 1 # only tomo has an address
   end
 
   test "cards link to the homestay page and show today's free rooms" do
     travel_to Time.zone.local(2026, 10, 1, 12) # limdim booked, garden free
     log_in users(:owner)
     get admin_root_path
-    assert_select "main a[href='#{admin_place_path("tomo-homestay")}']", text: /Còn 1\/2 phòng hôm nay/
+    assert_select "main a[href='#{admin_place_path("tomo-homestay")}']", text: "tomo homestay"
+    assert_select "main .badge", text: "Còn 1/2 phòng hôm nay"
   end
 
   test "fully booked homestay shows Hết phòng hôm nay" do
@@ -103,7 +103,7 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
 
     log_in users(:owner)
     get admin_root_path
-    assert_select "main .badge", text: "Lỗi đồng bộ (1)"
+    assert_select "main a.badge[href='#{admin_calendar_feeds_path}']", text: "Lỗi đồng bộ (1)"
 
     users(:owner).place_memberships.delete_all # setup only: skips the last-owner rule
     users(:owner).places << places(:hiuhill)
@@ -118,10 +118,15 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "main", text: /Chưa có homestay nào/
   end
 
-  test "dashboard cards show the role at each homestay; admins see none" do
+  test "dashboard cards show the role only with several homestays; admins see none" do
     log_in users(:owner)
     get admin_root_path
+    assert_select ".card .badge", text: "Chủ", count: 0
+
+    places(:hiuhill).place_memberships.create!(user: users(:owner), role: "staff")
+    get admin_root_path
     assert_select ".card", text: /tomo homestay.*Chủ/m
+    assert_select ".card", text: /Hiu Hill Homestay.*Nhân viên/m
 
     delete session_path
     log_in users(:admin)
@@ -139,7 +144,8 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     overdue.update_columns(checked_in_at: 4.days.ago)
     staying = rooms(:garden).bookings.create!(start_date: "2026-10-02", end_date: "2026-10-04", guest_name: "Cô Ba", guests: 2)
     staying.update_columns(checked_in_at: 1.hour.ago)
-    rooms(:garden).bookings.create!(start_date: "2026-10-10", end_date: "2026-10-12", status: "hold", guest_name: "Chị Hoa")
+    rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-06", status: "hold", guest_name: "Chị Hoa")
+    rooms(:garden).bookings.create!(start_date: "2026-10-10", end_date: "2026-10-12", status: "hold", guest_name: "Đoàn sau")
     rooms(:limdim).dirty!
 
     log_in users(:owner)
@@ -153,9 +159,18 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "#arrivals", text: /Anh Minh.*Trễ 1 ngày.*Phòng chưa dọn/m
     assert_select "#arrivals a[href='tel:0905123456']"
     assert_select "#arrivals form[action='#{check_in_admin_booking_path(bookings(:limdim_confirmed))}']"
+    assert_select "#arrivals form[action='#{no_show_admin_booking_path(bookings(:limdim_confirmed))}']"
+    assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /Phòng Limdim · 01\/10–03\/10/
     assert_select "#in_house", text: /Cô Ba · 2 khách/
     assert_select "#in_house form", count: 0
-    assert_select "#holds summary", text: "Đang giữ chỗ (1)"
+    assert_select "#holds summary", text: /Đang giữ chỗ\s*1/
+    assert_select "#holds", text: /Chị Hoa/
+    assert_select "#holds", text: /Đoàn sau/, count: 0 # starts in more than 3 days
+    assert_select "#holds a[href='#{admin_calendar_path}']", text: "Xem lịch"
+    assert_select "#stat_arrivals", text: /1\s*Sắp đến/
+    assert_select "#stat_in_house", text: /1\s*Đang ở/
+    assert_select "#stat_departures", text: /2\s*Trả phòng/
+    assert_select "#stat_dirty_rooms", text: /1\s*Cần dọn/
   end
 
   test "homestay name shows in rows only for users with several homestays" do
@@ -167,7 +182,7 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     delete session_path
     log_in users(:admin)
     get admin_root_path
-    assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /Limdim · tomo homestay/
+    assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /Phòng Limdim · tomo homestay/
   end
 
   test "manual rows link to the booking, iCal rows to the calendar" do
@@ -177,6 +192,7 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     get admin_root_path
     assert_select "#today_booking_#{bookings(:limdim_confirmed).id} a[href='#{edit_admin_booking_path(bookings(:limdim_confirmed))}']"
     assert_select "#today_booking_#{ical.id} a[href='#{admin_place_calendar_path("tomo-homestay")}']", text: /Airbnb/
+    assert_select "#today_booking_#{ical.id} form[action='#{no_show_admin_booking_path(ical)}']", count: 0
   end
 
   test "Hôm nay is hidden when there is nothing to do" do

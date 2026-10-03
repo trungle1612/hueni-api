@@ -3,7 +3,7 @@
 <div id="<%= dom_id(booking, :today) %>" class="flex justify-between items-center gap-3 py-3">
   <%= link_to booking.manual? ? edit_admin_booking_path(booking) : admin_place_calendar_path(booking.room.place.slug), class: "min-w-0" do %>
     <div class="font-semibold truncate"><%= booking_label(booking) %><%= " · #{booking.guests} khách" if booking.guests %></div>
-    <div class="text-xs opacity-60 truncate"><%= booking.room.name %><%= " · #{booking.room.place.name}" if many_places %> · <%= stay_dates(booking) %></div>
+    <div class="text-xs opacity-60 truncate">Phòng <%= booking.room.name %><%= " · #{booking.room.place.name}" if many_places %> · <%= stay_dates(booking) %></div>
     <% if badges.present? || dirty %>
       <div class="flex flex-wrap gap-1 mt-1">
         <%= badges %>
@@ -14,9 +14,10 @@
   <div class="flex items-center gap-1 shrink-0">
     <% if group == :arrivals %>
       <%= call_link(booking) %>
-      <%= check_in_button(booking) %>
+      <%= no_show_button(booking, size: "btn-sm") if booking.can_no_show? %>
+      <%= check_in_button(booking, size: "btn-sm") %>
     <% elsif group == :departures %>
-      <%= check_out_button(booking) %>
+      <%= check_out_button(booking, size: "btn-sm") %>
     <% end %>
   </div>
 </div>
