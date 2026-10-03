@@ -180,6 +180,7 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /tomo homestay/, count: 0
 
     delete session_path
+    places(:tomo).place_memberships.create!(user: users(:admin), role: "owner")
     log_in users(:admin)
     get admin_root_path
     assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /Phòng Limdim · tomo homestay/
@@ -225,5 +226,33 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "#{limdim} .badge", text: "Chưa dọn"
     assert_select "#{limdim}[href='#{admin_place_path("tomo-homestay", anchor: "room_#{rooms(:limdim).id}")}']"
     assert_select "#tile_room_#{rooms(:garden).id}", text: /Garden.*Trống.*Khách tới: 05\/10/m
+  end
+
+  test "admins get Hôm nay and room boards only for homestays they are members of" do
+    travel_to Time.zone.local(2026, 10, 1, 9)
+    other_room = Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 2, housekeeping: "dirty")
+    other_room.bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02", guest_name: "Khách lạ")
+    places(:tomo).place_memberships.create!(user: users(:admin), role: "staff")
+    log_in users(:admin)
+    get admin_root_path
+
+    assert_select "#today_booking_#{bookings(:limdim_confirmed).id}"
+    assert_select "#tile_room_#{rooms(:limdim).id}"
+    assert_select "main", text: /Khách lạ/, count: 0
+    assert_select "#tile_room_#{other_room.id}", count: 0
+    assert_select "#dirty_rooms", count: 0
+    assert_select "main .card", text: /tomo homestay/
+    assert_select "main .card", text: /Hiu Hill Homestay/
+  end
+
+  test "admin without memberships sees the homestay list but no Hôm nay or room boards" do
+    travel_to Time.zone.local(2026, 10, 1, 9)
+    log_in users(:admin)
+    get admin_root_path
+
+    assert_select "#today", count: 0
+    assert_select "[id^='tile_room_']", count: 0
+    assert_select "main .card", text: /tomo homestay/
+    assert_select "main .card", text: /Hiu Hill Homestay/
   end
 end
