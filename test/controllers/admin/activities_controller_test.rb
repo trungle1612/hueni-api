@@ -66,7 +66,9 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_select "a", text: "Xem cũ hơn", count: 0
 
     get admin_place_activity_path("tomo-homestay", before: "abc")
-    assert_response :success
+    assert_select "[id^=version_]", 50
+    get admin_place_activity_path("tomo-homestay", before: [ 1 ])
+    assert_select "[id^=version_]", 50
     get admin_place_activity_path("tomo-homestay", before: "")
     assert_select "[id^=version_]", 50
   end

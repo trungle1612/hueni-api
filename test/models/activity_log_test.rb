@@ -86,4 +86,12 @@ class ActivityLogTest < ActiveSupport::TestCase
       assert_not_includes json, "1.1.1.1"
     end
   end
+
+  test "saving a form's blank fields over nil logs nothing" do
+    booking = bookings(:limdim_confirmed) # guest_phone and note are nil
+    assert_no_difference(-> { PaperTrail::Version.count }) do
+      booking.update!(guest_name: "Anh Minh", guest_phone: "", note: "")
+    end
+    assert_nil booking.reload.note
+  end
 end

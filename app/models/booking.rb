@@ -6,6 +6,9 @@ class Booking < ApplicationRecord
 
   after_commit { Vacancy.bust }
 
+  # Blank form fields stay nil, so saving the form unchanged logs no "— → —" change.
+  normalizes :guest_name, :guest_phone, :note, with: ->(value) { value.presence }
+
   enum :status, { hold: "hold", confirmed: "confirmed", cancelled: "cancelled" }, validate: true
   enum :source, { manual: "manual", ical: "ical" }, validate: true
 
