@@ -9,60 +9,69 @@
   <%= place_role_badge(@place) %>
 </div>
 
-<div class="flex justify-between items-center mb-3">
-  <div class="text-sm opacity-70"><%= @days.size %> phòng · còn <%= @days.count { it.state == :free } %> phòng hôm nay</div>
-  <div class="flex gap-2">
-    <%= link_to "Lịch", admin_place_calendar_path(@place.slug), class: "btn btn-sm" %>
-    <% if manage %>
-      <%= link_to "Hoạt động", admin_place_activity_path(@place.slug), class: "btn btn-sm" %>
-      <%= link_to new_admin_place_room_path(@place.slug), class: "btn btn-primary btn-sm" do %>+ Thêm phòng<% end %>
-    <% end %>
-  </div>
+<div class="flex flex-wrap gap-2 mb-3">
+  <%= vacancy_badge(@vacancy_left, @days.count { it.room.active? }) %>
+  <% if @feed_errors.positive? %>
+    <%= link_to "Lỗi đồng bộ (#{@feed_errors})", admin_calendar_feeds_path, class: "badge badge-soft badge-error" %>
+  <% end %>
+</div>
+
+<div class="flex gap-2 mb-4">
+  <%= link_to admin_place_calendar_path(@place.slug), class: "btn btn-sm" do %><%= render "shared/icon", name: "calendar" %>Lịch<% end %>
+  <% if manage %>
+    <%= link_to "Hoạt động", admin_place_activity_path(@place.slug), class: "btn btn-sm" %>
+    <%= link_to new_admin_place_room_path(@place.slug), class: "btn btn-primary btn-sm ml-auto" do %>+ Thêm phòng<% end %>
+  <% end %>
 </div>
 
 <% if @days.any? %>
   <div class="flex flex-col gap-3">
     <% @days.each do |day| %>
       <% room, booking = day.room, day.booking %>
-      <div id="<%= dom_id(room) %>" class="card bg-base-100 shadow-sm <%= "opacity-60" unless room.active? %>">
-        <div class="card-body p-4 gap-2">
-          <div class="flex justify-between items-start gap-2">
-            <div>
-              <div class="font-semibold"><%= room.name %></div>
-              <div class="text-xs opacity-60"><%= room.max_guests %> khách<% if manage %> · <%= room.price ? "#{vnd(room.price)}/đêm" : "chưa có giá" %><% end %></div>
-            </div>
-            <div class="flex flex-wrap justify-end gap-1">
-              <% if room.dirty? %><span class="badge badge-soft badge-warning">Chưa dọn</span><% end %>
-              <%= room_state_badge(day) %>
-              <%= stay_badges(booking) if booking %>
-            </div>
-          </div>
-          <% if booking %>
-            <div class="text-sm"><%= booking_label(booking) %><%= " · #{booking.guests} khách" if booking.guests %> · <%= stay_dates(booking) %></div>
-          <% end %>
-          <% if day.next_booking %>
-            <div class="text-xs opacity-60">Tiếp theo: <%= booking_label(day.next_booking) %> <%= day.next_booking.start_date.strftime("%d/%m") %></div>
-          <% end %>
-          <% if room.dirty? || booking&.can_check_in? || booking&.can_check_out? %>
-            <div class="flex flex-wrap justify-end gap-2">
-              <%= clean_button(room, size: "btn-sm") if room.dirty? %>
-              <%= check_in_button(booking, size: "btn-sm") if booking&.can_check_in? %>
-              <%= check_out_button(booking, size: "btn-sm") if booking&.can_check_out? %>
-            </div>
-          <% end %>
-          <div class="flex justify-between items-center">
-            <% if manage %>
-              <%= form_with model: room, url: admin_room_path(room), method: :patch, data: { controller: "autosubmit" } do |form| %>
-                <label class="flex items-center gap-2 text-sm">
-                  <%= form.check_box :active, class: "toggle toggle-sm toggle-success", data: { action: "change->autosubmit#submit" } %>
-                  <%= room.active? ? "Đang mở" : "Đã tắt" %>
-                </label>
-              <% end %>
-              <%= link_to "Sửa", edit_admin_room_path(room), class: "btn btn-ghost btn-xs" %>
-            <% else %>
-              <span class="text-sm opacity-70"><%= room.active? ? "Đang mở" : "Đã tắt" %></span>
+      <div id="<%= dom_id(room) %>" class="card bg-base-100 shadow-sm overflow-hidden <%= "opacity-60" unless room.active? %>">
+        <div class="flex justify-between items-center px-4 py-2 <%= room_tile_class(day) %>">
+          <span class="font-semibold"><%= room.name %></span>
+          <span data-state class="text-sm font-semibold opacity-80"><%= room_state_label(day) %></span>
+        </div>
+        <% if booking || day.next_booking || room.dirty? %>
+          <div class="px-4 py-3 flex flex-col gap-1">
+            <% if booking %>
+              <div class="flex items-center gap-2">
+                <div class="font-semibold flex-1 min-w-0 truncate"><%= booking_label(booking) %><%= " · #{booking.guests} khách" if booking.guests %></div>
+                <%= call_link(booking) %>
+              </div>
+            <% end %>
+            <% sub = [ (stay_dates(booking) if booking), ("Tiếp theo: #{booking_label(day.next_booking)} #{day.next_booking.start_date.strftime("%d/%m")}" if day.next_booking) ].compact %>
+            <% if sub.any? %><div class="text-xs opacity-60"><%= sub.join(" · ") %></div><% end %>
+            <% if room.dirty? || (booking && stay_badges(booking).present?) %>
+              <div class="flex flex-wrap gap-1">
+                <%= stay_badges(booking) if booking %>
+                <% if room.dirty? %><span class="badge badge-soft badge-warning badge-sm">Chưa dọn</span><% end %>
+              </div>
+            <% end %>
+            <% if room.dirty? || booking&.can_check_in? || booking&.can_check_out? %>
+              <div class="flex flex-wrap justify-end gap-2 mt-1">
+                <%= clean_button(room, size: "btn-sm") if room.dirty? %>
+                <%= no_show_button(booking, size: "btn-sm") if booking&.can_no_show? %>
+                <%= check_in_button(booking, size: "btn-sm") if booking&.can_check_in? %>
+                <%= check_out_button(booking, size: "btn-sm") if booking&.can_check_out? %>
+              </div>
             <% end %>
           </div>
+        <% end %>
+        <div class="flex items-center gap-3 px-4 py-2 border-t border-base-200 text-xs">
+          <span class="opacity-60 mr-auto"><%= room.max_guests %> khách<% if manage %> · <%= room.price ? "#{vnd(room.price)}/đêm" : "chưa có giá" %><% end %></span>
+          <% if manage %>
+            <%= form_with model: room, url: admin_room_path(room), method: :patch, data: { controller: "autosubmit" } do |form| %>
+              <label class="flex items-center gap-2">
+                <%= form.check_box :active, class: "toggle toggle-xs toggle-success", data: { action: "change->autosubmit#submit" } %>
+                <%= room.active? ? "Đang mở" : "Đã tắt" %>
+              </label>
+            <% end %>
+            <%= link_to render("shared/icon", name: "pencil"), edit_admin_room_path(room), class: "btn btn-ghost btn-square btn-xs", aria: { label: "Sửa phòng #{room.name}" } %>
+          <% else %>
+            <span class="opacity-70"><%= room.active? ? "Đang mở" : "Đã tắt" %></span>
+          <% end %>
         </div>
       </div>
     <% end %>
@@ -92,7 +101,7 @@
             </div>
             <div class="flex justify-between items-center">
               <span class="text-sm opacity-70"><%= phone(membership.user.phone_number) %></span>
-              <%= link_to "Sửa", edit_admin_place_member_path(@place.slug, membership), class: "btn btn-ghost btn-xs" %>
+              <%= link_to render("shared/icon", name: "pencil"), edit_admin_place_member_path(@place.slug, membership), class: "btn btn-ghost btn-square btn-xs", aria: { label: "Sửa #{membership.user.name}" } %>
             </div>
           </div>
         </div>

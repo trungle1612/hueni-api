@@ -16,10 +16,12 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "tomo homestay"
     assert_select "#room_#{rooms(:limdim).id}", text: /4 khách · 450\.000 ₫\/đêm/
-    assert_select "#room_#{rooms(:limdim).id} .badge", "Chờ khách"
+    assert_select "#room_#{rooms(:limdim).id} .bg-primary\\/15 [data-state]", "Chờ khách"
     assert_select "#room_#{rooms(:garden).id}", text: /chưa có giá/
-    assert_select "#room_#{rooms(:garden).id} .badge", "Trống"
+    assert_select "#room_#{rooms(:garden).id} [data-state]", "Trống"
     assert_select "a[href='#{new_admin_place_room_path("tomo-homestay")}']", text: /Thêm phòng/
+    assert_select "main .badge", text: "Còn 1/2 phòng hôm nay"
+    assert_select "#room_#{rooms(:limdim).id} a[href='#{edit_admin_room_path(rooms(:limdim))}'][aria-label='Sửa phòng Limdim']"
   end
 
   test "hold shows Giữ chỗ, confirmed wins over hold, switched-off shows Đã tắt" do
@@ -28,12 +30,20 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     Booking.new(room: rooms(:limdim), start_date: "2026-10-01", end_date: "2026-10-02", status: "hold").save!(validate: false)
     log_in users(:owner)
     get admin_place_path("tomo-homestay")
-    assert_select "#room_#{rooms(:garden).id} .badge", "Giữ chỗ"
-    assert_select "#room_#{rooms(:limdim).id} .badge", "Chờ khách"
+    assert_select "#room_#{rooms(:garden).id} [data-state]", "Giữ chỗ"
+    assert_select "#room_#{rooms(:limdim).id} [data-state]", "Chờ khách"
 
-    rooms(:garden).update!(active: false)
+    rooms(:limdim).update!(active: false)
     get admin_place_path("tomo-homestay")
-    assert_select "#room_#{rooms(:garden).id} .badge", "Đã tắt"
+    assert_select "#room_#{rooms(:limdim).id} [data-state]", "Đã tắt"
+    assert_equal [ "room_#{rooms(:garden).id}", "room_#{rooms(:limdim).id}" ], css_select(".card[id^=room_]").map { it["id"] } # switched-off last
+  end
+
+  test "sync errors link to Kênh OTA" do
+    calendar_feeds(:limdim_airbnb).update_columns(last_error: "RuntimeError: HTTP 404", last_error_at: Time.current)
+    log_in users(:owner)
+    get admin_place_path("tomo-homestay")
+    assert_select "main a.badge[href='#{admin_calendar_feeds_path}']", text: "Lỗi đồng bộ (1)"
   end
 
   test "another owner's homestay is not found" do
@@ -74,7 +84,7 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".badge", text: "Nhân viên"
     assert_select "body", text: /300\.000/, count: 0
     assert_select "a", text: /Thêm phòng/, count: 0
-    assert_select "a", text: "Sửa", count: 0
+    assert_select "[id^=room_] a[aria-label^='Sửa']", count: 0
     assert_select "input[type=checkbox][name='room[active]']", 0
     assert_select "#room_#{rooms(:garden).id}", text: /Đang mở/
   end
@@ -93,7 +103,7 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     get admin_place_path("tomo-homestay")
 
     limdim = "#room_#{rooms(:limdim).id}"
-    assert_select limdim, text: /Anh Minh · 3 khách · 01\/10–03\/10/
+    assert_select limdim, text: /Anh Minh · 3 khách\s*01\/10–03\/10/
     assert_select "#{limdim} form[action='#{check_in_admin_booking_path(bookings(:limdim_confirmed))}']"
     garden = "#room_#{rooms(:garden).id}"
     assert_select garden, text: /Tiếp theo: Chị Hoa 05\/10/
@@ -101,7 +111,7 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
 
     bookings(:limdim_confirmed).check_in
     get admin_place_path("tomo-homestay")
-    assert_select "#{limdim} .badge", "Đang có khách"
+    assert_select "#{limdim} [data-state]", "Đang có khách"
     assert_select "#{limdim} form[action='#{check_out_admin_booking_path(bookings(:limdim_confirmed))}']"
   end
 
@@ -116,5 +126,18 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#room_#{rooms(:garden).id} form[action='#{clean_admin_room_path(rooms(:garden))}']"
     assert_select "#room_#{rooms(:limdim).id} .badge", text: "Chưa dọn", count: 0
     assert_select "#room_#{rooms(:limdim).id} form[action='#{check_in_admin_booking_path(bookings(:limdim_confirmed))}']"
+  end
+
+  test "a late guest gets call and Không đến, as on the dashboard" do
+    bookings(:limdim_confirmed).update!(guest_phone: "0905 123 456")
+    travel_to Time.zone.local(2026, 10, 2, 9)
+    log_in users(:owner)
+    get admin_place_path("tomo-homestay")
+
+    limdim = "#room_#{rooms(:limdim).id}"
+    assert_select "#{limdim} .badge", text: "Trễ 1 ngày"
+    assert_select "#{limdim} a[href='tel:0905123456']"
+    assert_select "#{limdim} form[action='#{no_show_admin_booking_path(bookings(:limdim_confirmed))}']"
+    assert_select "#{limdim} form[action='#{check_in_admin_booking_path(bookings(:limdim_confirmed))}']"
   end
 end
