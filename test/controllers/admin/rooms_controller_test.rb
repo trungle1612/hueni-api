@@ -99,4 +99,33 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     get edit_admin_room_path(other) # homestay she isn't a member of
     assert_response :not_found
   end
+
+  test "marks a dirty room clean, but not another owner's room" do
+    rooms(:garden).dirty!
+    post clean_admin_room_path(rooms(:garden)), headers: { "HTTP_REFERER" => admin_root_url }
+    assert_redirected_to admin_root_url
+    assert_equal "Đã dọn xong Garden.", flash[:notice]
+    assert rooms(:garden).reload.clean?
+
+    other = Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 2, housekeeping: "dirty")
+    post clean_admin_room_path(other)
+    assert_response :not_found
+    assert other.reload.dirty?
+  end
+
+  test "staff can mark a room clean" do
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    delete session_path
+    log_in staff
+    rooms(:garden).dirty!
+
+    post clean_admin_room_path(rooms(:garden))
+    assert rooms(:garden).reload.clean?
+  end
+
+  test "housekeeping can't be set through the room form" do
+    patch admin_room_path(rooms(:garden)), params: { room: { name: "Garden", housekeeping: "dirty" } }
+    assert rooms(:garden).reload.clean?
+  end
 end

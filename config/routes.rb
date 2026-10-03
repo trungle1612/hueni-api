@@ -27,6 +27,7 @@ Rails.application.routes.draw do
       end
     end
     resources :rooms, only: %i[edit update] do
+      post :clean, on: :member
       resources :calendar_feeds, only: :create
     end
     resources :users, only: %i[index new create edit update] do
@@ -35,7 +36,12 @@ Rails.application.routes.draw do
     resources :calendar_feeds, only: %i[index destroy] do
       post :sync, on: :member
     end
-    resources :bookings, only: %i[edit update]
+    resources :bookings, only: %i[edit update] do
+      member do
+        post :check_in
+        post :check_out
+      end
+    end
   end
 
   root to: redirect("/admin")

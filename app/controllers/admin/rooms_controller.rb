@@ -1,7 +1,7 @@
 class Admin::RoomsController < Admin::BaseController
   before_action :set_place, only: %i[new create]
-  before_action :set_room, only: %i[edit update]
-  before_action -> { authorize!(:manage, @place) }
+  before_action :set_room, only: %i[edit update clean]
+  before_action -> { authorize!(:manage, @place) }, except: :clean
 
   def new
     @room = @place.rooms.build(active: true)
@@ -25,6 +25,12 @@ class Admin::RoomsController < Admin::BaseController
     else
       render :edit, status: :unprocessable_entity
     end
+  end
+
+  # Staff too: cleaning is day-to-day work, not an owner-only room change.
+  def clean
+    @room.clean!
+    redirect_back_or_to admin_place_path(@place.slug), notice: "Đã dọn xong #{@room.name}."
   end
 
   private

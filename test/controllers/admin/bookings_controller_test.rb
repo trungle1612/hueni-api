@@ -77,4 +77,63 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
       assert_not booking.reload.cancelled?
     end
   end
+
+  test "checks a guest in and out, then refuses a second tap" do
+    booking = bookings(:limdim_confirmed)
+    post check_in_admin_booking_path(booking), headers: { "HTTP_REFERER" => admin_root_url }
+    assert_redirected_to admin_root_url
+    assert_equal "Đã nhận phòng: Anh Minh · Limdim", flash[:notice]
+    assert booking.reload.checked_in_at
+
+    post check_in_admin_booking_path(booking)
+    assert_redirected_to admin_root_path
+    assert_equal "Khách đã nhận phòng rồi", flash[:alert]
+
+    post check_out_admin_booking_path(booking)
+    assert_equal "Đã trả phòng: Anh Minh · Limdim. Phòng chuyển sang chưa dọn.", flash[:notice]
+    assert rooms(:limdim).reload.dirty?
+
+    post check_out_admin_booking_path(booking)
+    assert_equal "Khách đã trả phòng rồi", flash[:alert]
+  end
+
+  test "iCal bookings can be checked in too" do
+    booking = calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:garden), uid: "x@airbnb", start_date: "2026-10-01", end_date: "2026-10-02", source: "ical")
+    post check_in_admin_booking_path(booking)
+    assert booking.reload.checked_in_at
+  end
+
+  test "cannot check in or out another owner's booking" do
+    other = @other_room.bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02")
+    post check_in_admin_booking_path(other)
+    assert_response :not_found
+    post check_out_admin_booking_path(other)
+    assert_response :not_found
+    assert_nil other.reload.checked_in_at
+  end
+
+  test "staff can check in and set the guest count" do
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    delete session_path
+    log_in staff
+
+    booking = bookings(:limdim_confirmed)
+    patch admin_booking_path(booking), params: { booking: { guests: 3 } }
+    assert_equal 3, booking.reload.guests
+    post check_in_admin_booking_path(booking)
+    assert booking.reload.checked_in_at
+  end
+
+  test "check-in fields can't be set through the form; a checked-in booking can't be cancelled" do
+    booking = bookings(:limdim_confirmed)
+    patch admin_booking_path(booking), params: { booking: { note: "x", checked_in_at: "2026-10-01 10:00", checked_out_at: "2026-10-01 11:00" } }
+    assert_nil booking.reload.checked_in_at
+
+    booking.check_in
+    patch admin_booking_path(booking), params: { booking: { status: "cancelled" } }
+    assert_response :unprocessable_entity
+    assert_select "[role=alert]", text: /Khách đã nhận phòng, không huỷ được/
+    assert booking.reload.confirmed?
+  end
 end
