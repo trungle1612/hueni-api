@@ -106,6 +106,24 @@ class BookingTest < ActiveSupport::TestCase
     assert_includes booking.errors[:base], "Khách đã nhận phòng, không huỷ được"
   end
 
+  test "update_with_status moves through every allowed status event" do
+    booking = build(status: "hold").tap(&:save!)
+    { "confirmed" => :confirmed, "hold" => :hold, "cancelled" => :cancelled }.each do |to, expected|
+      assert booking.update_with_status(status: to)
+      assert_equal expected, booking.reload.aasm.current_state
+    end
+    assert booking.update_with_status(status: "confirmed", note: "Khách quay lại")
+    assert_equal [ "confirmed", "Khách quay lại" ], booking.reload.values_at(:status, :note)
+  end
+
+  test "update_with_status keeps a refused change unsaved" do
+    booking = build.tap(&:save!)
+    booking.update_column(:checked_in_at, Time.current)
+    assert_not booking.update_with_status(status: "cancelled", note: "x")
+    assert_includes booking.errors[:base], "Khách đã nhận phòng, không huỷ được"
+    assert_equal [ "confirmed", nil ], booking.reload.values_at(:status, :note)
+  end
+
   test "db rejects check-out without check-in" do
     booking = build.tap(&:save!)
     assert_raises(ActiveRecord::StatementInvalid) { booking.update_column(:checked_out_at, Time.current) }
