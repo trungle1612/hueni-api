@@ -18,6 +18,7 @@ module Admin::StaysHelper
     today = Date.current
     badges = []
     badges << stay_badge("Trễ #{(today - booking.start_date).to_i} ngày", "badge-warning") if !booking.checked_in_at && booking.start_date < today
+    badges << stay_badge("OTA đã huỷ", "badge-error") if booking.removed_from_feed_at
     badges << stay_badge("Quá hạn #{(today - booking.end_date).to_i} ngày", "badge-error") if booking.can_check_out? && booking.end_date < today
     safe_join(badges, " ")
   end

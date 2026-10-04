@@ -206,4 +206,29 @@ class CalendarFeedSyncTest < ActiveSupport::TestCase
       assert_not_includes version.attributes.to_json, "s=token"
     end
   end
+
+  test "a checked-in stay missing from the feed is kept and flagged, and unflagged when it returns" do
+    in_house = ical_booking("1418fb94e984-reserved-1@airbnb.com", "2026-10-04", "2026-10-07")
+    in_house.update_columns(checked_in_at: 1.day.ago)
+    checked_out = ical_booking("left@airbnb.com", "2026-10-04", "2026-10-08")
+    checked_out.update_columns(checked_in_at: 1.day.ago, checked_out_at: 1.hour.ago)
+    waiting = ical_booking("waiting@airbnb.com", "2026-10-09", "2026-10-10")
+    stub_feed("empty.ics")
+
+    assert @feed.sync
+    assert_equal Time.current, in_house.reload.removed_from_feed_at
+    assert in_house.confirmed?
+    assert checked_out.reload.removed_from_feed_at
+    assert_not Booking.exists?(waiting.id)
+    assert_equal "OTA đã huỷ, khách đang ở",
+      ApplicationController.helpers.activity_entry(in_house.versions.reorder(:id).last)[:action]
+
+    travel 1.hour
+    assert @feed.sync
+    assert_equal Time.current - 1.hour, in_house.reload.removed_from_feed_at, "flagged once"
+
+    stub_feed("airbnb.ics")
+    assert @feed.sync
+    assert_nil in_house.reload.removed_from_feed_at
+  end
 end

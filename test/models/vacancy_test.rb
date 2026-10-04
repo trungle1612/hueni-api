@@ -49,4 +49,9 @@ class VacancyTest < ActiveSupport::TestCase
     travel_to(Time.zone.local(2026, 10, 2, 9)) { booking.check_out }
     assert_equal({ left: 2, max_guests: 4 }, Vacancy.on(Date.new(2026, 10, 2))["tomo-homestay"])
   end
+
+  test "an overdue guest keeps the room busy" do
+    bookings(:limdim_confirmed).update_columns(checked_in_at: Time.zone.local(2026, 10, 1, 14)) # due out 3/10
+    travel_to(Time.zone.local(2026, 10, 4, 9)) { assert_equal({ left: 1, max_guests: 2 }, Vacancy.on["tomo-homestay"]) }
+  end
 end

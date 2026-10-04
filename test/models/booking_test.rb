@@ -280,4 +280,34 @@ class BookingTest < ActiveSupport::TestCase
     travel_to(Time.zone.local(2026, 10, 2, 9)) { manual.check_out }
     assert_not manual.overlaps?(ical)
   end
+
+  test "a guest still in after the departure day keeps the room occupied until checked out" do
+    booking = saved(start_date: "2026-10-01", end_date: "2026-10-03")
+    travel_to(Time.zone.local(2026, 10, 1, 14)) { booking.check_in }
+
+    travel_to Time.zone.local(2026, 10, 3, 20) do # departure day: tonight is still sellable
+      assert_not_includes Booking.blocking_on(Date.current), booking
+      assert build(start_date: "2026-10-03", end_date: "2026-10-04").valid?
+    end
+
+    travel_to Time.zone.local(2026, 10, 5, 9) do # two days late
+      assert_includes Booking.blocking_on(Date.current), booking
+      assert_not_includes Booking.blocking_on(Date.current.next_day), booking
+      assert_equal Date.new(2026, 10, 6), booking.occupied_until
+      assert_not build(start_date: "2026-10-05", end_date: "2026-10-06").valid?
+      booking.check_out
+      assert_not_includes Booking.blocking_on(Date.current), booking
+    end
+  end
+
+  test "check-in is refused while another guest is still in the room" do
+    staying = saved(start_date: "2026-10-01", end_date: "2026-10-02")
+    arriving = saved(start_date: "2026-10-02", end_date: "2026-10-04")
+    travel_to(Time.zone.local(2026, 10, 1, 14)) { staying.check_in }
+    travel_to Time.zone.local(2026, 10, 2, 12) do
+      assert_refused arriving, :check_in, "Phòng đang có khách chưa trả phòng"
+      staying.check_out
+      assert arriving.reload.check_in
+    end
+  end
 end
