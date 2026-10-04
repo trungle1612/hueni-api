@@ -157,7 +157,8 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     booking.check_out
     get edit_admin_booking_path(booking)
     assert_select "#stay", text: /Đã trả phòng lúc 12:00 01\/10 · không sửa được nữa/
-    assert_select "#stay form", count: 0
+    assert_select "#stay form", count: 1
+    assert_select "#stay form[action='#{undo_check_out_admin_booking_path(booking)}']", text: "Hoàn tác"
     assert_select "fieldset[disabled] input[name='booking[guest_name]']"
     assert_select "input[type=submit][value='Lưu']", count: 0
   end
@@ -198,5 +199,44 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
       assert_response :not_found
       assert_not other.reload.cancelled?
     end
+  end
+
+  test "owners undo a check-in and a check-out from the booking page" do
+    booking = bookings(:limdim_confirmed)
+    booking.check_in
+    get edit_admin_booking_path(booking)
+    assert_select "#stay form[action='#{undo_check_in_admin_booking_path(booking)}'][data-turbo-confirm*='Hoàn tác nhận phòng']"
+
+    post undo_check_in_admin_booking_path(booking), headers: { "HTTP_REFERER" => edit_admin_booking_url(booking) }
+    assert_redirected_to edit_admin_booking_url(booking)
+    assert_equal "Đã hoàn tác nhận phòng: Anh Minh · Limdim", flash[:notice]
+    assert_nil booking.reload.checked_in_at
+
+    booking.check_in
+    booking.check_out
+    post undo_check_out_admin_booking_path(booking)
+    assert_equal "Đã hoàn tác trả phòng: Anh Minh · Limdim", flash[:notice]
+    assert booking.reload.can_check_out?
+
+    post undo_check_out_admin_booking_path(booking)
+    assert_equal "Khách chưa trả phòng", flash[:alert]
+  end
+
+  test "staff can't undo (403, no button); another owner's booking is not found" do
+    booking = bookings(:limdim_confirmed)
+    booking.check_in
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    delete session_path
+    log_in staff
+    get edit_admin_booking_path(booking)
+    assert_select "#stay button", text: "Hoàn tác", count: 0
+    post undo_check_in_admin_booking_path(booking)
+    assert_response :forbidden
+    assert booking.reload.checked_in_at
+
+    other = @other_room.bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02")
+    post undo_check_in_admin_booking_path(other)
+    assert_response :not_found
   end
 end
