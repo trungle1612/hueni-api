@@ -1,7 +1,7 @@
 class Admin::BookingsController < Admin::BaseController
   before_action :set_place, only: %i[new create]
   before_action :set_booking, only: %i[edit update]
-  before_action :set_any_booking, only: %i[check_in check_out no_show undo_check_in undo_check_out move]
+  before_action :set_any_booking, only: %i[check_in check_out no_show undo_check_in undo_check_out move declare]
   before_action -> { authorize!(:manage, @booking.room.place) }, only: %i[undo_check_in undo_check_out]
 
   def new
@@ -32,8 +32,12 @@ class Admin::BookingsController < Admin::BaseController
     end
   end
 
+  # The head count is required at the desk when the booking has none.
   def check_in
-    if @booking.check_in
+    guests = params[:guests].presence&.to_i
+    if guests.nil? && @booking.guests.nil?
+      redirect_back_or_to admin_root_path, alert: "Nhập số khách khi nhận phòng"
+    elsif @booking.check_in(guests:)
       redirect_back_or_to admin_root_path, notice: "Đã nhận phòng: #{stay_label}"
     else
       redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
@@ -77,6 +81,14 @@ class Admin::BookingsController < Admin::BaseController
     from = @booking.room.name
     if @booking.move_to(room)
       redirect_back_or_to admin_root_path, notice: "Đã đổi phòng: #{helpers.booking_label(@booking)} · #{from} → #{room.name}. Phòng #{from} chuyển sang chưa dọn."
+    else
+      redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
+    end
+  end
+
+  def declare
+    if @booking.declare
+      redirect_back_or_to admin_root_path, notice: "Đã khai báo lưu trú: #{stay_label}"
     else
       redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
     end
