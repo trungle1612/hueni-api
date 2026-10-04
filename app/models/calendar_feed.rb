@@ -48,6 +48,7 @@ class CalendarFeed < ApplicationRecord
 
   # Replaces this feed's bookings with the feed's events. On any error no bookings change;
   # the error is recorded in last_error instead. Returns true on success.
+  # A checked-in stay missing from the feed is never deleted: it is flagged (removed_from_feed_at) for the owner.
   # Changes are logged as the OTA (whodunnit = provider), whoever started the sync.
   def sync
     PaperTrail.request(whodunnit: provider) do
@@ -55,10 +56,12 @@ class CalendarFeed < ApplicationRecord
       transaction do
         uids = events.map do |event|
           bookings.find_or_initialize_by(uid: event[:uid])
-            .update!(room:, start_date: event[:start_date], end_date: event[:end_date], source: "ical", status: "confirmed")
+            .update!(room:, start_date: event[:start_date], end_date: event[:end_date], source: "ical", status: "confirmed", removed_from_feed_at: nil)
           event[:uid]
         end
-        bookings.where(end_date: Date.current.next_day..).where.not(uid: uids).find_each(&:destroy!)
+        gone = bookings.where(end_date: Date.current.next_day..).where.not(uid: uids)
+        gone.where(checked_in_at: nil).find_each(&:destroy!)
+        gone.where.not(checked_in_at: nil).where(removed_from_feed_at: nil).find_each { it.update!(removed_from_feed_at: Time.current) }
         record_sync(last_synced_at: Time.current, last_error: nil, last_error_at: nil)
       end
       Vacancy.bust

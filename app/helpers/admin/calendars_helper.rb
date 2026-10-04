@@ -9,7 +9,7 @@ module Admin::CalendarsHelper
     end
   end
 
-  def booking_bar_label(booking) = "#{"✓ " if booking.checked_out_at}#{booking_label(booking)}"
+  def booking_bar_label(booking) = "#{"✓ " if booking.checked_out_at}#{"⚠ " if booking.removed_from_feed_at}#{booking_label(booking)}"
 
   def booking_label(booking)
     booking.guest_name.presence || booking.note.presence ||
