@@ -21,7 +21,7 @@ module Admin::StaysHelper
     badges << stay_badge("Trễ #{late} ngày", "badge-warning") if !booking.checked_in_at && late.positive?
     badges << stay_badge("OTA đã huỷ", "badge-error") if booking.removed_from_feed_at
     badges << stay_badge("Chưa khai báo lưu trú", "badge-warning") if booking.needs_declaration?
-    badges << stay_badge("Quá hạn #{(today - booking.end_date).to_i} ngày", "badge-error") if booking.can_check_out? && booking.end_date < today
+    badges << stay_badge("Quá hạn #{(today - booking.end_date).to_i} ngày", "badge-error") if booking.overdue?
     safe_join(badges, " ")
   end
 
