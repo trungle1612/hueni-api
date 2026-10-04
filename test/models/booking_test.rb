@@ -169,9 +169,9 @@ class BookingTest < ActiveSupport::TestCase
     assert booking.confirmed?, "a hold becomes confirmed when the guest arrives"
   end
 
-  test "check-in is refused from end_date (Huế time), when cancelled or twice" do
+  test "check-in is refused from 06:00 on end_date (Huế time), when cancelled or twice" do
     booking = saved
-    travel_to(Time.utc(2026, 10, 2, 17, 30)) { assert_refused booking, :check_in, "Đặt phòng đã kết thúc" } # 00:30 on 3/10 in Huế
+    travel_to(Time.utc(2026, 10, 2, 23)) { assert_refused booking, :check_in, "Đặt phòng đã kết thúc" } # 06:00 on 3/10 in Huế
 
     travel_to Time.zone.local(2026, 10, 1, 12) do
       assert booking.check_in
@@ -182,14 +182,36 @@ class BookingTest < ActiveSupport::TestCase
     travel_to(Time.zone.local(2026, 10, 5, 12)) { assert_refused cancelled, :check_in, "Đặt phòng đã huỷ" }
   end
 
-  test "check-in that would leave the booking invalid writes nothing" do
+  test "check-in records the arrival even when the booking no longer validates" do
     booking = saved(guests: 2)
     rooms(:garden).update!(max_guests: 1)
-    travel_to Time.zone.local(2026, 10, 1, 12) do
-      assert_not booking.check_in
-      assert_includes booking.errors[:base], "Số khách phải từ 1 đến 1"
+    travel_to(Time.zone.local(2026, 10, 1, 12)) { assert booking.check_in }
+    assert booking.reload.checked_in_at
+    assert_equal "Nhận phòng", ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)[:action]
+  end
+
+  test "a manual booking overlapping an OTA booking can still be checked in" do
+    booking = saved
+    calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:garden), uid: "x", start_date: "2026-10-02", end_date: "2026-10-04", source: "ical")
+    travel_to(Time.zone.local(2026, 10, 1, 12)) { assert booking.check_in }
+    assert booking.reload.checked_in_at
+  end
+
+  test "a guest arriving after midnight is checked in until 06:00 for the previous night" do
+    booking = saved(start_date: "2026-10-01", end_date: "2026-10-02")
+    travel_to Time.zone.local(2026, 10, 2, 0, 30) do
+      assert_equal Date.new(2026, 10, 1), Booking.arrival_date
+      assert_not booking.can_no_show?, "not a no-show yet"
+      assert booking.check_in
     end
-    assert_nil booking.reload.checked_in_at
+    assert_equal Date.new(2026, 10, 1), booking.reload.start_date
+  end
+
+  test "early check-in still refuses an occupied night" do
+    saved(start_date: "2026-10-03", end_date: "2026-10-04")
+    booking = saved(start_date: "2026-10-04", end_date: "2026-10-05")
+    calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:garden), uid: "x", start_date: "2026-10-02", end_date: "2026-10-03", source: "ical")
+    travel_to(Time.zone.local(2026, 10, 2, 12)) { assert_refused booking, :check_in, "Phòng chưa trống từ hôm nay" }
   end
 
   test "check-out sets the time and marks the room dirty" do

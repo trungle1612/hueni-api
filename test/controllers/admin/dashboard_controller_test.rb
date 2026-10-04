@@ -275,4 +275,16 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     get admin_root_path
     assert_select "#today_booking_#{stay.id} .badge", text: "OTA đã huỷ"
   end
+
+  test "a late arrival stays in Hôm nay until 06:00" do
+    travel_to Time.zone.local(2026, 10, 3, 0, 30) # Anh Minh: 1/10–3/10
+    log_in users(:owner)
+    get admin_root_path
+    assert_select "#arrivals #today_booking_#{bookings(:limdim_confirmed).id} form[action$='/check_in']"
+    assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /Trễ 1 ngày/
+
+    travel_to Time.zone.local(2026, 10, 3, 6)
+    get admin_root_path
+    assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", count: 0
+  end
 end

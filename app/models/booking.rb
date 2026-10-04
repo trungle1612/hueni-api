@@ -9,6 +9,10 @@ class Booking < ApplicationRecord
   # Blank form fields stay nil, so saving the form unchanged logs no "— → —" change.
   normalizes :guest_name, :guest_phone, :note, with: ->(value) { value.presence }
 
+  # Guests arriving after midnight still count as the previous day's arrivals until this hour (Huế time),
+  # like a hotel's night audit: they can be checked in and stay in Hôm nay.
+  LATE_ARRIVAL_UNTIL = 6
+
   enum :status, { hold: "hold", confirmed: "confirmed", cancelled: "cancelled" }, validate: true
   enum :source, { manual: "manual", ical: "ical" }, validate: true
 
@@ -46,17 +50,29 @@ class Booking < ApplicationRecord
   def overlaps?(other) = start_date < other.occupied_until && other.start_date < occupied_until
   def early_check_in? = !checked_in_at && start_date > Date.current
 
+  # The day whose arrivals are still expected: yesterday until LATE_ARRIVAL_UNTIL, then today.
+  def self.arrival_date = (Time.current - LATE_ARRIVAL_UNTIL.hours).to_date
+
   def can_check_in? = check_in_refusal.nil?
   def can_check_out? = checked_in_at.present? && checked_out_at.nil?
   def can_no_show? = no_show_refusal.nil?
 
   # The guest arrived: a hold becomes confirmed. Returns false with the reason in errors[:base].
-  # Arriving before start_date (Nhận phòng sớm) moves start_date to today, so the extra nights are booked.
+  # Records a fact, so it skips validations: a guest at the desk is checked in even if the booking conflicts
+  # with an OTA booking or exceeds a lowered max_guests (the calendar shows the conflict).
+  # Arriving before start_date (Nhận phòng sớm) moves start_date to today, so the extra nights are booked;
+  # that changes dates, so it is validated.
   def check_in
     with_lock do
       next refuse(check_in_refusal) unless can_check_in?
-      self.start_date = Date.current if early_check_in?
-      update(checked_in_at: Time.current, status: :confirmed)
+      early = early_check_in?
+      assign_attributes(checked_in_at: Time.current, status: :confirmed)
+      if early
+        self.start_date = Date.current
+        save
+      else
+        save!(validate: false)
+      end
     end
   end
 
@@ -100,7 +116,7 @@ class Booking < ApplicationRecord
     def check_in_refusal
       if cancelled? then "Đặt phòng đã huỷ"
       elsif checked_in_at then "Khách đã nhận phòng rồi"
-      elsif Date.current >= end_date then "Đặt phòng đã kết thúc"
+      elsif Booking.arrival_date >= end_date then "Đặt phòng đã kết thúc"
       elsif room.bookings.in_house.where.not(id: id).exists? then "Phòng đang có khách chưa trả phòng"
       elsif early_check_in? && ical? then "Đặt phòng OTA: đổi ngày trên Airbnb / Booking.com"
       elsif early_check_in? && room.bookings.occupying(Date.current, start_date).where.not(id: id).exists?
@@ -113,7 +129,7 @@ class Booking < ApplicationRecord
       if cancelled? then "Đặt phòng đã huỷ"
       elsif checked_in_at then "Khách đã nhận phòng rồi"
       elsif ical? then "Đặt phòng OTA: huỷ trên Airbnb / Booking.com"
-      elsif Date.current <= start_date then "Chưa qua ngày nhận phòng"
+      elsif Booking.arrival_date <= start_date then "Chưa qua ngày nhận phòng"
       end
     end
 
