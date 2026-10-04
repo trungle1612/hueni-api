@@ -1,7 +1,7 @@
 class Admin::BookingsController < Admin::BaseController
   before_action :set_place, only: %i[new create]
   before_action :set_booking, only: %i[edit update]
-  before_action :set_any_booking, only: %i[check_in check_out no_show undo_check_in undo_check_out]
+  before_action :set_any_booking, only: %i[check_in check_out no_show undo_check_in undo_check_out move]
   before_action -> { authorize!(:manage, @booking.room.place) }, only: %i[undo_check_in undo_check_out]
 
   def new
@@ -67,6 +67,16 @@ class Admin::BookingsController < Admin::BaseController
   def undo_check_out
     if @booking.undo_check_out
       redirect_back_or_to admin_root_path, notice: "Đã hoàn tác trả phòng: #{stay_label}"
+    else
+      redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
+    end
+  end
+
+  def move
+    room = @booking.room.place.rooms.find(params.expect(:room_id))
+    from = @booking.room.name
+    if @booking.move_to(room)
+      redirect_back_or_to admin_root_path, notice: "Đã đổi phòng: #{helpers.booking_label(@booking)} · #{from} → #{room.name}. Phòng #{from} chuyển sang chưa dọn."
     else
       redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
     end
