@@ -46,6 +46,15 @@ module Admin::StaysHelper
       form: { data: { turbo_confirm: "#{booking_label(booking)} không đến? Đặt phòng sẽ bị huỷ, phòng trống lại." } }
   end
 
+  # Hoàn tác check-in / check-out (owners, same day).
+  def undo_button(booking, step, size: nil)
+    path, question =
+      if step == :check_in then [ undo_check_in_admin_booking_path(booking), "Hoàn tác nhận phòng của #{booking_label(booking)}? Khách quay lại Chờ khách." ]
+      else [ undo_check_out_admin_booking_path(booking), "Hoàn tác trả phòng của #{booking_label(booking)}? Khách quay lại Đang ở." ]
+      end
+    button_to "Hoàn tác", path, class: [ "btn btn-ghost", size ].compact.join(" "), form: { data: { turbo_confirm: question } }
+  end
+
   def clean_button(room, size: nil)
     button_to "Dọn xong", clean_admin_room_path(room), class: [ "btn btn-outline", size ].compact.join(" ")
   end

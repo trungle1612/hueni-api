@@ -332,4 +332,51 @@ class BookingTest < ActiveSupport::TestCase
       assert arriving.reload.check_in
     end
   end
+
+  test "undo check-in the same day puts the guest back to waiting" do
+    booking = saved
+    travel_to Time.zone.local(2026, 10, 1, 14) do
+      assert_refused booking, :undo_check_in, "Khách chưa nhận phòng"
+      booking.check_in
+      assert booking.undo_check_in
+      assert_nil booking.reload.checked_in_at
+      assert booking.can_check_in?
+    end
+    assert_equal "Hoàn tác nhận phòng", ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)[:action]
+
+    travel_to(Time.zone.local(2026, 10, 1, 15)) { booking.check_in }
+    travel_to(Time.zone.local(2026, 10, 2, 9)) { assert_refused booking, :undo_check_in, "Chỉ hoàn tác được trong ngày nhận phòng" }
+  end
+
+  test "undo check-out the same day puts the guest back in, unless the freed nights were resold" do
+    booking = saved(start_date: "2026-10-01", end_date: "2026-10-04")
+    travel_to(Time.zone.local(2026, 10, 1, 14)) { booking.check_in }
+    travel_to Time.zone.local(2026, 10, 2, 9) do
+      booking.check_out
+      assert_refused booking, :undo_check_in, "Khách đã trả phòng, hoàn tác trả phòng trước"
+      assert booking.undo_check_out
+      assert booking.reload.can_check_out?
+      assert_equal "Hoàn tác trả phòng", ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)[:action]
+
+      booking.check_out
+      other = saved(start_date: "2026-10-03", end_date: "2026-10-05")
+      assert_refused booking, :undo_check_out, "Đêm còn lại đã có khách khác"
+      other.update!(status: "cancelled")
+      assert booking.undo_check_out
+    end
+  end
+
+  test "undo check-out on the departure day ignores tonight's next guest; refused the next day" do
+    booking = saved(start_date: "2026-10-01", end_date: "2026-10-02")
+    travel_to Time.zone.local(2026, 10, 1, 14) do
+      booking.check_in
+      saved(start_date: "2026-10-02", end_date: "2026-10-03")
+    end
+    travel_to Time.zone.local(2026, 10, 2, 10) do
+      booking.check_out
+      assert booking.undo_check_out
+      booking.check_out
+    end
+    travel_to(Time.zone.local(2026, 10, 3, 9)) { assert_refused booking, :undo_check_out, "Chỉ hoàn tác được trong ngày trả phòng" }
+  end
 end
