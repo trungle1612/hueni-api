@@ -1,7 +1,7 @@
 class Booking < ApplicationRecord
   belongs_to :room
   belongs_to :calendar_feed, optional: true
-  has_paper_trail on: %i[create update destroy], only: %i[start_date end_date status guests guest_name guest_phone note checked_in_at checked_out_at removed_from_feed_at],
+  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note checked_in_at checked_out_at removed_from_feed_at],
     meta: { place_id: ->(booking) { booking.room.place_id }, room_id: :room_id }
 
   after_commit { Vacancy.bust }
@@ -56,6 +56,7 @@ class Booking < ApplicationRecord
   def can_check_in? = check_in_refusal.nil?
   def can_check_out? = checked_in_at.present? && checked_out_at.nil?
   def can_no_show? = no_show_refusal.nil?
+  def can_move_to?(other_room) = move_refusal(other_room).nil?
   def can_undo_check_in? = undo_check_in_refusal.nil?
   def can_undo_check_out? = undo_check_out_refusal.nil?
 
@@ -111,6 +112,19 @@ class Booking < ApplicationRecord
     end
   end
 
+  # Đổi phòng: an in-house guest moves to another free room of the same homestay. The whole booking moves
+  # (no split stays); the old room needs cleaning.
+  def move_to(other_room)
+    with_lock do
+      next refuse(move_refusal(other_room)) unless can_move_to?(other_room)
+      old_room = room
+      self.room = other_room
+      save!(validate: false)
+      old_room.dirty!
+      true
+    end
+  end
+
   # The guest never came: cancel and say so in the note. Returns false with the reason in errors[:base].
   def no_show
     with_lock do
@@ -142,6 +156,18 @@ class Booking < ApplicationRecord
       elsif early_check_in? && ical? then "Đặt phòng OTA: đổi ngày trên Airbnb / Booking.com"
       elsif early_check_in? && room.bookings.occupying(Date.current, start_date).where.not(id: id).exists?
         "Phòng chưa trống từ hôm nay"
+      end
+    end
+
+    def move_refusal(other_room)
+      if ical? then "Đặt phòng OTA: đổi phòng trên Airbnb / Booking.com"
+      elsif !can_check_out? then "Chỉ đổi phòng khi khách đang ở"
+      elsif other_room == room then "Khách đang ở phòng này"
+      elsif other_room.place_id != room.place_id then "Chỉ đổi được sang phòng cùng homestay"
+      elsif !other_room.active? then "Phòng #{other_room.name} đang tắt"
+      elsif guests && guests > other_room.max_guests then "Phòng #{other_room.name} tối đa #{other_room.max_guests} khách"
+      elsif other_room.bookings.in_house.exists? || other_room.bookings.occupying(Date.current, occupied_until).exists?
+        "Phòng #{other_room.name} không trống tới ngày trả phòng"
       end
     end
 
