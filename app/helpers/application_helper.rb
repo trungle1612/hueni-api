@@ -6,6 +6,9 @@ module ApplicationHelper
       { label: "Lịch phòng", icon: "calendar", path: admin_calendar_path, active: controller_name.in?(%w[calendars bookings]) },
       { label: "Kênh OTA", icon: "refresh", path: admin_calendar_feeds_path, active: controller_name == "calendar_feeds" }
     ]
+    if Current.user&.admin? || Current.user&.place_memberships&.exists?(role: "owner")
+      items << { label: "Báo cáo", icon: "chart", path: admin_report_path, active: controller_name == "reports" }
+    end
     items << { label: "Người dùng", icon: "users", path: admin_users_path, active: controller_name == "users" } if Current.user&.admin?
     items
   end
