@@ -57,9 +57,9 @@
                  class: "z-[1] m-0.5 rounded px-1.5 flex items-center truncate #{booking_bar_class(booking)} #{"ring-2 ring-error" if conflict}",
                  data: { conflict: (true if conflict) } } %>
             <% if booking.manual? %>
-              <%= link_to booking_label(booking), edit_admin_booking_path(booking), options %>
+              <%= link_to booking_bar_label(booking), edit_admin_booking_path(booking), options %>
             <% else %>
-              <%= tag.div booking_label(booking), **options %>
+              <%= tag.div booking_bar_label(booking), **options %>
             <% end %>
           <% end %>
         </div>
@@ -71,6 +71,7 @@
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new) %>"></i>Đã xác nhận</span>
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(status: "hold")) %>"></i>Giữ chỗ</span>
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(source: "ical")) %>"></i>Airbnb / Booking (chỉ xem)</span>
+    <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(checked_out_at: Time.current)) %>"></i>✓ Đã trả phòng</span>
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm ring-2 ring-error"></i>Trùng lịch</span>
   </div>
 <% else %>

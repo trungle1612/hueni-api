@@ -9,13 +9,16 @@ module Admin::CalendarsHelper
     end
   end
 
+  def booking_bar_label(booking) = "#{"✓ " if booking.checked_out_at}#{booking_label(booking)}"
+
   def booking_label(booking)
     booking.guest_name.presence || booking.note.presence ||
       (booking.ical? ? booking.calendar_feed&.provider_label || "iCal" : "Khách")
   end
 
   def booking_bar_class(booking)
-    if booking.ical? then "bg-base-300 text-base-content border border-base-content/20"
+    if booking.checked_out_at then "bg-primary/15 text-primary/80"
+    elsif booking.ical? then "bg-base-300 text-base-content border border-base-content/20"
     elsif booking.hold? then "bg-warning/25 text-warning-content border border-dashed border-warning"
     else "bg-primary text-primary-content"
     end

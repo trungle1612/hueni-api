@@ -107,7 +107,8 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#{limdim} form[action='#{check_in_admin_booking_path(bookings(:limdim_confirmed))}']"
     garden = "#room_#{rooms(:garden).id}"
     assert_select garden, text: /Tiếp theo: Chị Hoa 05\/10/
-    assert_select "#{garden} form[action^='/admin/bookings'], #{garden} form[action$='/clean']", count: 0 # owners still get the on/off toggle form
+    assert_select "#{garden} form[action$='/check_in'] button", text: "Nhận phòng sớm"
+    assert_select "#{garden} form[data-turbo-confirm='Chị Hoa nhận phòng sớm Garden? Ngày đến đổi 05/10 → 01/10']"
 
     bookings(:limdim_confirmed).check_in
     get admin_place_path("tomo-homestay")
@@ -149,5 +150,25 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#{limdim} a[href='tel:0905123456']"
     assert_select "#{limdim} form[action='#{no_show_admin_booking_path(bookings(:limdim_confirmed))}']"
     assert_select "#{limdim} form[action='#{check_in_admin_booking_path(bookings(:limdim_confirmed))}']"
+  end
+
+  test "early check-in is offered only on a free room, for its next booking" do
+    rooms(:limdim).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Sau Anh Minh")
+    held = rooms(:garden).bookings.create!(start_date: "2026-10-02", end_date: "2026-10-03", status: "hold", guest_name: "Giữ")
+    later = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Chị Hoa")
+    log_in users(:owner)
+    get admin_place_path("tomo-homestay")
+    assert_select "#room_#{rooms(:garden).id} form[action='#{check_in_admin_booking_path(held)}']", text: "Nhận phòng sớm"
+    assert_select "form[action='#{check_in_admin_booking_path(later)}']", count: 0
+    assert_select "#room_#{rooms(:limdim).id} button", text: "Nhận phòng sớm", count: 0 # Anh Minh arrives today
+  end
+
+  test "early check-in from the homestay page moves the arrival to today" do
+    booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Chị Hoa")
+    log_in users(:owner)
+    post check_in_admin_booking_path(booking), headers: { "HTTP_REFERER" => admin_place_url("tomo-homestay") }
+    assert_redirected_to admin_place_url("tomo-homestay")
+    assert_equal Date.new(2026, 10, 1), booking.reload.start_date
+    assert booking.checked_in_at
   end
 end

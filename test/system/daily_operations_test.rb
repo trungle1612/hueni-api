@@ -31,4 +31,15 @@ class DailyOperationsTest < ApplicationSystemTestCase
     assert_no_selector "#dirty_rooms"
     assert rooms(:garden).reload.clean?
   end
+
+  test "check a guest in early from the homestay page" do
+    booking = rooms(:garden).bookings.create!(start_date: Date.current + 2, end_date: Date.current + 4, guest_name: "Chị Hoa")
+    visit admin_place_path("tomo-homestay")
+    within("#room_#{rooms(:garden).id}") do
+      accept_confirm(/Chị Hoa nhận phòng sớm Garden\? Ngày đến đổi/) { click_button "Nhận phòng sớm" }
+    end
+    assert_text "Đã nhận phòng: Chị Hoa · Garden"
+    within("#room_#{rooms(:garden).id}") { assert_text "Đang có khách" }
+    assert_equal Date.current, booking.reload.start_date
+  end
 end
