@@ -56,6 +56,8 @@ class Booking < ApplicationRecord
   def can_check_in? = check_in_refusal.nil?
   def can_check_out? = checked_in_at.present? && checked_out_at.nil?
   def can_no_show? = no_show_refusal.nil?
+  def can_undo_check_in? = undo_check_in_refusal.nil?
+  def can_undo_check_out? = undo_check_out_refusal.nil?
 
   # The guest arrived: a hold becomes confirmed. Returns false with the reason in errors[:base].
   # Records a fact, so it skips validations: a guest at the desk is checked in even if the booking conflicts
@@ -90,6 +92,25 @@ class Booking < ApplicationRecord
     end
   end
 
+  # Hoàn tác: a wrong tap on Check-in / Check-out, put right the same day. Logged like any change.
+  # An early check-in keeps its moved start_date (edit the dates if needed).
+  def undo_check_in
+    with_lock do
+      next refuse(undo_check_in_refusal) unless can_undo_check_in?
+      self.checked_in_at = nil
+      save!(validate: false)
+    end
+  end
+
+  # The room's housekeeping state is left alone.
+  def undo_check_out
+    with_lock do
+      next refuse(undo_check_out_refusal) unless can_undo_check_out?
+      self.checked_out_at = nil
+      save!(validate: false)
+    end
+  end
+
   # The guest never came: cancel and say so in the note. Returns false with the reason in errors[:base].
   def no_show
     with_lock do
@@ -121,6 +142,24 @@ class Booking < ApplicationRecord
       elsif early_check_in? && ical? then "Đặt phòng OTA: đổi ngày trên Airbnb / Booking.com"
       elsif early_check_in? && room.bookings.occupying(Date.current, start_date).where.not(id: id).exists?
         "Phòng chưa trống từ hôm nay"
+      end
+    end
+
+    def undo_check_in_refusal
+      if !checked_in_at then "Khách chưa nhận phòng"
+      elsif checked_out_at then "Khách đã trả phòng, hoàn tác trả phòng trước"
+      elsif checked_in_at.to_date != Date.current then "Chỉ hoàn tác được trong ngày nhận phòng"
+      end
+    end
+
+    # Back in the room means holding the nights it freed again, so they must still be free.
+    def undo_check_out_refusal
+      if !checked_out_at then "Khách chưa trả phòng"
+      elsif checked_out_at.to_date != Date.current then "Chỉ hoàn tác được trong ngày trả phòng"
+      elsif room.bookings.in_house.where.not(id: id).exists? then "Phòng đang có khách khác"
+      elsif (upto = end_date < Date.current ? Date.current.next_day : end_date) > Date.current &&
+          room.bookings.occupying(Date.current, upto).where.not(id: id).exists?
+        "Đêm còn lại đã có khách khác"
       end
     end
 
