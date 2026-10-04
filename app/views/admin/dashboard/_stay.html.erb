@@ -15,7 +15,11 @@
     <% if group == :arrivals %>
       <%= call_link(booking) %>
       <%= no_show_button(booking, size: "btn-sm") if booking.can_no_show? %>
-      <%= check_in_button(booking, size: "btn-sm") %>
+      <% if booking.can_check_in? %>
+        <%= check_in_button(booking, size: "btn-sm") %>
+      <% else %>
+        <span class="badge badge-soft badge-error badge-sm">Phòng còn khách</span>
+      <% end %>
     <% elsif group == :departures %>
       <%= check_out_button(booking, size: "btn-sm") %>
     <% end %>

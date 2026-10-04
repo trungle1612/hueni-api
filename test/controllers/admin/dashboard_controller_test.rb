@@ -141,8 +141,8 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     leaving = rooms(:garden).bookings.create!(start_date: "2026-09-30", end_date: "2026-10-02", guest_name: "Chị Mai")
     leaving.update_columns(checked_in_at: 2.days.ago)
     overdue = rooms(:garden).bookings.create!(start_date: "2026-09-28", end_date: "2026-09-30", guest_name: "Anh Tú")
-    overdue.update_columns(checked_in_at: 4.days.ago)
     staying = rooms(:garden).bookings.create!(start_date: "2026-10-02", end_date: "2026-10-04", guest_name: "Cô Ba", guests: 2)
+    overdue.update_columns(checked_in_at: 4.days.ago) # setup only: an overdue guest now blocks the room
     staying.update_columns(checked_in_at: 1.hour.ago)
     rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-06", status: "hold", guest_name: "Chị Hoa")
     rooms(:garden).bookings.create!(start_date: "2026-10-10", end_date: "2026-10-12", status: "hold", guest_name: "Đoàn sau")
@@ -254,5 +254,25 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "[id^='tile_room_']", count: 0
     assert_select "main .card", text: /tomo homestay/
     assert_select "main .card", text: /Hiu Hill Homestay/
+  end
+
+  test "an arrival into a room whose guest hasn't left shows Phòng còn khách instead of Check-in" do
+    travel_to Time.zone.local(2026, 10, 2, 9)
+    leaving = rooms(:garden).bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02", guest_name: "Chị Mai")
+    arriving = rooms(:garden).bookings.create!(start_date: "2026-10-02", end_date: "2026-10-03", guest_name: "Cô Ba")
+    leaving.update_columns(checked_in_at: 1.day.ago)
+    log_in users(:owner)
+    get admin_root_path
+    assert_select "#today_booking_#{arriving.id}", text: /Phòng còn khách/
+    assert_select "#today_booking_#{arriving.id} form[action$='/check_in']", count: 0
+  end
+
+  test "an in-house OTA stay removed from the feed is flagged" do
+    travel_to Time.zone.local(2026, 10, 2, 9)
+    stay = calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:garden), uid: "x@airbnb", start_date: "2026-10-01", end_date: "2026-10-04", source: "ical")
+    stay.update_columns(checked_in_at: 1.day.ago, removed_from_feed_at: 1.hour.ago)
+    log_in users(:owner)
+    get admin_root_path
+    assert_select "#today_booking_#{stay.id} .badge", text: "OTA đã huỷ"
   end
 end
