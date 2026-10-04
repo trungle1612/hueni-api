@@ -141,6 +141,10 @@ class Booking < ApplicationRecord
   end
 
   def needs_declaration? = can_check_out? && !declared_at
+  # Still in the room after the departure day (Quá hạn): occupies it through today, see occupied_until.
+  def overdue? = can_check_out? && end_date < Date.current
+  # Due out today and not checked out yet.
+  def departing_today? = can_check_out? && end_date == Date.current
 
   # The guest never came: cancel and say so in the note. Returns false with the reason in errors[:base].
   def no_show

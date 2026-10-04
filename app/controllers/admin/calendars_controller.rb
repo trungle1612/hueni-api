@@ -13,7 +13,9 @@ class Admin::CalendarsController < Admin::BaseController
     @places = Current.user.accessible_places.order(:name)
     @days = (date_param(:from) || Date.current).then { it...(it + DAYS) }
     @rooms = @place.rooms.where(active: true).order(:name)
-    bookings = Booking.blocking.overlapping(@days.begin, @days.end).where(room: @rooms).includes(:calendar_feed).order(:start_date).to_a
+    # In-house guests too: an overdue one still holds the room, one due out today is listed by the room name.
+    bookings = Booking.blocking.where(room: @rooms).merge(Booking.overlapping(@days.begin, @days.end).or(Booking.in_house))
+      .includes(:calendar_feed).order(:start_date).to_a
     @bookings = bookings.group_by(&:room_id)
     # The OTA already sold an iCal booking's nights, so an overlap with a manual one is for the owner to resolve.
     @conflicts = bookings.select(&:ical?).flat_map do |ical|
