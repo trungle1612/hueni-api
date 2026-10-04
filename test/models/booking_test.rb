@@ -379,4 +379,49 @@ class BookingTest < ActiveSupport::TestCase
     end
     travel_to(Time.zone.local(2026, 10, 3, 9)) { assert_refused booking, :undo_check_out, "Chỉ hoàn tác được trong ngày trả phòng" }
   end
+
+  test "an in-house guest moves to a free room of the same homestay; the old room needs cleaning" do
+    booking = saved(start_date: "2026-10-05", end_date: "2026-10-08", guests: 2, guest_name: "Chị Mai")
+    sen = Room.create!(place: places(:tomo), name: "Sen", max_guests: 1)
+    other_place = Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 4)
+    travel_to Time.zone.local(2026, 10, 5, 14) do
+      assert_not booking.move_to(rooms(:limdim))
+      assert_includes booking.errors[:base], "Chỉ đổi phòng khi khách đang ở"
+      booking.check_in
+
+      [ [ rooms(:garden), "Khách đang ở phòng này" ], [ other_place, "Chỉ đổi được sang phòng cùng homestay" ],
+        [ sen, "Phòng Sen tối đa 1 khách" ] ].each do |room, message|
+        booking.errors.clear
+        assert_not booking.move_to(room)
+        assert_includes booking.errors[:base], message
+      end
+
+      rooms(:limdim).update!(active: false)
+      booking.errors.clear
+      assert_not booking.move_to(rooms(:limdim))
+      assert_includes booking.errors[:base], "Phòng Limdim đang tắt"
+      rooms(:limdim).update!(active: true)
+
+      blocker = rooms(:limdim).bookings.create!(start_date: "2026-10-07", end_date: "2026-10-09")
+      booking.errors.clear
+      assert_not booking.move_to(rooms(:limdim))
+      assert_includes booking.errors[:base], "Phòng Limdim không trống tới ngày trả phòng"
+      blocker.update!(status: "cancelled")
+
+      assert booking.move_to(rooms(:limdim))
+    end
+    assert_equal rooms(:limdim), booking.reload.room
+    assert rooms(:garden).reload.dirty?
+    entry = ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)
+    assert_equal [ "Đổi phòng", "Chị Mai: Garden → Limdim" ], entry.values_at(:action, :detail)
+  end
+
+  test "OTA stays can't be moved" do
+    ical = calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:limdim), uid: "x", start_date: "2026-10-05", end_date: "2026-10-06", source: "ical")
+    travel_to Time.zone.local(2026, 10, 5, 14) do
+      ical.check_in
+      assert_not ical.move_to(rooms(:garden))
+      assert_includes ical.errors[:base], "Đặt phòng OTA: đổi phòng trên Airbnb / Booking.com"
+    end
+  end
 end

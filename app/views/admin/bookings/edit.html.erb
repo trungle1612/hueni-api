@@ -26,6 +26,16 @@
     </div>
   </div>
 <% end %>
+<% if @booking.can_check_out? && (free_rooms = @place.rooms.order(:name).select { @booking.can_move_to?(it) }).any? %>
+  <%= form_with url: move_admin_booking_path(@booking), id: "move", class: "card bg-base-100 shadow-sm mb-3",
+        data: { turbo_confirm: "Đổi phòng cho #{booking_label(@booking)}? Phòng #{@booking.room.name} sẽ chuyển sang chưa dọn." } do |form| %>
+    <div class="card-body p-4 flex-row items-center gap-2">
+      <%= form.label :room_id, "Đổi sang", class: "text-sm shrink-0" %>
+      <%= form.select :room_id, free_rooms.map { [ it.name, it.id ] }, {}, class: "select select-sm flex-1 min-w-0" %>
+      <%= form.submit "Đổi phòng", class: "btn btn-sm" %>
+    </div>
+  <% end %>
+<% end %>
 <%= render "form", booking: @booking, place: @place %>
 <% unless @booking.checked_in_at %>
   <%= button_to "Huỷ đặt phòng", admin_booking_path(@booking), method: :patch, params: { booking: { status: "cancelled" } },

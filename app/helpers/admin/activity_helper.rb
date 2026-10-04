@@ -73,7 +73,10 @@ module Admin::ActivityHelper
 
     def activity_booking_update(version, changes, after)
       before = version.object.to_h
-      if changes.key?("removed_from_feed_at")
+      if changes.key?("room_id")
+        names = Room.where(id: changes["room_id"]).to_h { [ it.id, it.name ] }
+        [ :stay, "Đổi phòng", "#{activity_guest(after)}: #{names[changes["room_id"][0]]} → #{names[changes["room_id"][1]]}" ]
+      elsif changes.key?("removed_from_feed_at")
         after["removed_from_feed_at"] ? [ :error, "OTA đã huỷ, khách đang ở", activity_guest(after) ] : [ :sync, "OTA có lại đặt phòng", activity_stay(after) ]
       elsif changes.key?("checked_in_at")
         after["checked_in_at"] ? [ :check_in, "Nhận phòng", activity_guest(after) ] : [ :cancel, "Hoàn tác nhận phòng", activity_guest(after) ]

@@ -239,4 +239,27 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     post undo_check_in_admin_booking_path(other)
     assert_response :not_found
   end
+
+  test "staff move an in-house guest from the booking page; other homestays' rooms are not found" do
+    booking = rooms(:garden).bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02", guest_name: "Chị Mai")
+    booking.check_in
+    get edit_admin_booking_path(booking)
+    assert_select "#move", count: 0 # limdim is taken by Anh Minh
+
+    bookings(:limdim_confirmed).update!(status: "cancelled")
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    delete session_path
+    log_in staff
+    get edit_admin_booking_path(booking)
+    assert_select "#move option", text: "Limdim"
+
+    post move_admin_booking_path(booking), params: { room_id: @other_room.id }
+    assert_response :not_found
+
+    post move_admin_booking_path(booking), params: { room_id: rooms(:limdim).id }, headers: { "HTTP_REFERER" => edit_admin_booking_url(booking) }
+    assert_redirected_to edit_admin_booking_url(booking)
+    assert_equal "Đã đổi phòng: Chị Mai · Garden → Limdim. Phòng Garden chuyển sang chưa dọn.", flash[:notice]
+    assert_equal rooms(:limdim), booking.reload.room
+  end
 end
