@@ -20,6 +20,7 @@ module Admin::StaysHelper
     late = (Booking.arrival_date - booking.start_date).to_i
     badges << stay_badge("Trễ #{late} ngày", "badge-warning") if !booking.checked_in_at && late.positive?
     badges << stay_badge("OTA đã huỷ", "badge-error") if booking.removed_from_feed_at
+    badges << stay_badge("Chưa khai báo lưu trú", "badge-warning") if booking.needs_declaration?
     badges << stay_badge("Quá hạn #{(today - booking.end_date).to_i} ngày", "badge-error") if booking.can_check_out? && booking.end_date < today
     safe_join(badges, " ")
   end
@@ -32,8 +33,18 @@ module Admin::StaysHelper
       else
         [ "Check-in", "#{booking_label(booking)} nhận phòng #{booking.room.name}?" ]
       end
-    button_to label, check_in_admin_booking_path(booking), class: [ "btn btn-primary", size ].compact.join(" "),
-      form: { data: { turbo_confirm: confirm } }
+    return button_to(label, check_in_admin_booking_path(booking), class: [ "btn btn-primary", size ].compact.join(" "),
+      form: { data: { turbo_confirm: confirm } }) if booking.guests
+
+    form_with url: check_in_admin_booking_path(booking), class: "flex gap-1", data: { turbo_confirm: confirm } do |form|
+      form.number_field(:guests, in: 1..booking.room.max_guests, required: true, placeholder: "Số khách",
+        class: [ "input w-24", size&.sub("btn", "input") ].compact.join(" "), aria: { label: "Số khách" }) +
+        form.button(label, class: [ "btn btn-primary", size ].compact.join(" "))
+    end
+  end
+
+  def declare_button(booking, size: nil)
+    button_to "Đã khai báo", declare_admin_booking_path(booking), class: [ "btn btn-outline", size ].compact.join(" ")
   end
 
   def check_out_button(booking, size: nil)

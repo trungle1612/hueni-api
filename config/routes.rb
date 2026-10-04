@@ -45,6 +45,7 @@ Rails.application.routes.draw do
         post :undo_check_in
         post :undo_check_out
         post :move
+        post :declare
       end
     end
   end

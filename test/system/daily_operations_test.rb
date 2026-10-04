@@ -16,10 +16,13 @@ class DailyOperationsTest < ApplicationSystemTestCase
 
     within("#today_booking_#{booking.id}") do
       assert_text "Trễ 1 ngày"
+      fill_in "Số khách", with: 2
       accept_confirm("Chị Mai nhận phòng Garden?") { click_button "Check-in" }
     end
     assert_text "Đã nhận phòng: Chị Mai · Garden"
     within("#tile_room_#{rooms(:garden).id}") { assert_text "Đang có khách" }
+    within("#in_house") { click_button "Đã khai báo" }
+    assert_text "Đã khai báo lưu trú: Chị Mai · Garden"
 
     within("#in_house") { click_on "Chị Mai" }
     accept_confirm("Chị Mai trả phòng Garden?") { click_button "Check-out" }
@@ -36,6 +39,7 @@ class DailyOperationsTest < ApplicationSystemTestCase
     booking = rooms(:garden).bookings.create!(start_date: Date.current + 2, end_date: Date.current + 4, guest_name: "Chị Hoa")
     visit admin_place_path("tomo-homestay")
     within("#room_#{rooms(:garden).id}") do
+      fill_in "Số khách", with: 2
       accept_confirm(/Chị Hoa nhận phòng sớm Garden\? Ngày đến đổi/) { click_button "Nhận phòng sớm" }
     end
     assert_text "Đã nhận phòng: Chị Hoa · Garden"
