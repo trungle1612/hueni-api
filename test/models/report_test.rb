@@ -73,6 +73,17 @@ class ReportTest < ActiveSupport::TestCase
     assert_in_delta 2 / 5.0, r.cancellation_rate
   end
 
+  test "a night shared by an iCal and a manual booking (calendar conflict) sells once, to the OTA" do
+    airbnb("2026-10-02", "2026-10-04")                         # overlaps limdim_confirmed 10-01..10-03 on 10-02
+    @limdim.bookings.new(start_date: "2026-10-02", end_date: "2026-10-03", status: "hold").save!(validate: false) # held night already sold
+
+    r = report
+    assert_equal [ 3, 0 ], [ r.sold, r.held ]
+    assert_equal 1_200_000, r.revenue
+    assert_equal 1, r.channels["manual"][:nights]
+    assert_equal 2, r.channels["airbnb"][:nights]
+  end
+
   test "inactive rooms are listed only when they sold nights" do
     @garden.update!(active: false)
     @place.rooms.create!(name: "Gác", max_guests: 2, active: false)

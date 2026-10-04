@@ -21,8 +21,9 @@ class Report
   # Active rooms, plus inactive ones that sold nights this month.
   def rooms
     @rooms ||= place.rooms.order(:name).map { |room|
-      stays = stays_by_room.fetch(room.id, [])
-      RoomRow.new(room:, sold: nights(stays.select(&:confirmed?)), held: nights(stays.select(&:hold?)))
+      sold = sold_nights.fetch(room.id, {})
+      held = stays.select { it.hold? && it.room_id == room.id }.flat_map { dates(it) }.uniq - sold.keys
+      RoomRow.new(room:, sold: sold.size, held: held.size)
     }.select { it.room.active? || it.sold.positive? }
   end
 
@@ -39,13 +40,12 @@ class Report
   # { "manual" => { nights:, bookings:, revenue: }, "airbnb" => ... }: channels with any night or booking.
   def channels
     @channels ||= begin
-      sold_stays = stays.select(&:confirmed?).group_by { channel(it) }
+      sold_by = sold_nights.values.flat_map(&:values).group_by { channel(it) }
       arrivals_by = arrivals.group_by { channel(it) }
       CHANNEL_LABELS.keys.filter_map do |key|
-        next unless sold_stays[key] || arrivals_by[key]
-        list = sold_stays.fetch(key, [])
-        [ key, { nights: nights(list), bookings: arrivals_by.fetch(key, []).size,
-                 revenue: list.sum { it.room.price ? nights([ it ]) * it.room.price : 0 } } ]
+        next unless sold_by[key] || arrivals_by[key]
+        nights = sold_by.fetch(key, []) # one booking per night it sold
+        [ key, { nights: nights.size, bookings: arrivals_by.fetch(key, []).size, revenue: nights.sum { it.room.price || 0 } } ]
       end.to_h
     end
   end
@@ -71,7 +71,14 @@ class Report
         .includes(:room, :calendar_feed).to_a
     end
 
-    def stays_by_room = @stays_by_room ||= stays.group_by(&:room_id)
+    # { room_id => { date => the confirmed booking that sold that night } }. A night shared by an iCal and a manual
+    # booking (a calendar conflict) is sold once, to the OTA.
+    def sold_nights
+      @sold_nights ||= stays.select(&:confirmed?).sort_by { it.ical? ? 0 : 1 }.each_with_object({}) do |booking, by_room|
+        nights = by_room[booking.room_id] ||= {}
+        dates(booking).each { nights[it] ||= booking }
+      end
+    end
 
     def arrivals
       @arrivals ||= Booking.where(room_id: place.rooms.select(:id), start_date: range).includes(:calendar_feed).to_a
@@ -79,10 +86,8 @@ class Report
 
     def priced = rooms.select { it.room.price }
 
-    # Nights of these bookings inside the month.
-    def nights(bookings)
-      bookings.sum { [ [ it.occupied_until, month.next_month ].min - [ it.start_date, month ].max, 0 ].max.to_i }
-    end
+    # The booking's nights inside the month.
+    def dates(booking) = ([ booking.start_date, month ].max...[ booking.occupied_until, month.next_month ].min).to_a
 
     def channel(booking) = booking.manual? ? "manual" : booking.calendar_feed&.provider || "other"
 
