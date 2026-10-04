@@ -122,7 +122,7 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     get admin_place_path("tomo-homestay")
     assert_select "#room_#{rooms(:limdim).id} form[action='#{check_in_admin_booking_path(booking)}']"
 
-    post check_in_admin_booking_path(booking)
+    post check_in_admin_booking_path(booking), params: { guests: 2 }
     assert booking.reload.checked_in_at
   end
 
@@ -166,7 +166,7 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
   test "early check-in from the homestay page moves the arrival to today" do
     booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Chị Hoa")
     log_in users(:owner)
-    post check_in_admin_booking_path(booking), headers: { "HTTP_REFERER" => admin_place_url("tomo-homestay") }
+    post check_in_admin_booking_path(booking), params: { guests: 2 }, headers: { "HTTP_REFERER" => admin_place_url("tomo-homestay") }
     assert_redirected_to admin_place_url("tomo-homestay")
     assert_equal Date.new(2026, 10, 1), booking.reload.start_date
     assert booking.checked_in_at

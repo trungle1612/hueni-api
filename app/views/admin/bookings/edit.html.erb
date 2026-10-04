@@ -17,6 +17,7 @@
           <%= undo_button(@booking, :check_out, size: "btn-sm") if @booking.can_undo_check_out? %>
           <%= undo_button(@booking, :check_in, size: "btn-sm") if @booking.can_undo_check_in? %>
         <% end %>
+        <%= declare_button(@booking, size: "btn-sm") if @booking.needs_declaration? %>
         <% if @booking.can_check_in? %>
           <%= check_in_button(@booking, size: "btn-sm") %>
         <% elsif @booking.can_check_out? %>

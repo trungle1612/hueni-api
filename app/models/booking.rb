@@ -1,7 +1,7 @@
 class Booking < ApplicationRecord
   belongs_to :room
   belongs_to :calendar_feed, optional: true
-  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note checked_in_at checked_out_at removed_from_feed_at],
+  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note checked_in_at checked_out_at removed_from_feed_at declared_at],
     meta: { place_id: ->(booking) { booking.room.place_id }, room_id: :room_id }
 
   after_commit { Vacancy.bust }
@@ -65,9 +65,14 @@ class Booking < ApplicationRecord
   # with an OTA booking or exceeds a lowered max_guests (the calendar shows the conflict).
   # Arriving before start_date (Nhận phòng sớm) moves start_date to today, so the extra nights are booked;
   # that changes dates, so it is validated.
-  def check_in
+  # guests: the head count taken at the desk (the admin asks for it when the booking has none).
+  def check_in(guests: nil)
     with_lock do
       next refuse(check_in_refusal) unless can_check_in?
+      if guests
+        next refuse("Số khách phải từ 1 đến #{room.max_guests}") unless guests.in?(1..room.max_guests)
+        self.guests = guests
+      end
       early = early_check_in?
       assign_attributes(checked_in_at: Time.current, status: :confirmed)
       if early
@@ -124,6 +129,18 @@ class Booking < ApplicationRecord
       true
     end
   end
+
+  # Khai báo lưu trú done for this stay: only a reminder, it blocks nothing.
+  def declare
+    with_lock do
+      next refuse("Khách chưa nhận phòng") unless checked_in_at
+      next refuse("Đã khai báo lưu trú rồi") if declared_at
+      self.declared_at = Time.current
+      save!(validate: false)
+    end
+  end
+
+  def needs_declaration? = can_check_out? && !declared_at
 
   # The guest never came: cancel and say so in the note. Returns false with the reason in errors[:base].
   def no_show

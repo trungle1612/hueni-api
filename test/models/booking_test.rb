@@ -424,4 +424,29 @@ class BookingTest < ActiveSupport::TestCase
       assert_includes ical.errors[:base], "Đặt phòng OTA: đổi phòng trên Airbnb / Booking.com"
     end
   end
+
+  test "check-in takes the head count, within the room's maximum" do
+    booking = saved
+    travel_to Time.zone.local(2026, 10, 1, 14) do
+      assert_not booking.check_in(guests: 3)
+      assert_includes booking.errors[:base], "Số khách phải từ 1 đến 2"
+      assert_nil booking.reload.checked_in_at
+      assert booking.check_in(guests: 2)
+    end
+    assert_equal 2, booking.reload.guests
+  end
+
+  test "declare marks the lưu trú declaration once, for checked-in guests" do
+    booking = saved
+    travel_to Time.zone.local(2026, 10, 1, 14) do
+      assert_refused booking, :declare, "Khách chưa nhận phòng"
+      booking.check_in
+      assert booking.needs_declaration?
+      assert booking.declare
+      assert_not booking.needs_declaration?
+      assert_refused booking, :declare, "Đã khai báo lưu trú rồi"
+    end
+    assert_equal Time.zone.local(2026, 10, 1, 14), booking.reload.declared_at
+    assert_equal "Khai báo lưu trú", ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)[:action]
+  end
 end

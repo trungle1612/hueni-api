@@ -80,12 +80,12 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
 
   test "checks a guest in and out, then refuses a second tap" do
     booking = bookings(:limdim_confirmed)
-    post check_in_admin_booking_path(booking), headers: { "HTTP_REFERER" => admin_root_url }
+    post check_in_admin_booking_path(booking), params: { guests: 2 }, headers: { "HTTP_REFERER" => admin_root_url }
     assert_redirected_to admin_root_url
     assert_equal "Đã nhận phòng: Anh Minh · Limdim", flash[:notice]
     assert booking.reload.checked_in_at
 
-    post check_in_admin_booking_path(booking)
+    post check_in_admin_booking_path(booking), params: { guests: 2 }
     assert_redirected_to admin_root_path
     assert_equal "Khách đã nhận phòng rồi", flash[:alert]
 
@@ -99,13 +99,13 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
 
   test "iCal bookings can be checked in too" do
     booking = calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:garden), uid: "x@airbnb", start_date: "2026-10-01", end_date: "2026-10-02", source: "ical")
-    post check_in_admin_booking_path(booking)
+    post check_in_admin_booking_path(booking), params: { guests: 2 }
     assert booking.reload.checked_in_at
   end
 
   test "cannot check in or out another owner's booking" do
     other = @other_room.bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02")
-    post check_in_admin_booking_path(other)
+    post check_in_admin_booking_path(other), params: { guests: 2 }
     assert_response :not_found
     post check_out_admin_booking_path(other)
     assert_response :not_found
@@ -121,7 +121,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     booking = bookings(:limdim_confirmed)
     patch admin_booking_path(booking), params: { booking: { guests: 3 } }
     assert_equal 3, booking.reload.guests
-    post check_in_admin_booking_path(booking)
+    post check_in_admin_booking_path(booking), params: { guests: 2 }
     assert booking.reload.checked_in_at
   end
 
@@ -261,5 +261,40 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to edit_admin_booking_url(booking)
     assert_equal "Đã đổi phòng: Chị Mai · Garden → Limdim. Phòng Garden chuyển sang chưa dọn.", flash[:notice]
     assert_equal rooms(:limdim), booking.reload.room
+  end
+
+  test "check-in asks for the head count when the booking has none" do
+    booking = bookings(:limdim_confirmed)
+    get edit_admin_booking_path(booking)
+    assert_select "#stay form[action='#{check_in_admin_booking_path(booking)}'] input[name=guests][required][max='4']"
+
+    post check_in_admin_booking_path(booking)
+    assert_equal "Nhập số khách khi nhận phòng", flash[:alert]
+    assert_nil booking.reload.checked_in_at
+
+    post check_in_admin_booking_path(booking), params: { guests: 9 }
+    assert_equal "Số khách phải từ 1 đến 4", flash[:alert]
+
+    booking.update!(guests: 3)
+    get edit_admin_booking_path(booking)
+    assert_select "#stay input[name=guests]", count: 0
+    post check_in_admin_booking_path(booking)
+    assert booking.reload.checked_in_at
+    assert_equal 3, booking.guests
+  end
+
+  test "staff mark the lưu trú declaration; another owner's booking is not found" do
+    booking = bookings(:limdim_confirmed)
+    booking.check_in(guests: 2)
+    get edit_admin_booking_path(booking)
+    assert_select "#stay form[action='#{declare_admin_booking_path(booking)}']", text: "Đã khai báo"
+
+    post declare_admin_booking_path(booking)
+    assert_equal "Đã khai báo lưu trú: Anh Minh · Limdim", flash[:notice]
+    assert booking.reload.declared_at
+
+    other = @other_room.bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02")
+    post declare_admin_booking_path(other)
+    assert_response :not_found
   end
 end
