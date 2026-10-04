@@ -11,6 +11,21 @@ class Booking < ApplicationRecord
 
   enum :status, { hold: "hold", confirmed: "confirmed", cancelled: "cancelled" }, validate: true
   enum :source, { manual: "manual", ical: "ical" }, validate: true
+  # Status changes go through these events, so side effects (notifications, tracking) hang off them.
+  # The iCal sync writes status directly: its bookings are created confirmed and never change status.
+  include AASM
+  aasm column: :status, enum: true, whiny_transitions: false, whiny_persistence: false do
+    state :confirmed, initial: true
+    state :hold, :cancelled
+
+    event(:confirm) { transitions from: :hold, to: :confirmed }
+    event(:put_on_hold) { transitions from: :confirmed, to: :hold }
+    event(:cancel) { transitions from: %i[hold confirmed], to: :cancelled }
+    event :reopen do
+      transitions from: :cancelled, to: :hold
+      transitions from: :cancelled, to: :confirmed
+    end
+  end
 
   validates :start_date, presence: true
   validates :end_date, presence: true, comparison: { greater_than: :start_date }, if: :start_date
@@ -50,13 +65,24 @@ class Booking < ApplicationRecord
   def can_check_out? = checked_in_at.present? && checked_out_at.nil?
   def can_no_show? = no_show_refusal.nil?
 
+  # Saves attributes, moving to attributes[:status] through its event. Returns false with the reason in errors[:base].
+  def update_with_status(attributes)
+    attributes = attributes.to_h.symbolize_keys
+    to = attributes.delete(:status).presence&.to_sym
+    assign_attributes(attributes)
+    return save if to.nil? || to == aasm.current_state
+    event = aasm.events(permitted: true).find { it.transitions_to_state?(to) }
+    event ? aasm.fire!(event.name, to) : refuse("Không chuyển được sang trạng thái này")
+  end
+
   # The guest arrived: a hold becomes confirmed. Returns false with the reason in errors[:base].
   # Arriving before start_date (Nhận phòng sớm) moves start_date to today, so the extra nights are booked.
   def check_in
     with_lock do
       next refuse(check_in_refusal) unless can_check_in?
       self.start_date = Date.current if early_check_in?
-      update(checked_in_at: Time.current, status: :confirmed)
+      self.checked_in_at = Time.current
+      hold? ? confirm! : save
     end
   end
 
@@ -78,7 +104,8 @@ class Booking < ApplicationRecord
   def no_show
     with_lock do
       next refuse(no_show_refusal) unless can_no_show?
-      update(status: :cancelled, note: [ note.presence, "Không đến" ].compact.join(" · "))
+      self.note = [ note.presence, "Không đến" ].compact.join(" · ")
+      cancel!
     end
   end
 

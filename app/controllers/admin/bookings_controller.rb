@@ -24,7 +24,7 @@ class Admin::BookingsController < Admin::BaseController
   def update
     if @booking.checked_out_at
       redirect_to edit_admin_booking_path(@booking), alert: "Khách đã trả phòng, không sửa được đặt phòng."
-    elsif @booking.update(booking_params)
+    elsif @booking.update_with_status(booking_params)
       redirect_to back_to_calendar, notice: @booking.cancelled? ? "Đã huỷ đặt phòng." : "Đã lưu đặt phòng."
     else
       render :edit, status: :unprocessable_entity
