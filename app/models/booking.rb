@@ -27,6 +27,13 @@ class Booking < ApplicationRecord
     end
   end
 
+  # A guest due last night may still arrive after midnight (late flight / bus): until this hour (Huế time)
+  # a booking ending today can still be checked in and stays in Sắp đến / Chờ khách.
+  LATE_ARRIVAL_UNTIL = 6
+
+  # The last night guests may still be arriving for: yesterday before LATE_ARRIVAL_UNTIL, else today.
+  def self.arrival_night = Time.current.hour < LATE_ARRIVAL_UNTIL ? Date.current.prev_day : Date.current
+
   validates :start_date, presence: true
   validates :end_date, presence: true, comparison: { greater_than: :start_date }, if: :start_date
   # iCal bookings skip this: the OTA already sold those nights, so an overlap is shown as a conflict instead.
@@ -77,12 +84,15 @@ class Booking < ApplicationRecord
 
   # The guest arrived: a hold becomes confirmed. Returns false with the reason in errors[:base].
   # Arriving before start_date (Nhận phòng sớm) moves start_date to today, so the extra nights are booked.
+  # Records a fact, so like check_out it skips validations: a conflict with an OTA booking or a lowered
+  # max_guests is shown as a warning (check_in_button), not a refusal.
   def check_in
     with_lock do
       next refuse(check_in_refusal) unless can_check_in?
       self.start_date = Date.current if early_check_in?
       self.checked_in_at = Time.current
-      hold? ? confirm! : save
+      confirm if hold?
+      save!(validate: false)
     end
   end
 
@@ -127,7 +137,7 @@ class Booking < ApplicationRecord
     def check_in_refusal
       if cancelled? then "Đặt phòng đã huỷ"
       elsif checked_in_at then "Khách đã nhận phòng rồi"
-      elsif Date.current >= end_date then "Đặt phòng đã kết thúc"
+      elsif end_date <= Booking.arrival_night then "Đặt phòng đã kết thúc"
       elsif room.bookings.in_house.where.not(id: id).exists? then "Phòng đang có khách chưa trả phòng"
       elsif early_check_in? && ical? then "Đặt phòng OTA: đổi ngày trên Airbnb / Booking.com"
       elsif early_check_in? && room.bookings.occupying(Date.current, start_date).where.not(id: id).exists?

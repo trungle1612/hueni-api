@@ -275,4 +275,24 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     get admin_root_path
     assert_select "#today_booking_#{stay.id} .badge", text: "OTA đã huỷ"
   end
+
+  test "a guest due yesterday stays in Sắp đến until LATE_ARRIVAL_UNTIL" do
+    booking = bookings(:limdim_confirmed) # 1/10–3/10
+    log_in users(:owner)
+    travel_to Time.utc(2026, 10, 2, 17, 30) # 00:30 on 3/10
+    get admin_root_path
+    assert_select "#arrivals form[action='#{check_in_admin_booking_path(booking)}']"
+    travel_to Time.zone.local(2026, 10, 3, Booking::LATE_ARRIVAL_UNTIL)
+    get admin_root_path
+    assert_select "#arrivals", count: 0
+  end
+
+  test "check-in asks with a warning when the booking conflicts" do
+    travel_to Time.zone.local(2026, 10, 1, 9)
+    booking = bookings(:limdim_confirmed)
+    calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:limdim), uid: "x", start_date: "2026-10-02", end_date: "2026-10-04", source: "ical")
+    log_in users(:owner)
+    get admin_root_path
+    assert_select "#today_booking_#{booking.id} form[action$='/check_in'][data-turbo-confirm*='Phòng đã có người đặt trong khoảng ngày này']"
+  end
 end

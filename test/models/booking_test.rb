@@ -187,9 +187,19 @@ class BookingTest < ActiveSupport::TestCase
     assert booking.confirmed?, "a hold becomes confirmed when the guest arrives"
   end
 
-  test "check-in is refused from end_date (Huế time), when cancelled or twice" do
+  test "a late guest can still check in on end_date until LATE_ARRIVAL_UNTIL (Huế time)" do
     booking = saved
-    travel_to(Time.utc(2026, 10, 2, 17, 30)) { assert_refused booking, :check_in, "Đặt phòng đã kết thúc" } # 00:30 on 3/10 in Huế
+    travel_to Time.utc(2026, 10, 2, 17, 30) do # 00:30 on 3/10 in Huế
+      assert_not booking.early_check_in?
+      assert booking.check_in, booking.errors.full_messages.to_sentence
+      assert booking.can_check_out?
+    end
+    assert_equal [ Date.new(2026, 10, 1), Date.new(2026, 10, 3) ], booking.reload.values_at(:start_date, :end_date)
+  end
+
+  test "check-in is refused from LATE_ARRIVAL_UNTIL on end_date, when cancelled or twice" do
+    booking = saved
+    travel_to(Time.zone.local(2026, 10, 3, Booking::LATE_ARRIVAL_UNTIL)) { assert_refused booking, :check_in, "Đặt phòng đã kết thúc" }
 
     travel_to Time.zone.local(2026, 10, 1, 12) do
       assert booking.check_in
@@ -200,14 +210,25 @@ class BookingTest < ActiveSupport::TestCase
     travel_to(Time.zone.local(2026, 10, 5, 12)) { assert_refused cancelled, :check_in, "Đặt phòng đã huỷ" }
   end
 
-  test "check-in that would leave the booking invalid writes nothing" do
-    booking = saved(guests: 2)
+  test "check-in records the arrival even when the booking no longer validates" do
+    booking = saved(guests: 2, status: "hold")
     rooms(:garden).update!(max_guests: 1)
     travel_to Time.zone.local(2026, 10, 1, 12) do
-      assert_not booking.check_in
-      assert_includes booking.errors[:base], "Số khách phải từ 1 đến 1"
+      assert booking.check_in, booking.errors.full_messages.to_sentence
     end
-    assert_nil booking.reload.checked_in_at
+    assert booking.reload.checked_in_at
+    assert booking.confirmed?
+  end
+
+  test "check-in of a manual booking overlapping an iCal one succeeds and is logged" do
+    manual = bookings(:limdim_confirmed) # 1/10–3/10
+    calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:limdim), uid: "x", start_date: "2026-10-02", end_date: "2026-10-04", source: "ical")
+    assert_not manual.valid?
+    travel_to Time.zone.local(2026, 10, 1, 14) do
+      assert manual.check_in, manual.errors.full_messages.to_sentence
+    end
+    assert manual.reload.checked_in_at
+    assert_includes manual.versions.reorder(:id).last.changeset.keys, "checked_in_at"
   end
 
   test "check-out sets the time and marks the room dirty" do

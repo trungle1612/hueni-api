@@ -14,6 +14,11 @@ class RoomDayTest < ActiveSupport::TestCase
     assert_equal :held, day_of(rooms(:garden)).state
   end
 
+  test "a guest due yesterday stays arriving until LATE_ARRIVAL_UNTIL" do
+    travel_to(Time.utc(2026, 10, 2, 17, 30)) { assert_equal :arriving, day_of(rooms(:limdim)).state } # 00:30 on 3/10
+    travel_to(Time.zone.local(2026, 10, 3, Booking::LATE_ARRIVAL_UNTIL)) { assert_equal :free, day_of(rooms(:limdim)).state }
+  end
+
   test "confirmed beats an overlapping hold" do
     Booking.new(room: rooms(:limdim), start_date: "2026-10-02", end_date: "2026-10-03", status: "hold").save!(validate: false)
     assert_equal bookings(:limdim_confirmed), day_of(rooms(:limdim)).booking
