@@ -293,6 +293,6 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:limdim), uid: "x", start_date: "2026-10-02", end_date: "2026-10-04", source: "ical")
     log_in users(:owner)
     get admin_root_path
-    assert_select "#today_booking_#{booking.id} form[action$='/check_in'][data-turbo-confirm*='Phòng đã có người đặt trong khoảng ngày này']"
+    assert_select "#today_booking_#{booking.id} form[action$='/check_in'][data-turbo-confirm*='Trùng lịch đêm 02/10 với Airbnb (02/10–04/10)']"
   end
 end

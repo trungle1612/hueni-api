@@ -65,6 +65,8 @@ class Booking < ApplicationRecord
     else end_date
     end
   end
+  # How the calendar, Hôm nay and messages name a booking.
+  def label = guest_name.presence || note.presence || (ical? ? calendar_feed&.provider_label || "iCal" : "Khách")
   def overlaps?(other) = start_date < other.occupied_until && other.start_date < occupied_until
   def early_check_in? = !checked_in_at && start_date > Date.current
 
@@ -120,10 +122,17 @@ class Booking < ApplicationRecord
   end
 
   private
+    # Names the first booking in the way and the nights both want, so the owner knows what to fix.
     def room_is_free
       return if occupied_until <= start_date
-      taken = room.bookings.occupying(start_date, occupied_until).where.not(id: id).exists?
-      errors.add(:base, "Phòng đã có người đặt trong khoảng ngày này") if taken
+      taken = room.bookings.occupying(start_date, occupied_until).where.not(id: id).includes(:calendar_feed).order(:start_date, :id).to_a
+      return if taken.empty?
+      other = taken.first
+      first, last = [ start_date, other.start_date ].max, [ occupied_until, other.occupied_until ].min.prev_day
+      nights = [ first, last ].uniq.map { it.strftime("%d/%m") }.join("–")
+      more = " và #{taken.size - 1} đặt phòng khác" if taken.size > 1
+      errors.add(:base, "Trùng lịch đêm #{nights} với #{other.label} (#{other.start_date.strftime("%d/%m")}–#{other.end_date.strftime("%d/%m")})#{more}. " \
+        "Đổi ngày hoặc huỷ đặt phòng bị trùng.")
     end
 
     def guests_fit_room

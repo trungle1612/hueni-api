@@ -66,7 +66,15 @@ class BookingTest < ActiveSupport::TestCase
   test "manual booking cannot overlap a blocking booking on the same room" do
     booking = build(room: rooms(:limdim), start_date: "2026-10-02", end_date: "2026-10-04", status: "hold") # limdim_confirmed: 10-01..10-03
     assert_not booking.valid?
-    assert_includes booking.errors[:base], "Phòng đã có người đặt trong khoảng ngày này"
+    assert_includes booking.errors[:base], "Trùng lịch đêm 02/10 với Anh Minh (01/10–03/10). Đổi ngày hoặc huỷ đặt phòng bị trùng."
+  end
+
+  test "the overlap message names every night in common and counts other conflicts" do
+    Booking.new(room: rooms(:limdim), start_date: "2026-10-03", end_date: "2026-10-04", note: "Giữ cho đoàn").save!(validate: false)
+    booking = build(room: rooms(:limdim), start_date: "2026-09-30", end_date: "2026-10-05")
+    assert_not booking.valid?
+    assert_equal [ "Trùng lịch đêm 01/10–02/10 với Anh Minh (01/10–03/10) và 1 đặt phòng khác. Đổi ngày hoặc huỷ đặt phòng bị trùng." ],
+      booking.errors[:base]
   end
 
   test "overlap ignores touching dates, other rooms, cancelled bookings and itself" do

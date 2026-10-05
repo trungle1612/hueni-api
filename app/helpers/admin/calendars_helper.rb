@@ -11,10 +11,7 @@ module Admin::CalendarsHelper
 
   def booking_bar_label(booking) = "#{"✓ " if booking.checked_out_at}#{"⚠ " if booking.removed_from_feed_at}#{booking_label(booking)}"
 
-  def booking_label(booking)
-    booking.guest_name.presence || booking.note.presence ||
-      (booking.ical? ? booking.calendar_feed&.provider_label || "iCal" : "Khách")
-  end
+  def booking_label(booking) = booking.label
 
   def booking_bar_class(booking)
     if booking.checked_out_at then "bg-primary/15 text-primary/80"
