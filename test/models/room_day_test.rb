@@ -58,4 +58,11 @@ class RoomDayTest < ActiveSupport::TestCase
     assert_equal rooms, days.map(&:room)
     assert_no_queries { assert_equal "Limdim", days.first.booking.room.name }
   end
+
+  test "a guest due yesterday is still Chờ khách until 06:00" do
+    travel_to Time.zone.local(2026, 10, 3, 1) # Anh Minh: 1/10–3/10, not checked in
+    assert_equal [ :arriving, bookings(:limdim_confirmed) ], day_of(rooms(:limdim)).then { [ it.state, it.booking ] }
+    travel_to Time.zone.local(2026, 10, 3, 6)
+    assert_equal :free, day_of(rooms(:limdim)).state
+  end
 end

@@ -39,10 +39,16 @@
       </div>
 
       <% @rooms.each do |room| %>
-        <% lanes = timeline_lanes(@bookings.fetch(room.id, [])) %>
+        <% room_bookings = @bookings.fetch(room.id, []) %>
+        <% lanes = timeline_lanes(room_bookings.reject { booking_bar_end(it) <= @days.begin }) %>
         <div data-room="<%= room.id %>" class="<%= grid %> border-b border-base-200 last:border-b-0" style="grid-template-rows: repeat(<%= [ lanes.map(&:last).max.to_i + 1, 1 ].max %>, 2.5rem)">
           <div class="row-span-full sticky left-0 z-10 bg-base-100 border-r border-base-300 px-2 py-3 font-semibold truncate">
             <%= room.name %><% if lanes.any? { |booking, _| conflict_ids.include?(booking.id) } %> <span class="text-error">⚠</span><% end %>
+            <% if @days.cover?(Date.current) %>
+              <% room_bookings.select(&:departing_today?).each do |booking| %>
+                <div data-departing class="font-normal text-accent truncate" title="Trả phòng hôm nay: <%= booking_label(booking) %>">Trả: <%= booking_label(booking) %></div>
+              <% end %>
+            <% end %>
           </div>
           <% @days.each_with_index do |day, i| %>
             <%= link_to "", new_admin_place_booking_path(@place.slug, room_id: room.id, start_date: day.iso8601),
@@ -51,7 +57,7 @@
           <% end %>
           <% lanes.each do |booking, lane| %>
             <% from = ([ booking.start_date, @days.begin ].max - @days.begin).to_i + 2 %>
-            <% to = ([ booking.end_date, @days.end ].min - @days.begin).to_i + 2 %>
+            <% to = ([ booking_bar_end(booking), @days.end ].min - @days.begin).to_i + 2 %>
             <% conflict = conflict_ids.include?(booking.id) %>
             <% options = { id: dom_id(booking), title: booking_label(booking), style: "grid-column: #{from} / #{to}; grid-row: #{lane + 1}",
                  class: "z-[1] m-0.5 rounded px-1.5 flex items-center truncate #{booking_bar_class(booking)} #{"ring-2 ring-error" if conflict}",
@@ -72,6 +78,7 @@
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(status: "hold")) %>"></i>Giữ chỗ</span>
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(source: "ical")) %>"></i>Airbnb / Booking (chỉ xem)</span>
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(checked_out_at: Time.current)) %>"></i>✓ Đã trả phòng</span>
+    <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm bg-error/15 border border-error"></i>Quá hạn chưa trả phòng</span>
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm ring-2 ring-error"></i>Trùng lịch</span>
   </div>
 <% else %>

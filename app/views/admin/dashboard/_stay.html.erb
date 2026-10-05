@@ -22,6 +22,8 @@
       <% end %>
     <% elsif group == :departures %>
       <%= check_out_button(booking, size: "btn-sm") %>
+    <% elsif group == :in_house %>
+      <%= declare_button(booking, size: "btn-sm") if booking.needs_declaration? %>
     <% end %>
   </div>
 </div>

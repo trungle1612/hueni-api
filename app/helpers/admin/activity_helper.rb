@@ -73,10 +73,16 @@ module Admin::ActivityHelper
 
     def activity_booking_update(version, changes, after)
       before = version.object.to_h
-      if changes.key?("removed_from_feed_at")
+      if changes.key?("room_id")
+        names = Room.where(id: changes["room_id"]).to_h { [ it.id, it.name ] }
+        [ :stay, "Đổi phòng", "#{activity_guest(after)}: #{names[changes["room_id"][0]]} → #{names[changes["room_id"][1]]}" ]
+      elsif changes.key?("declared_at") then [ :ok, "Khai báo lưu trú", activity_guest(after) ]
+      elsif changes.key?("removed_from_feed_at")
         after["removed_from_feed_at"] ? [ :error, "OTA đã huỷ, khách đang ở", activity_guest(after) ] : [ :sync, "OTA có lại đặt phòng", activity_stay(after) ]
-      elsif changes.key?("checked_in_at") then [ :check_in, "Nhận phòng", activity_guest(after) ]
-      elsif changes.key?("checked_out_at") then [ :check_out, "Trả phòng", activity_guest(after) ]
+      elsif changes.key?("checked_in_at")
+        after["checked_in_at"] ? [ :check_in, "Nhận phòng", activity_guest(after) ] : [ :cancel, "Hoàn tác nhận phòng", activity_guest(after) ]
+      elsif changes.key?("checked_out_at")
+        after["checked_out_at"] ? [ :check_out, "Trả phòng", activity_guest(after) ] : [ :cancel, "Hoàn tác trả phòng", activity_guest(after) ]
       elsif changes["status"]&.last == "cancelled" then [ :cancel, "Huỷ", activity_stay(after) ]
       elsif changes.key?("status") then [ :booking, after["status"] == "hold" ? "Giữ chỗ" : "Xác nhận", activity_stay(after) ]
       elsif activity_ota?(version) then [ :sync, "Đổi ngày", "#{activity_dates(before)} → #{activity_dates(after)}" ]

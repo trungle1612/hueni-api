@@ -61,6 +61,32 @@ class Admin::CalendarsControllerTest < ActionDispatch::IntegrationTest
     assert_select "span", text: "✓ Đã trả phòng"
   end
 
+  test "an overdue guest's bar runs through today until check-out" do
+    travel_to Time.zone.local(2026, 10, 4, 9)
+    booking = bookings(:limdim_confirmed) # 1/10–3/10
+    booking.update_columns(checked_in_at: Time.zone.local(2026, 10, 1, 14))
+    get admin_place_calendar_path("tomo-homestay")
+    assert_select "a#booking_#{booking.id}.bg-error\\/15[style*='grid-column: 2 / 3']", text: "Anh Minh · quá hạn"
+    assert_select "span", text: "Quá hạn chưa trả phòng"
+
+    booking.check_out
+    get admin_place_calendar_path("tomo-homestay")
+    assert_select "#booking_#{booking.id}", count: 0 # back to its booked dates, all before today
+  end
+
+  test "a guest due out today has no bar but is listed under the room" do
+    travel_to Time.zone.local(2026, 10, 3, 9)
+    booking = bookings(:limdim_confirmed) # 1/10–3/10
+    booking.update_columns(checked_in_at: Time.zone.local(2026, 10, 1, 14))
+    get admin_place_calendar_path("tomo-homestay")
+    assert_select "#booking_#{booking.id}", count: 0
+    assert_select "[data-room='#{rooms(:limdim).id}'] [data-departing]", text: "Trả: Anh Minh"
+    assert_select "a[aria-label='Đặt Limdim ngày 03/10']"
+
+    get admin_place_calendar_path("tomo-homestay", from: "2026-10-20")
+    assert_select "[data-departing]", count: 0
+  end
+
   test "from moves the range and bad dates fall back to today" do
     get admin_place_calendar_path("tomo-homestay", from: "2026-10-15")
     assert_select "[data-day='2026-10-15']"
