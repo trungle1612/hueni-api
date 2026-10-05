@@ -23,7 +23,9 @@ module Admin::StaysHelper
     safe_join(badges, " ")
   end
 
-  # No undo exists, so both ask first.
+  # No undo exists, so both ask first. Check-in doesn't validate (it records a fact), so the
+  # question carries what would have failed: an overlapping booking, too many guests.
+  # Only an unchanged booking is checked: validating would wipe a failed edit form's errors.
   def check_in_button(booking, size: nil)
     label, confirm =
       if booking.early_check_in?
@@ -31,6 +33,7 @@ module Admin::StaysHelper
       else
         [ "Check-in", "#{booking_label(booking)} nhận phòng #{booking.room.name}?" ]
       end
+    confirm += "\n⚠ #{booking.errors.full_messages.join(". ")}" if !booking.changed? && booking.errors.empty? && booking.invalid?
     button_to label, check_in_admin_booking_path(booking), class: [ "btn btn-primary", size ].compact.join(" "),
       form: { data: { turbo_confirm: confirm } }
   end

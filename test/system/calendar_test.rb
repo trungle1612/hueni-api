@@ -48,7 +48,7 @@ class CalendarTest < ApplicationSystemTestCase
     fill_in "Trả phòng", with: Date.new(2026, 10, 4)
     click_button "Lưu"
 
-    assert_text "Phòng đã có người đặt trong khoảng ngày này"
+    assert_text "Trùng lịch đêm 02/10 với Anh Minh (01/10–03/10). Đổi ngày hoặc huỷ đặt phòng bị trùng."
     assert_equal 1, rooms(:limdim).bookings.count
   end
 

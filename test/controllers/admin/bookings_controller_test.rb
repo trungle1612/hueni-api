@@ -36,7 +36,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
         room_id: rooms(:limdim).id, start_date: "2026-10-02", end_date: "2026-10-04", status: "hold" } }
     end
     assert_response :unprocessable_entity
-    assert_select "[role=alert]", text: /Phòng đã có người đặt/
+    assert_select "[role=alert]", text: /Trùng lịch đêm 02\/10 với Anh Minh/
   end
 
   test "cannot book another owner's room or homestay" do

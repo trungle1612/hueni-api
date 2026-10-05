@@ -17,7 +17,7 @@ class Admin::DashboardController < Admin::BaseController
     bookings = Booking.where(room_id: rooms.select(:id)).includes(:calendar_feed, room: :place).order(:start_date, :id)
     @departures = bookings.in_house.where(end_date: ..today).to_a
     @dirty_rooms = rooms.dirty.includes(:place).order(:name).to_a
-    @arrivals = bookings.blocking.not_checked_in.where(start_date: ..today, end_date: today.next_day..).to_a
+    @arrivals = bookings.blocking.not_checked_in.where(start_date: ..today, end_date: Booking.arrival_night.next_day..).to_a
     @in_house = bookings.in_house.where(end_date: today.next_day..).to_a
     @holds = bookings.hold.where(start_date: ..(today + HOLDS_DAYS), end_date: today.next_day..).to_a
   end
