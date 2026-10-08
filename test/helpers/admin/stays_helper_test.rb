@@ -9,7 +9,7 @@ class Admin::StaysHelperTest < ActionView::TestCase
     booking = bookings(:limdim_confirmed) # 1/10–3/10, not checked in
     assert_dom_equal %(<span class="badge badge-soft badge-sm badge-warning">Trễ 1 ngày</span>), stay_badges(booking)
 
-    booking.update_columns(checked_in_at: 1.day.ago)
+    booking.update_columns(checked_in_at: 1.day.ago, declared_at: 1.day.ago)
     assert stay_badges(booking).blank?
     travel_to(Time.zone.local(2026, 10, 5, 9)) do
       assert_dom_equal %(<span class="badge badge-soft badge-sm badge-error">Quá hạn 2 ngày</span>), stay_badges(booking)

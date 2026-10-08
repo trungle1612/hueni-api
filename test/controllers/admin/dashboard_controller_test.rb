@@ -139,7 +139,7 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     # limdim_confirmed (1/10–3/10, Anh Minh) is not checked in: a late arrival.
     bookings(:limdim_confirmed).update!(guest_phone: "0905 123 456")
     leaving = rooms(:garden).bookings.create!(start_date: "2026-09-30", end_date: "2026-10-02", guest_name: "Chị Mai")
-    leaving.update_columns(checked_in_at: 2.days.ago)
+    leaving.update_columns(checked_in_at: 2.days.ago, declared_at: 2.days.ago)
     overdue = rooms(:garden).bookings.create!(start_date: "2026-09-28", end_date: "2026-09-30", guest_name: "Anh Tú")
     staying = rooms(:garden).bookings.create!(start_date: "2026-10-02", end_date: "2026-10-04", guest_name: "Cô Ba", guests: 2)
     overdue.update_columns(checked_in_at: 4.days.ago) # setup only: an overdue guest now blocks the room
@@ -162,7 +162,9 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "#arrivals form[action='#{no_show_admin_booking_path(bookings(:limdim_confirmed))}']"
     assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /Phòng Limdim · 01\/10–03\/10/
     assert_select "#in_house", text: /Cô Ba · 2 khách/
-    assert_select "#in_house form", count: 0
+    assert_select "#in_house form", count: 1
+    assert_select "#in_house form[action='#{declare_admin_booking_path(staying)}']", text: "Đã khai báo"
+    assert_select "#today_booking_#{staying.id} .badge", text: "Chưa khai báo lưu trú"
     assert_select "#holds summary", text: /Đang giữ chỗ\s*1/
     assert_select "#holds", text: /Chị Hoa/
     assert_select "#holds", text: /Đoàn sau/, count: 0 # starts in more than 3 days
@@ -294,5 +296,17 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     log_in users(:owner)
     get admin_root_path
     assert_select "#today_booking_#{booking.id} form[action$='/check_in'][data-turbo-confirm*='Trùng lịch đêm 02/10 với Airbnb (02/10–04/10)']"
+  end
+
+  test "a late arrival stays in Hôm nay until 06:00" do
+    travel_to Time.zone.local(2026, 10, 3, 0, 30) # Anh Minh: 1/10–3/10
+    log_in users(:owner)
+    get admin_root_path
+    assert_select "#arrivals #today_booking_#{bookings(:limdim_confirmed).id} form[action$='/check_in']"
+    assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /Trễ 1 ngày/
+
+    travel_to Time.zone.local(2026, 10, 3, 6)
+    get admin_root_path
+    assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", count: 0
   end
 end

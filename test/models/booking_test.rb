@@ -226,6 +226,7 @@ class BookingTest < ActiveSupport::TestCase
     end
     assert booking.reload.checked_in_at
     assert booking.confirmed?
+    assert_equal "Nhận phòng", ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)[:action]
   end
 
   test "check-in of a manual booking overlapping an iCal one succeeds and is logged" do
@@ -237,6 +238,23 @@ class BookingTest < ActiveSupport::TestCase
     end
     assert manual.reload.checked_in_at
     assert_includes manual.versions.reorder(:id).last.changeset.keys, "checked_in_at"
+  end
+
+  test "a guest arriving after midnight is checked in until 06:00 for the previous night" do
+    booking = saved(start_date: "2026-10-01", end_date: "2026-10-02")
+    travel_to Time.zone.local(2026, 10, 2, 0, 30) do
+      assert_equal Date.new(2026, 10, 1), Booking.arrival_date
+      assert_not booking.can_no_show?, "not a no-show yet"
+      assert booking.check_in
+    end
+    assert_equal Date.new(2026, 10, 1), booking.reload.start_date
+  end
+
+  test "early check-in still refuses an occupied night" do
+    saved(start_date: "2026-10-03", end_date: "2026-10-04")
+    booking = saved(start_date: "2026-10-04", end_date: "2026-10-05")
+    calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:garden), uid: "x", start_date: "2026-10-02", end_date: "2026-10-03", source: "ical")
+    travel_to(Time.zone.local(2026, 10, 2, 12)) { assert_refused booking, :check_in, "Phòng chưa trống từ hôm nay" }
   end
 
   test "check-out sets the time and marks the room dirty" do
@@ -356,5 +374,122 @@ class BookingTest < ActiveSupport::TestCase
       staying.check_out
       assert arriving.reload.check_in
     end
+  end
+
+  test "undo check-in the same day puts the guest back to waiting" do
+    booking = saved
+    travel_to Time.zone.local(2026, 10, 1, 14) do
+      assert_refused booking, :undo_check_in, "Khách chưa nhận phòng"
+      booking.check_in
+      assert booking.undo_check_in
+      assert_nil booking.reload.checked_in_at
+      assert booking.can_check_in?
+    end
+    assert_equal "Hoàn tác nhận phòng", ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)[:action]
+
+    travel_to(Time.zone.local(2026, 10, 1, 15)) { booking.check_in }
+    travel_to(Time.zone.local(2026, 10, 2, 9)) { assert_refused booking, :undo_check_in, "Chỉ hoàn tác được trong ngày nhận phòng" }
+  end
+
+  test "undo check-out the same day puts the guest back in, unless the freed nights were resold" do
+    booking = saved(start_date: "2026-10-01", end_date: "2026-10-04")
+    travel_to(Time.zone.local(2026, 10, 1, 14)) { booking.check_in }
+    travel_to Time.zone.local(2026, 10, 2, 9) do
+      booking.check_out
+      assert_refused booking, :undo_check_in, "Khách đã trả phòng, hoàn tác trả phòng trước"
+      assert booking.undo_check_out
+      assert booking.reload.can_check_out?
+      assert_equal "Hoàn tác trả phòng", ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)[:action]
+
+      booking.check_out
+      other = saved(start_date: "2026-10-03", end_date: "2026-10-05")
+      assert_refused booking, :undo_check_out, "Đêm còn lại đã có khách khác"
+      other.update!(status: "cancelled")
+      assert booking.undo_check_out
+    end
+  end
+
+  test "undo check-out on the departure day ignores tonight's next guest; refused the next day" do
+    booking = saved(start_date: "2026-10-01", end_date: "2026-10-02")
+    travel_to Time.zone.local(2026, 10, 1, 14) do
+      booking.check_in
+      saved(start_date: "2026-10-02", end_date: "2026-10-03")
+    end
+    travel_to Time.zone.local(2026, 10, 2, 10) do
+      booking.check_out
+      assert booking.undo_check_out
+      booking.check_out
+    end
+    travel_to(Time.zone.local(2026, 10, 3, 9)) { assert_refused booking, :undo_check_out, "Chỉ hoàn tác được trong ngày trả phòng" }
+  end
+
+  test "an in-house guest moves to a free room of the same homestay; the old room needs cleaning" do
+    booking = saved(start_date: "2026-10-05", end_date: "2026-10-08", guests: 2, guest_name: "Chị Mai")
+    sen = Room.create!(place: places(:tomo), name: "Sen", max_guests: 1)
+    other_place = Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 4)
+    travel_to Time.zone.local(2026, 10, 5, 14) do
+      assert_not booking.move_to(rooms(:limdim))
+      assert_includes booking.errors[:base], "Chỉ đổi phòng khi khách đang ở"
+      booking.check_in
+
+      [ [ rooms(:garden), "Khách đang ở phòng này" ], [ other_place, "Chỉ đổi được sang phòng cùng homestay" ],
+        [ sen, "Phòng Sen tối đa 1 khách" ] ].each do |room, message|
+        booking.errors.clear
+        assert_not booking.move_to(room)
+        assert_includes booking.errors[:base], message
+      end
+
+      rooms(:limdim).update!(active: false)
+      booking.errors.clear
+      assert_not booking.move_to(rooms(:limdim))
+      assert_includes booking.errors[:base], "Phòng Limdim đang tắt"
+      rooms(:limdim).update!(active: true)
+
+      blocker = rooms(:limdim).bookings.create!(start_date: "2026-10-07", end_date: "2026-10-09")
+      booking.errors.clear
+      assert_not booking.move_to(rooms(:limdim))
+      assert_includes booking.errors[:base], "Phòng Limdim không trống tới ngày trả phòng"
+      blocker.update!(status: "cancelled")
+
+      assert booking.move_to(rooms(:limdim))
+    end
+    assert_equal rooms(:limdim), booking.reload.room
+    assert rooms(:garden).reload.dirty?
+    entry = ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)
+    assert_equal [ "Đổi phòng", "Chị Mai: Garden → Limdim" ], entry.values_at(:action, :detail)
+  end
+
+  test "OTA stays can't be moved" do
+    ical = calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:limdim), uid: "x", start_date: "2026-10-05", end_date: "2026-10-06", source: "ical")
+    travel_to Time.zone.local(2026, 10, 5, 14) do
+      ical.check_in
+      assert_not ical.move_to(rooms(:garden))
+      assert_includes ical.errors[:base], "Đặt phòng OTA: đổi phòng trên Airbnb / Booking.com"
+    end
+  end
+
+  test "check-in takes the head count, within the room's maximum" do
+    booking = saved
+    travel_to Time.zone.local(2026, 10, 1, 14) do
+      assert_not booking.check_in(guests: 3)
+      assert_includes booking.errors[:base], "Số khách phải từ 1 đến 2"
+      assert_nil booking.reload.checked_in_at
+      assert booking.check_in(guests: 2)
+    end
+    assert_equal 2, booking.reload.guests
+  end
+
+  test "declare marks the lưu trú declaration once, for checked-in guests" do
+    booking = saved
+    travel_to Time.zone.local(2026, 10, 1, 14) do
+      assert_refused booking, :declare, "Khách chưa nhận phòng"
+      booking.check_in
+      assert booking.needs_declaration?
+      assert booking.declare
+      assert_not booking.needs_declaration?
+      assert_refused booking, :declare, "Đã khai báo lưu trú rồi"
+    end
+    assert_equal Time.zone.local(2026, 10, 1, 14), booking.reload.declared_at
+    assert_equal "Khai báo lưu trú", ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)[:action]
   end
 end

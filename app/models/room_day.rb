@@ -4,18 +4,19 @@ class RoomDay
 
   def self.for(rooms, date = Date.current)
     rooms = rooms.to_a
-    arrival_night = [ date, Booking.arrival_night ].min
+    arrival_date = date == Date.current ? Booking.arrival_date : date
     bookings = Booking.blocking.where(room_id: rooms.map(&:id)).includes(:calendar_feed)
-      .where("end_date > :arrival_night OR (checked_in_at IS NOT NULL AND checked_out_at IS NULL)", arrival_night:)
+      .where("end_date > :arrival_date OR (checked_in_at IS NOT NULL AND checked_out_at IS NULL)", arrival_date:)
       .order(:start_date, :id).group_by(&:room_id)
-    rooms.map { new(it, bookings.fetch(it.id, []), date, arrival_night) }
+    rooms.map { new(it, bookings.fetch(it.id, []), date, arrival_date) }
   end
 
-  # A guest due last night still counts as arriving until Booking::LATE_ARRIVAL_UNTIL (arrival_night).
-  def initialize(room, bookings, date, arrival_night = date)
+  # arrival_date: the day whose late arrivals are still expected (Booking.arrival_date), so a guest due
+  # yesterday shows as Chờ khách until Booking::LATE_ARRIVAL_UNTIL.
+  def initialize(room, bookings, date, arrival_date = date)
     bookings.each { it.association(:room).target = room }
     staying = bookings.find { it.checked_in_at && !it.checked_out_at }
-    waiting = bookings.select { !it.checked_in_at && it.start_date <= date && arrival_night < it.end_date }
+    waiting = bookings.select { !it.checked_in_at && it.start_date <= date && arrival_date < it.end_date }
     arriving = waiting.find(&:confirmed?) || waiting.first
 
     @room = room
