@@ -13,21 +13,23 @@
         <% end %>
       </div>
       <div class="flex flex-wrap justify-end gap-2">
-        <% if allowed_to?(:manage, @place) %>
+        <% if allowed_to?(:undo, @place) %>
           <%= undo_button(@booking, :check_out, size: "btn-sm") if @booking.can_undo_check_out? %>
           <%= undo_button(@booking, :check_in, size: "btn-sm") if @booking.can_undo_check_in? %>
         <% end %>
-        <%= declare_button(@booking, size: "btn-sm") if @booking.needs_declaration? %>
-        <% if @booking.can_check_in? %>
-          <%= check_in_button(@booking, size: "btn-sm") %>
-        <% elsif @booking.can_check_out? %>
-          <%= check_out_button(@booking, size: "btn-sm") %>
+        <% if allowed_to?(:operate, @place) %>
+          <%= declare_button(@booking, size: "btn-sm") if @booking.needs_declaration? %>
+          <% if @booking.can_check_in? %>
+            <%= check_in_button(@booking, size: "btn-sm") %>
+          <% elsif @booking.can_check_out? %>
+            <%= check_out_button(@booking, size: "btn-sm") %>
+          <% end %>
         <% end %>
       </div>
     </div>
   </div>
 <% end %>
-<% if @booking.can_check_out? && (free_rooms = @place.rooms.order(:name).select { @booking.can_move_to?(it) }).any? %>
+<% if allowed_to?(:operate, @place) && @booking.can_check_out? && (free_rooms = @place.rooms.order(:name).select { @booking.can_move_to?(it) }).any? %>
   <%= form_with url: move_admin_booking_path(@booking), id: "move", class: "card bg-base-100 shadow-sm mb-3",
         data: { turbo_confirm: "Đổi phòng cho #{booking_label(@booking)}? Phòng #{@booking.room.name} sẽ chuyển sang chưa dọn." } do |form| %>
     <div class="card-body p-4 flex-row items-center gap-2">

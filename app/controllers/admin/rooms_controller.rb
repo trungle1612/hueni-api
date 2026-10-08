@@ -2,6 +2,7 @@ class Admin::RoomsController < Admin::BaseController
   before_action :set_place, only: %i[new create]
   before_action :set_room, only: %i[edit update clean]
   before_action -> { authorize!(:manage, @place) }, except: :clean
+  before_action -> { authorize!(:operate, @place) }, only: :clean
 
   def new
     @room = @place.rooms.build(active: true)

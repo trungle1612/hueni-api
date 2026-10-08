@@ -37,14 +37,21 @@ class User < ApplicationRecord
 
   # "owner" | "staff" | nil at this homestay. Admins count as owners everywhere.
   def role_at(place)
-    admin? ? "owner" : place_memberships.find_by(place:)&.role
+    admin? ? "owner" : membership_role_at(place)
   end
+
+  # The user's own membership at this homestay, ignoring the admin role.
+  def membership_role_at(place) = place_memberships.find_by(place:)&.role
 
   # The one authorization rule, shaped like Pundit / Action Policy so a later switch is mechanical.
   # Scoping (accessible_*) still decides what you can see at all.
   def allowed_to?(action, place)
     case action
     when :manage then role_at(place) == "owner"
+    # Front-desk work (check-in/out, no-show, room move, lưu trú, cleaning) belongs to the homestay's own
+    # people: admins only through a membership. Hoàn tác is for its owners.
+    when :operate then membership_role_at(place).present?
+    when :undo then membership_role_at(place) == "owner"
     else raise ArgumentError, "unknown action #{action.inspect}"
     end
   end

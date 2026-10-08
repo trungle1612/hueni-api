@@ -297,4 +297,40 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     post declare_admin_booking_path(other)
     assert_response :not_found
   end
+
+  test "admins who aren't members get 403 on every front-desk action and see no buttons" do
+    booking = bookings(:limdim_confirmed)
+    in_house = rooms(:garden).bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02", guests: 1)
+    in_house.check_in
+    delete session_path
+    log_in users(:admin)
+
+    get edit_admin_booking_path(booking)
+    assert_response :success
+    assert_select "#stay form", count: 0
+    get edit_admin_booking_path(in_house)
+    assert_select "#stay form", count: 0
+    assert_select "#move", count: 0
+
+    { check_in: booking, no_show: booking, check_out: in_house, undo_check_in: in_house, declare: in_house }.each do |action, target|
+      post public_send("#{action}_admin_booking_path", target), params: { guests: 2 }
+      assert_response :forbidden, action
+    end
+    post move_admin_booking_path(in_house), params: { room_id: rooms(:limdim).id }
+    assert_response :forbidden
+    assert_nil booking.reload.checked_in_at
+    assert_not booking.cancelled?
+    assert_equal [ rooms(:garden), nil, nil ], in_house.reload.values_at(:room, :checked_out_at, :declared_at)
+  end
+
+  test "an admin who is a staff member works the desk but can't undo" do
+    booking = bookings(:limdim_confirmed)
+    users(:admin).place_memberships.create!(place: places(:tomo), role: "staff")
+    delete session_path
+    log_in users(:admin)
+    post check_in_admin_booking_path(booking), params: { guests: 2 }
+    assert booking.reload.checked_in_at
+    post undo_check_in_admin_booking_path(booking)
+    assert_response :forbidden
+  end
 end
