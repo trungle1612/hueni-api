@@ -1,5 +1,6 @@
 <% content_for :title, "#{@place.name} · hueni admin" %>
 <% manage = allowed_to?(:manage, @place) %>
+<% operate = allowed_to?(:operate, @place) %>
 
 <div class="flex items-center gap-2 mb-4">
   <%= link_to admin_root_path, class: "btn btn-ghost btn-square btn-sm", aria: { label: "Tổng quan" } do %>
@@ -50,7 +51,7 @@
               </div>
             <% end %>
             <% early = day.next_booking if day.state == :free && day.next_booking&.can_check_in? %>
-            <% if room.dirty? || early || booking&.can_check_in? || booking&.can_check_out? %>
+            <% if operate && (room.dirty? || early || booking&.can_check_in? || booking&.can_check_out?) %>
               <div class="flex flex-wrap justify-end gap-2 mt-1">
                 <%= clean_button(room, size: "btn-sm") if room.dirty? %>
                 <%= check_in_button(early, size: "btn-sm") if early %>

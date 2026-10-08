@@ -124,6 +124,15 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     assert rooms(:garden).reload.clean?
   end
 
+  test "admins who aren't members can't mark a room clean" do
+    rooms(:garden).dirty!
+    delete session_path
+    post session_path, params: { phone_number: users(:admin).phone_number, password: "password123" }
+    post clean_admin_room_path(rooms(:garden))
+    assert_response :forbidden
+    assert rooms(:garden).reload.dirty?
+  end
+
   test "housekeeping can't be set through the room form" do
     patch admin_room_path(rooms(:garden)), params: { room: { name: "Garden", housekeeping: "dirty" } }
     assert rooms(:garden).reload.clean?
