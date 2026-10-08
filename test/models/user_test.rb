@@ -50,39 +50,30 @@ class UserTest < ActiveSupport::TestCase
     assert_equal "Á", build(name: "ánh").initial
   end
 
-  test "role_at and allowed_to?(:manage) per homestay; admins manage everything" do
+  test "role_at and allowed_to? come from the membership only, also for admins" do
     staff = User.create!(name: "Em Hằng", phone_number: "0987111222", password: "password123")
     staff.place_memberships.create!(place: places(:tomo), role: "staff")
-    users(:admin).place_memberships.create!(place: places(:tomo), role: "staff") # admin who is also staff
 
     assert_equal "owner", users(:owner).role_at(places(:tomo))
     assert_equal "staff", staff.role_at(places(:tomo))
     assert_nil users(:owner).role_at(places(:hiuhill))
-    assert_equal "owner", users(:admin).role_at(places(:tomo))
+    assert_nil users(:admin).role_at(places(:tomo))
+
     assert users(:owner).allowed_to?(:manage, places(:tomo))
-    assert_not staff.allowed_to?(:manage, places(:tomo))
-    assert_not users(:owner).allowed_to?(:manage, places(:hiuhill))
-    assert users(:admin).allowed_to?(:manage, places(:tomo))
-    assert users(:admin).allowed_to?(:manage, places(:hiuhill))
-    assert_raises(ArgumentError) { users(:owner).allowed_to?(:delete, places(:tomo)) }
-  end
-
-  test "front-desk work (:operate) and Hoàn tác (:undo) need a membership, also for admins" do
-    staff = User.create!(name: "Em Hằng", phone_number: "0987111222", password: "password123")
-    staff.place_memberships.create!(place: places(:tomo), role: "staff")
-
     assert users(:owner).allowed_to?(:operate, places(:tomo))
-    assert users(:owner).allowed_to?(:undo, places(:tomo))
+    assert_not staff.allowed_to?(:manage, places(:tomo))
     assert staff.allowed_to?(:operate, places(:tomo))
-    assert_not staff.allowed_to?(:undo, places(:tomo))
     assert_not users(:owner).allowed_to?(:operate, places(:hiuhill))
+    assert_not users(:admin).allowed_to?(:manage, places(:tomo))
     assert_not users(:admin).allowed_to?(:operate, places(:tomo))
-    assert_not users(:admin).allowed_to?(:undo, places(:tomo))
 
     users(:admin).place_memberships.create!(place: places(:tomo), role: "staff")
+    assert_equal "staff", users(:admin).role_at(places(:tomo))
     assert users(:admin).allowed_to?(:operate, places(:tomo))
-    assert_not users(:admin).allowed_to?(:undo, places(:tomo))
+    assert_not users(:admin).allowed_to?(:manage, places(:tomo))
     users(:admin).place_memberships.find_by!(place: places(:tomo)).update!(role: "owner")
-    assert users(:admin).allowed_to?(:undo, places(:tomo))
+    assert users(:admin).allowed_to?(:manage, places(:tomo))
+
+    assert_raises(ArgumentError) { users(:owner).allowed_to?(:undo, places(:tomo)) }
   end
 end

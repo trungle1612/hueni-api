@@ -1,4 +1,4 @@
-# Owners manage who works at their homestay (admins count as owners everywhere). :id is a PlaceMembership.
+# Owners manage who works at their homestay (admins do it from Người dùng). :id is a PlaceMembership.
 class Admin::MembersController < Admin::BaseController
   PHONE_TAKEN = "Số điện thoại này đã được dùng. Nhờ quản trị viên thêm vào homestay.".freeze
 

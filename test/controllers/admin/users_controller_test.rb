@@ -115,4 +115,11 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     get edit_admin_user_path(users(:admin))
     assert_select "button", text: /Tạo link đặt lại mật khẩu/, count: 0
   end
+
+  test "an admin makes themselves a member of a homestay to help its owner" do
+    get edit_admin_user_path(users(:admin))
+    assert_select "select[name='memberships[#{places(:tomo).id}]']"
+    patch admin_user_path(users(:admin)), params: { user: { name: "Trung" }, memberships: { places(:tomo).id => "staff" } }
+    assert_equal "staff", users(:admin).reload.role_at(places(:tomo))
+  end
 end

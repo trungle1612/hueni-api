@@ -1,4 +1,4 @@
-# Owners and admins: who changed what on a homestay, newest first.
+# Owners: who changed what on a homestay, newest first.
 class Admin::ActivitiesController < Admin::BaseController
   PER_PAGE = 50
 

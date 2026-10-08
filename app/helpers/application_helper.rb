@@ -6,16 +6,15 @@ module ApplicationHelper
       { label: "Lịch phòng", icon: "calendar", path: admin_calendar_path, active: controller_name.in?(%w[calendars bookings]) },
       { label: "Kênh OTA", icon: "refresh", path: admin_calendar_feeds_path, active: controller_name == "calendar_feeds" }
     ]
-    if Current.user&.admin? || Current.user&.place_memberships&.exists?(role: "owner")
+    if Current.user&.place_memberships&.exists?(role: "owner")
       items << { label: "Báo cáo", icon: "chart", path: admin_report_path, active: controller_name == "reports" }
     end
     items << { label: "Người dùng", icon: "users", path: admin_users_path, active: controller_name == "users" } if Current.user&.admin?
     items
   end
 
-  # "Chủ" / "Nhân viên" at this homestay; nothing for admins (they manage everything).
+  # "Chủ" / "Nhân viên" at this homestay.
   def place_role_badge(place)
-    return if Current.user.admin?
     role = Current.user.role_at(place) or return
     tag.span(PlaceMembership::ROLE_LABELS.fetch(role), class: "badge badge-soft badge-sm #{role == "owner" ? "badge-primary" : "badge-info"}")
   end
