@@ -55,8 +55,12 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_select "body", text: /SELECT|place_memberships/, count: 0
   end
 
-  test "admin can open any homestay" do
+  test "admins open a homestay only as a member" do
     log_in users(:admin)
+    get admin_place_path("hiuhill-homestay")
+    assert_response :not_found
+
+    places(:hiuhill).place_memberships.create!(user: users(:admin), role: "owner")
     get admin_place_path("hiuhill-homestay")
     assert_response :success
     assert_select "main", text: /Chưa có phòng nào/
@@ -116,18 +120,12 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#{limdim} form[action='#{check_out_admin_booking_path(bookings(:limdim_confirmed))}']"
   end
 
-  test "admins see no front-desk buttons at a homestay they are not a member of" do
-    rooms(:garden).dirty!
+  test "an admin who is staff works the desk but gets no owner controls" do
+    users(:admin).place_memberships.create!(place: places(:tomo), role: "staff")
     log_in users(:admin)
     get admin_place_path("tomo-homestay")
-    assert_response :success
-    assert_select "#room_#{rooms(:limdim).id}", text: /Anh Minh/
-    assert_select "form[action$='/check_in'], form[action$='/check_out'], form[action$='/no_show'], form[action$='/clean']", count: 0
-    assert_select "a[href='#{edit_admin_room_path(rooms(:limdim))}']" # still manages the homestay
-
-    users(:admin).place_memberships.create!(place: places(:tomo), role: "staff")
-    get admin_place_path("tomo-homestay")
     assert_select "#room_#{rooms(:limdim).id} form[action='#{check_in_admin_booking_path(bookings(:limdim_confirmed))}']"
+    assert_select "a[href='#{edit_admin_room_path(rooms(:limdim))}']", count: 0
   end
 
   test "dirty rooms show Chưa dọn and a Dọn xong button, also for staff" do

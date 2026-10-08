@@ -40,13 +40,17 @@ class UserAccessTest < ActiveSupport::TestCase
     assert_empty loner.accessible_bookings
   end
 
-  test "admin sees everything once, even with memberships" do
+  test "admins see homestay data only through a membership, like everyone else" do
     admin = users(:admin)
+    assert_empty admin.accessible_places
+    assert_empty admin.accessible_rooms
+    assert_empty admin.accessible_calendar_feeds
+    assert_empty admin.accessible_bookings
+
     admin.places << places(:tomo)
-    assert_equal Place.order(:id).to_a, admin.accessible_places.order(:id).to_a
-    assert_equal Room.count, admin.accessible_rooms.count
-    assert_equal CalendarFeed.count, admin.accessible_calendar_feeds.count
-    assert_equal Booking.count, admin.accessible_bookings.count
+    assert_equal [ places(:tomo) ], admin.accessible_places.to_a
+    assert_equal places(:tomo).rooms.count, admin.accessible_rooms.count
+    assert_raises(ActiveRecord::RecordNotFound) { admin.accessible_places.find(places(:hiuhill).id) }
   end
 
   test "inactive rooms stay accessible to the owner" do

@@ -51,10 +51,10 @@ class Admin::ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "#tile-adr", /—/
   end
 
-  test "admin can open it; staff gets 403; another owner's homestay is 404" do
+  test "staff gets 403; another owner's homestay and an admin without membership get 404" do
     log_in users(:admin)
     get admin_place_report_path("hiuhill-homestay")
-    assert_response :success
+    assert_response :not_found
 
     log_in staff
     get admin_place_report_path("tomo-homestay")

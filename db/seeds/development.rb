@@ -3,7 +3,7 @@
 #
 #   bin/rails db:seed
 #
-# Logins (password "password123"): 0900 000 001 (admin, sees everything), 0900 000 002 (owner of 3 homestays),
+# Logins (password "password123"): 0900 000 001 (admin: accounts only, member of nothing), 0900 000 002 (owner of 3 homestays),
 # 0900 000 003 (staff at the first homestay).
 
 # db/places/*.json is git-ignored (copied from hue-ni), so a fresh clone may have no places: make some up.

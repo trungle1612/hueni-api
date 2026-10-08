@@ -129,7 +129,7 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     delete session_path
     post session_path, params: { phone_number: users(:admin).phone_number, password: "password123" }
     post clean_admin_room_path(rooms(:garden))
-    assert_response :forbidden
+    assert_response :not_found
     assert rooms(:garden).reload.dirty?
   end
 
