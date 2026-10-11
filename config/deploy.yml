@@ -45,9 +45,26 @@ aliases:
   logs: app logs -f
   dbc: app exec --interactive --reuse "bin/rails dbconsole"
 
-# SQLite lives on the host (created in #8), backed up by Litestream (#10).
+# SQLite lives on the host (created in #8), backed up by the litestream accessory below.
 volumes:
   - "/var/lib/hueni-api/storage:/rails/storage"
+
+# `kamal deploy` does not touch accessories. First time: bin/kamal accessory boot litestream;
+# after changing config/litestream.yml or its secrets: bin/kamal accessory reboot litestream.
+accessories:
+  litestream:
+    image: litestream/litestream:0.3.13
+    host: <%= ENV.fetch("DEPLOY_HOST") %>
+    cmd: replicate
+    files:
+      - config/litestream.yml:/etc/litestream.yml
+    volumes:
+      - "/var/lib/hueni-api/storage:/data"
+    env:
+      secret:
+        - LITESTREAM_ACCESS_KEY_ID
+        - LITESTREAM_SECRET_ACCESS_KEY
+        - LITESTREAM_R2_ENDPOINT
 
 asset_path: /rails/public/assets
 

@@ -1,0 +1,16 @@
+# Litestream (Kamal accessory "litestream", see config/deploy.yml) streams the primary SQLite
+# database to Cloudflare R2. Queue / cache / cable databases are disposable and not replicated.
+# Restore: README.md → "Backups".
+dbs:
+  - path: /data/production.sqlite3
+    replicas:
+      - type: s3
+        endpoint: ${LITESTREAM_R2_ENDPOINT}
+        bucket: hueni-api-backup
+        path: production
+        force-path-style: true
+        # At most one upload per 10 s keeps R2 well inside the free 1M writes/month.
+        sync-interval: 10s
+        # Daily snapshots, restorable to any point in the last 7 days.
+        snapshot-interval: 24h
+        retention: 168h
