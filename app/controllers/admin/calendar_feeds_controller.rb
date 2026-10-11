@@ -15,7 +15,7 @@ class Admin::CalendarFeedsController < Admin::BaseController
     authorize!(:manage, @place = @room.place)
     @calendar_feed = @room.calendar_feeds.build(params.expect(calendar_feed: [ :provider, :url ]))
     if @calendar_feed.save
-      if @calendar_feed.sync
+      if @calendar_feed.sync(trigger: "added")
         redirect_to edit_admin_room_path(@room), notice: "Đã thêm và đồng bộ."
       else
         redirect_to edit_admin_room_path(@room), alert: "Đã thêm, nhưng đồng bộ lỗi: #{@calendar_feed.last_error}"

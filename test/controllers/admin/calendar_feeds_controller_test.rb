@@ -24,6 +24,7 @@ class Admin::CalendarFeedsControllerTest < ActionDispatch::IntegrationTest
     feed = rooms(:garden).calendar_feeds.last
     assert_equal 2, feed.bookings.count
     assert_equal Time.current, feed.last_synced_at
+    assert_equal "added", feed.sync_runs.sole.trigger
     assert_redirected_to edit_admin_room_path(rooms(:garden))
     follow_redirect!
     assert_select "[role=alert]", text: /Đã thêm và đồng bộ/
@@ -54,6 +55,7 @@ class Admin::CalendarFeedsControllerTest < ActionDispatch::IntegrationTest
     post sync_admin_calendar_feed_path(feed)
     assert_redirected_to admin_calendar_feeds_path
     assert_equal "Đã đồng bộ.", flash[:notice]
+    assert_equal "manual", feed.sync_runs.sole.trigger
 
     travel 30.seconds
     post sync_admin_calendar_feed_path(feed)

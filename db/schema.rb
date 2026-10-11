@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_04_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_11_000000) do
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -100,6 +100,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_000001) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
+  create_table "sync_runs", force: :cascade do |t|
+    t.integer "calendar_feed_id", null: false
+    t.string "trigger", null: false
+    t.boolean "ok", null: false
+    t.string "error"
+    t.integer "created_count", default: 0, null: false
+    t.integer "updated_count", default: 0, null: false
+    t.integer "removed_count", default: 0, null: false
+    t.datetime "started_at", null: false
+    t.datetime "finished_at", null: false
+    t.index ["calendar_feed_id"], name: "index_sync_runs_on_calendar_feed_id"
+    t.index ["started_at"], name: "index_sync_runs_on_started_at"
+    t.check_constraint "\"trigger\" IN ('hourly', 'manual', 'added')", name: "sync_runs_trigger_values"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "phone_number", null: false
     t.string "password_digest", null: false
@@ -133,4 +148,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_000001) do
   add_foreign_key "place_memberships", "users"
   add_foreign_key "rooms", "places"
   add_foreign_key "sessions", "users"
+  add_foreign_key "sync_runs", "calendar_feeds", on_delete: :cascade
 end

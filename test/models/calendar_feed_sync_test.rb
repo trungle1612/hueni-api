@@ -231,4 +231,40 @@ class CalendarFeedSyncTest < ActiveSupport::TestCase
     assert @feed.sync
     assert_nil in_house.reload.removed_from_feed_at
   end
+
+  test "each sync leaves a run: trigger, duration and what changed" do
+    moved = ical_booking("1418fb94e984-reserved-1@airbnb.com", "2026-10-09", "2026-10-11")
+    ical_booking("gone@airbnb.com", "2026-10-28", "2026-10-30")
+    stub_feed("airbnb.ics")
+
+    assert @feed.sync(trigger: "hourly")
+
+    run = @feed.sync_runs.sole
+    assert_equal [ "hourly", true, nil, 1, 1, 1 ], run.slice(:trigger, :ok, :error, :created_count, :updated_count, :removed_count).values
+    assert_equal [ Time.current, Time.current ], [ run.started_at, run.finished_at ]
+    assert_equal Date.new(2026, 10, 10), moved.reload.start_date
+
+    assert @feed.sync
+    assert_equal [ "manual", 0, 0, 0 ], @feed.sync_runs.last.slice(:trigger, :created_count, :updated_count, :removed_count).values
+  end
+
+  test "a failed sync still leaves a run with the error and no counts" do
+    stub_feed(body: "", status: 500)
+
+    assert_not @feed.sync(trigger: "added")
+
+    run = @feed.sync_runs.sole
+    assert_equal [ "added", false, "RuntimeError: HTTP 500", 0 ], run.slice(:trigger, :ok, :error, :created_count).values
+    assert_no_match "token", run.error
+  end
+
+  test "runs older than 30 days are pruned, newer ones kept" do
+    old = @feed.sync_runs.create!(trigger: "hourly", ok: true, started_at: 31.days.ago, finished_at: 31.days.ago)
+    recent = @feed.sync_runs.create!(trigger: "hourly", ok: true, started_at: 29.days.ago, finished_at: 29.days.ago)
+
+    assert_equal 1, SyncRun.prune
+    assert_not SyncRun.exists?(old.id)
+    assert SyncRun.exists?(recent.id)
+    assert_equal "SyncRun.prune", YAML.load_file(Rails.root.join("config/recurring.yml")).dig("production", "prune_sync_runs", "command")
+  end
 end
