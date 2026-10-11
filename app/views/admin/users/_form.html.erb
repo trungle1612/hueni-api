@@ -21,7 +21,7 @@
     </div>
     <fieldset>
       <legend class="label text-sm mb-1">Homestay</legend>
-      <div class="text-xs opacity-60 mb-2">Quản trị viên luôn quản lý được mọi homestay.</div>
+      <div class="text-xs opacity-60 mb-2">Quản trị viên cũng chỉ xem được homestay mình là thành viên.</div>
       <% roles = user.place_memberships.to_h { [ it.place_id, it.role ] } %>
       <div class="flex flex-col gap-2 max-h-80 overflow-y-auto">
         <% Place.order(:name).each do |place| %>
