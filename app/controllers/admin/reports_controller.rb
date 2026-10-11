@@ -1,4 +1,4 @@
-# Owners and admins: one homestay's month in numbers (see Report).
+# Owners: one homestay's month in numbers (see Report).
 class Admin::ReportsController < Admin::BaseController
   # Menu entry and homestay switcher: the picked homestay, else the first one you own. Staff own none → dashboard.
   def index
@@ -16,8 +16,7 @@ class Admin::ReportsController < Admin::BaseController
 
   private
     def owned_places
-      places = Current.user.accessible_places.order(:name)
-      Current.user.admin? ? places : places.where(id: Current.user.place_memberships.where(role: "owner").select(:place_id))
+      Current.user.accessible_places.where(id: Current.user.place_memberships.where(role: "owner").select(:place_id)).order(:name)
     end
 
     # A YYYY-MM query param, or nil when missing or malformed.

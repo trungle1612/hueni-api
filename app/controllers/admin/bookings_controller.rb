@@ -3,7 +3,7 @@ class Admin::BookingsController < Admin::BaseController
   before_action :set_booking, only: %i[edit update]
   before_action :set_any_booking, only: %i[check_in check_out no_show undo_check_in undo_check_out move declare]
   before_action -> { authorize!(:operate, @booking.room.place) }, only: %i[check_in check_out no_show move declare]
-  before_action -> { authorize!(:undo, @booking.room.place) }, only: %i[undo_check_in undo_check_out]
+  before_action -> { authorize!(:manage, @booking.room.place) }, only: %i[undo_check_in undo_check_out]
 
   def new
     start_date = date_param(:start_date) || Date.current

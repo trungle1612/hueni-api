@@ -298,7 +298,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  test "admins who aren't members get 403 on every front-desk action and see no buttons" do
+  test "admins who aren't members can't open a booking or act on it" do
     booking = bookings(:limdim_confirmed)
     in_house = rooms(:garden).bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02", guests: 1)
     in_house.check_in
@@ -306,18 +306,14 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     log_in users(:admin)
 
     get edit_admin_booking_path(booking)
-    assert_response :success
-    assert_select "#stay form", count: 0
-    get edit_admin_booking_path(in_house)
-    assert_select "#stay form", count: 0
-    assert_select "#move", count: 0
+    assert_response :not_found
 
     { check_in: booking, no_show: booking, check_out: in_house, undo_check_in: in_house, declare: in_house }.each do |action, target|
       post public_send("#{action}_admin_booking_path", target), params: { guests: 2 }
-      assert_response :forbidden, action
+      assert_response :not_found, action
     end
     post move_admin_booking_path(in_house), params: { room_id: rooms(:limdim).id }
-    assert_response :forbidden
+    assert_response :not_found
     assert_nil booking.reload.checked_in_at
     assert_not booking.cancelled?
     assert_equal [ rooms(:garden), nil, nil ], in_house.reload.values_at(:room, :checked_out_at, :declared_at)

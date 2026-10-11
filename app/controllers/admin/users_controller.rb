@@ -62,7 +62,7 @@ class Admin::UsersController < Admin::BaseController
     def save_with_memberships
       User.transaction do
         yield or raise ActiveRecord::Rollback
-        Current.user.accessible_places.find_each do |place|
+        Place.find_each do |place| # admins assign every homestay, also ones they aren't a member of
           role = params.dig(:memberships, place.id.to_s).presence
           membership = @user.place_memberships.find_or_initialize_by(place:)
           if role then membership.update!(role:)

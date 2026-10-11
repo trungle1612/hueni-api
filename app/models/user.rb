@@ -30,28 +30,22 @@ class User < ApplicationRecord
 
   # The single access rule for admin code: look records up only through these.
   # Out-of-scope `find` raises RecordNotFound, which Rails renders as 404.
-  def accessible_places = admin? ? Place.all : Place.where(id: place_memberships.select(:place_id))
+  # Homestay data belongs to its members, admins included: an admin runs accounts, not homestays (#85).
+  def accessible_places = Place.where(id: place_memberships.select(:place_id))
   def accessible_rooms = Room.where(place_id: accessible_places.select(:id))
   def accessible_calendar_feeds = CalendarFeed.where(room_id: accessible_rooms.select(:id))
   def accessible_bookings = Booking.where(room_id: accessible_rooms.select(:id))
 
-  # "owner" | "staff" | nil at this homestay. Admins count as owners everywhere.
-  def role_at(place)
-    admin? ? "owner" : membership_role_at(place)
-  end
-
-  # The user's own membership at this homestay, ignoring the admin role.
-  def membership_role_at(place) = place_memberships.find_by(place:)&.role
+  # "owner" | "staff" | nil at this homestay.
+  def role_at(place) = place_memberships.find_by(place:)&.role
 
   # The one authorization rule, shaped like Pundit / Action Policy so a later switch is mechanical.
   # Scoping (accessible_*) still decides what you can see at all.
   def allowed_to?(action, place)
     case action
     when :manage then role_at(place) == "owner"
-    # Front-desk work (check-in/out, no-show, room move, lưu trú, cleaning) belongs to the homestay's own
-    # people: admins only through a membership. Hoàn tác is for its owners.
-    when :operate then membership_role_at(place).present?
-    when :undo then membership_role_at(place) == "owner"
+    # Front-desk work (check-in/out, no-show, room move, lưu trú, cleaning): owners and staff.
+    when :operate then role_at(place).present?
     else raise ArgumentError, "unknown action #{action.inspect}"
     end
   end

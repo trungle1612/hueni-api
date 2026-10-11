@@ -49,7 +49,7 @@
       </div>
     <% end %>
   </div>
-<% else %>
+<% elsif !@all_places %>
   <div class="card bg-base-100 border border-dashed border-base-300">
     <div class="card-body items-center text-center py-10">
       <%= render "shared/icon", name: "home" %>
@@ -57,4 +57,31 @@
       <div class="text-sm opacity-70">Quản trị viên sẽ gán homestay cho tài khoản của bạn.</div>
     </div>
   </div>
+<% end %>
+
+<% if @all_places %>
+  <section class="mt-6">
+    <h2 class="font-semibold">Homestay</h2>
+    <p class="text-xs opacity-60 mb-2">Dữ liệu homestay chỉ thành viên xem được. Muốn giúp chủ nhà: thêm mình làm thành viên ở <%= link_to "Người dùng", admin_users_path, class: "link" %>.</p>
+    <ul id="all_places" class="bg-base-100 rounded-box shadow-sm divide-y divide-base-200">
+      <% @all_places.each do |place| %>
+        <li class="p-3 text-sm">
+          <div class="flex flex-wrap items-center gap-2">
+            <% if Current.user.role_at(place) %>
+              <%= link_to place.name, admin_place_path(place.slug), class: "font-semibold mr-auto" %>
+            <% else %>
+              <span class="font-semibold mr-auto"><%= place.name %></span>
+            <% end %>
+            <% if (errors = @all_feed_errors[place.id].to_i).positive? %>
+              <span class="badge badge-soft badge-error badge-sm">Kênh OTA lỗi: <%= errors %></span>
+            <% end %>
+          </div>
+          <div class="text-xs opacity-70">
+            <% members = place.place_memberships.sort_by { [ it.owner? ? 0 : 1, it.user.name ] } %>
+            <%= members.any? ? members.map { "#{it.user.name} · #{PlaceMembership::ROLE_LABELS.fetch(it.role)}" }.join(", ") : "Chưa có thành viên" %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  </section>
 <% end %>

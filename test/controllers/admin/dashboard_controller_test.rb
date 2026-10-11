@@ -64,13 +64,20 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "main .card", text: /tomo homestay/
     assert_select "main", text: /6\/24 Kim Long/, count: 0 # no address on the dashboard
     assert_select "main", text: /Hiu Hill Homestay/, count: 0
+    assert_select "#all_places", count: 0
   end
 
-  test "admin sees every homestay" do
+  test "admins get every homestay's members and failing feeds, with no guest data or links" do
+    travel_to Time.zone.local(2026, 10, 1, 12)
+    calendar_feeds(:limdim_airbnb).update_columns(last_error: "timeout", last_error_at: Time.current)
     log_in users(:admin)
     get admin_root_path
-    assert_select "main .card", text: /tomo homestay/
-    assert_select "main .card", text: /Hiu Hill Homestay/
+    assert_select "#all_places li", 2
+    assert_select "#all_places li", text: /tomo homestay.*Kênh OTA lỗi: 1.*Chị Lan · Chủ/m
+    assert_select "#all_places li", text: /Hiu Hill Homestay.*Chưa có thành viên/m
+    assert_select "#all_places a", count: 0
+    assert_select "main .card", count: 0 # no homestay cards, no empty state
+    assert_select "main", text: /Anh Minh|Limdim/, count: 0
   end
 
   test "cards link to the homestay page and show today's free rooms" do
@@ -181,9 +188,7 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     get admin_root_path
     assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /tomo homestay/, count: 0
 
-    delete session_path
-    places(:tomo).place_memberships.create!(user: users(:admin), role: "owner")
-    log_in users(:admin)
+    places(:hiuhill).place_memberships.create!(user: users(:owner), role: "staff")
     get admin_root_path
     assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /Phòng Limdim · tomo homestay/
   end
@@ -244,7 +249,9 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "#tile_room_#{other_room.id}", count: 0
     assert_select "#dirty_rooms", count: 0
     assert_select "main .card", text: /tomo homestay/
-    assert_select "main .card", text: /Hiu Hill Homestay/
+    assert_select "main .card", text: /Hiu Hill Homestay/, count: 0
+    assert_select "#all_places a[href='#{admin_place_path("tomo-homestay")}']", text: "tomo homestay"
+    assert_select "#all_places a[href='#{admin_place_path("hiuhill-homestay")}']", count: 0
   end
 
   test "admin without memberships sees the homestay list but no Hôm nay or room boards" do
@@ -254,8 +261,8 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "#today", count: 0
     assert_select "[id^='tile_room_']", count: 0
-    assert_select "main .card", text: /tomo homestay/
-    assert_select "main .card", text: /Hiu Hill Homestay/
+    assert_select "#all_places li", text: /tomo homestay/
+    assert_select "#all_places li", text: /Hiu Hill Homestay/
   end
 
   test "an arrival into a room whose guest hasn't left shows Phòng còn khách instead of Check-in" do

@@ -8,9 +8,12 @@ class Admin::DashboardController < Admin::BaseController
     @active_rooms = Room.where(active: true, place_id: @places.select(:id)).group(:place_id).count
     @feed_errors = Current.user.accessible_calendar_feeds.where.not(last_error: nil)
       .joins(:room).group("rooms.place_id").count
-    # Hôm nay and the room boards cover only homestays the user is a member of, even for admins
-    # (the list above stays all of them); for owners and staff that is everything they can access.
-    rooms = Room.where(place_id: Current.user.place_memberships.select(:place_id))
+    # Admins: every homestay's members and failing feeds (platform health), no homestay data.
+    if Current.user.admin?
+      @all_places = Place.includes(place_memberships: :user).order(:name)
+      @all_feed_errors = CalendarFeed.where.not(last_error: nil).joins(:room).group("rooms.place_id").count
+    end
+    rooms = Current.user.accessible_rooms
     @days_by_place = RoomDay.for(rooms.order(:name)).group_by { it.room.place_id }
 
     today = Date.current

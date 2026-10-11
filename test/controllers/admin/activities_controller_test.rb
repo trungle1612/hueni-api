@@ -36,10 +36,10 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_select "a", text: "Xem cũ hơn", count: 0
   end
 
-  test "admin can open it; staff gets 403; another owner's homestay is 404" do
+  test "staff gets 403; another owner's homestay and an admin without membership get 404" do
     log_in users(:admin)
     get admin_place_activity_path("tomo-homestay")
-    assert_response :success
+    assert_response :not_found
 
     log_in staff
     get admin_place_activity_path("tomo-homestay")
