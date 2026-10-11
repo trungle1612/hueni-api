@@ -11,6 +11,9 @@
 ARG RUBY_VERSION=3.4.11
 FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
 
+# Links the GHCR package to the repo, so the deploy workflow's GITHUB_TOKEN may push to it.
+LABEL org.opencontainers.image.source=https://github.com/trungle1612/hueni-api
+
 # Rails app lives here
 WORKDIR /rails
 
