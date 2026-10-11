@@ -32,6 +32,11 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "#user_#{users(:owner).id}", text: /Chị Lan.*0912 345 678.*tomo homestay \(Chủ\)/m
     assert_select "#user_#{users(:admin).id}", text: /Quản trị viên/
+    assert_select "#user_#{users(:admin).id}", text: /homestay/, count: 0
+
+    users(:admin).place_memberships.create!(place: places(:tomo), role: "staff")
+    get admin_users_path
+    assert_select "#user_#{users(:admin).id}", text: /tomo homestay \(Nhân viên\)/
     assert_select "aside a.menu-active", text: /Người dùng/
   end
 
