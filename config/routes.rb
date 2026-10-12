@@ -33,6 +33,7 @@ Rails.application.routes.draw do
       post :clean, on: :member
       resources :calendar_feeds, only: :create
     end
+    resources :sync_runs, only: :index, path: "dong-bo"
     resources :users, only: %i[index new create edit update] do
       post :reset_password, on: :member
     end

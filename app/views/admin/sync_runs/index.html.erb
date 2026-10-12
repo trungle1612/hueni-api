@@ -1,0 +1,60 @@
+<% content_for :title, "Đồng bộ · hueni admin" %>
+
+<h1 class="text-xl font-semibold mb-1">Lịch sử đồng bộ</h1>
+<p class="text-sm opacity-70 mb-4">Mỗi lần đồng bộ lịch Airbnb / Booking.com: tự động mỗi giờ, bấm Đồng bộ ngay, hoặc khi thêm kênh. Giữ <%= SyncRun::RETENTION.in_days.to_i %> ngày.</p>
+
+<%= form_with url: admin_sync_runs_path, method: :get, class: "flex flex-wrap items-center gap-3 mb-4", data: { controller: "autosubmit", turbo_action: "replace" } do %>
+  <%= select_tag :place, options_for_select([ [ "Mọi homestay", "" ] ] + @places.map { [ it.name, it.slug ] }, @place&.slug),
+        class: "select select-sm w-auto", aria: { label: "Homestay" }, data: { action: "change->autosubmit#submit" } %>
+  <label class="label text-sm">
+    <%= check_box_tag :failed, "1", @failed_only, class: "checkbox checkbox-sm", data: { action: "change->autosubmit#submit" } %> Chỉ lỗi
+  </label>
+<% end %>
+
+<% if @runs.any? %>
+  <div class="max-w-2xl">
+    <% @runs.group_by { it.started_at.beginning_of_hour }.each do |hour, runs| %>
+      <h3 class="text-xs font-bold uppercase tracking-wide text-primary mt-4 mb-1"><%= activity_day(hour.to_date) %> · <%= hour.strftime("%H:00") %></h3>
+      <ul class="list bg-base-100 rounded-box shadow-sm">
+        <% runs.each do |run| %>
+          <% feed = run.calendar_feed %>
+          <li id="<%= dom_id(run) %>" class="list-row items-start py-2.5">
+            <%= activity_icon(run.ok? ? :ok : :error) %>
+            <div class="list-col-grow min-w-0">
+              <div class="text-sm">
+                <span class="font-semibold"><%= feed.room.place.name %></span> · <%= feed.provider_label %> · Phòng <%= feed.room.name %>
+                <% unless run.hourly? %><span class="badge badge-soft badge-neutral badge-sm ml-1"><%= run.trigger_label %></span><% end %>
+              </div>
+              <% if run.ok? %>
+                <div class="text-xs mt-0.5 <%= run.changes? ? "" : "opacity-60" %>">
+                  <% if run.changes? %>
+                    <%= [ ("+#{run.created_count} mới" if run.created_count.positive?), ("#{run.updated_count} đổi ngày" if run.updated_count.positive?), ("#{run.removed_count} xoá" if run.removed_count.positive?) ].compact.join(" · ") %>
+                  <% else %>
+                    Không thay đổi
+                  <% end %>
+                </div>
+              <% else %>
+                <div class="text-xs text-error mt-0.5 break-words"><%= run.error %></div>
+              <% end %>
+            </div>
+            <div class="text-xs opacity-60 pt-0.5 text-right whitespace-nowrap">
+              <div><%= run.started_at.strftime("%H:%M:%S") %></div>
+              <div><%= number_with_precision(run.duration, precision: 1, separator: ",") %> s</div>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+  <% if @runs.size == Admin::SyncRunsController::PER_PAGE %>
+    <div class="text-center mt-4">
+      <%= link_to "Xem cũ hơn", admin_sync_runs_path(place: @place&.slug, failed: (1 if @failed_only), before: @runs.last.id), class: "btn btn-sm" %>
+    </div>
+  <% end %>
+<% else %>
+  <div class="card bg-base-100 border border-dashed border-base-300">
+    <div class="card-body items-center text-center py-10">
+      <div class="font-semibold">Chưa có lần đồng bộ nào</div>
+    </div>
+  </div>
+<% end %>

@@ -9,7 +9,10 @@ module ApplicationHelper
     if Current.user&.place_memberships&.exists?(role: "owner")
       items << { label: "Báo cáo", icon: "chart", path: admin_report_path, active: controller_name == "reports" }
     end
-    items << { label: "Người dùng", icon: "users", path: admin_users_path, active: controller_name == "users" } if Current.user&.admin?
+    if Current.user&.admin?
+      items << { label: "Người dùng", icon: "users", path: admin_users_path, active: controller_name == "users" }
+      items << { label: "Đồng bộ", icon: "activity", path: admin_sync_runs_path, active: controller_name == "sync_runs" }
+    end
     items
   end
 

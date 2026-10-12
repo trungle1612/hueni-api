@@ -9,6 +9,7 @@ class CalendarFeed < ApplicationRecord
 
   belongs_to :room
   has_many :bookings, dependent: :delete_all
+  has_many :sync_runs, dependent: :delete_all
   # skip keeps the URL (it carries the OTA token) out of every version.
   has_paper_trail on: %i[create update destroy], only: %i[last_error provider], skip: [ :url ],
     meta: { place_id: ->(feed) { feed.room.place_id }, room_id: :room_id }
@@ -50,17 +51,22 @@ class CalendarFeed < ApplicationRecord
   # the error is recorded in last_error instead. Returns true on success.
   # A checked-in stay missing from the feed is never deleted: it is flagged (removed_from_feed_at) for the owner.
   # Changes are logged as the OTA (whodunnit = provider), whoever started the sync.
-  def sync
-    PaperTrail.request(whodunnit: provider) do
+  # Every run, failed or not, leaves a SyncRun (trigger: "hourly" | "manual" | "added").
+  def sync(trigger: "manual")
+    started_at = Time.current
+    counts = Hash.new(0)
+    ok = PaperTrail.request(whodunnit: provider) do
       events = parse(fetch)
       transaction do
         uids = events.map do |event|
-          bookings.find_or_initialize_by(uid: event[:uid])
-            .update!(room:, start_date: event[:start_date], end_date: event[:end_date], source: "ical", status: "confirmed", removed_from_feed_at: nil)
+          booking = bookings.find_or_initialize_by(uid: event[:uid])
+          created = booking.new_record?
+          booking.update!(room:, start_date: event[:start_date], end_date: event[:end_date], source: "ical", status: "confirmed", removed_from_feed_at: nil)
+          counts[created ? :created : :updated] += 1 if created || booking.saved_changes?
           event[:uid]
         end
         gone = bookings.where(end_date: Date.current.next_day..).where.not(uid: uids)
-        gone.where(checked_in_at: nil).find_each(&:destroy!)
+        gone.where(checked_in_at: nil).find_each { it.destroy!; counts[:removed] += 1 }
         gone.where.not(checked_in_at: nil).where(removed_from_feed_at: nil).find_each { it.update!(removed_from_feed_at: Time.current) }
         record_sync(last_synced_at: Time.current, last_error: nil, last_error_at: nil)
       end
@@ -68,8 +74,12 @@ class CalendarFeed < ApplicationRecord
       true
     rescue StandardError => error
       record_sync(last_error: "#{error.class}: #{error.message}".truncate(500), last_error_at: Time.current)
+      counts.clear
       false
     end
+    sync_runs.create!(trigger:, ok:, error: (last_error unless ok), started_at:, finished_at: Time.current,
+      created_count: counts[:created], updated_count: counts[:updated], removed_count: counts[:removed])
+    ok
   end
 
   private

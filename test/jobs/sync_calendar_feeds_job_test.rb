@@ -18,4 +18,13 @@ class SyncCalendarFeedsJobTest < ActiveJob::TestCase
     assert_equal SyncCalendarFeedsJob, task["class"].constantize
     assert_equal 3600, Fugit.parse(task["schedule"]).rough_frequency
   end
+
+  test "a feed's job syncs it as the hourly run" do
+    feed = calendar_feeds(:limdim_airbnb)
+    stub_request(:get, feed.url).to_return(status: 500)
+
+    SyncCalendarFeedJob.perform_now(feed.id)
+
+    assert_equal "hourly", feed.sync_runs.sole.trigger
+  end
 end
