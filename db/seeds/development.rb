@@ -59,6 +59,30 @@ places.each_with_index do |place, place_index|
   booking.bookings.create!(room: rooms.second, uid: "demo-#{place.id}-3@booking.com", source: "ical", start_date: today + 5, end_date: today + 7)
 end
 
+# Sync history (admin → Đồng bộ): the last 3 days of hourly runs for every demo feed, recreated on each seed.
+# Airbnb feeds mostly "no change" with the odd new or moved booking; Booking.com feeds fail for the last 2 hours
+# (matching their last_error above). Plus one "Đồng bộ ngay" and one "Thêm kênh".
+feeds = CalendarFeed.where(room: Room.where(place: places)).order(:id).to_a
+SyncRun.where(calendar_feed: feeds).delete_all
+random = Random.new(92)
+now = Time.current
+runs = (0...72).to_a.reverse.flat_map do |hours_ago|
+  hour = (now - hours_ago.hours).beginning_of_hour
+  feeds.each_with_index.map do |feed, i|
+    started_at = hour + i * 2 + random.rand(0.0..1.0)
+    failing = feed.booking? && hours_ago < 2
+    changes = !failing && random.rand < 0.15
+    { calendar_feed_id: feed.id, trigger: "hourly", ok: !failing, error: (feed.last_error if failing),
+      created_count: changes ? random.rand(0..2) : 0, updated_count: changes ? random.rand(0..1) : 0, removed_count: changes && random.rand < 0.3 ? 1 : 0,
+      started_at:, finished_at: started_at + random.rand(0.3..(failing ? 15.0 : 2.5)) }
+  end
+end
+manual = (now - 25.minutes).change(usec: 0)
+runs << { calendar_feed_id: feeds.first.id, trigger: "manual", ok: true, error: nil, created_count: 1, updated_count: 0, removed_count: 0, started_at: manual, finished_at: manual + 1.2 }
+added = (now - 2.days).beginning_of_hour + 40.minutes
+runs << { calendar_feed_id: feeds.last.id, trigger: "added", ok: true, error: nil, created_count: 2, updated_count: 0, removed_count: 0, started_at: added, finished_at: added + 1.8 }
+SyncRun.insert_all!(runs.sort_by { it[:started_at] }) # ids follow time, like real runs
+
 Vacancy.bust
-puts "Seeded #{places.map(&:name).join(", ")}: #{Room.count} rooms, #{Booking.count} bookings, #{CalendarFeed.count} feeds."
+puts "Seeded #{places.map(&:name).join(", ")}: #{Room.count} rooms, #{Booking.count} bookings, #{CalendarFeed.count} feeds, #{SyncRun.count} sync runs."
 puts "Log in at /session/new as 0900 000 002 (owner), 0900 000 003 (staff) or 0900 000 001 (admin), password password123."
