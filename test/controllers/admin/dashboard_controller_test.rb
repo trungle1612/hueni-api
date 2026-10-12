@@ -10,9 +10,11 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
-  test "root redirects to admin" do
-    get root_path
-    assert_redirected_to "/admin"
+  test "root serves the Zalo site verification tag and forwards to admin" do
+    get "/"
+    assert_response :success
+    assert_includes response.body, 'name="zalo-platform-site-verification"'
+    assert_includes response.body, "url=/admin"
   end
 
   test "shows the dashboard to a logged-in user" do

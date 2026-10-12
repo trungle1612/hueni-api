@@ -53,8 +53,6 @@ Rails.application.routes.draw do
     end
   end
 
-  root to: redirect("/admin")
-
   namespace :v1 do
     get "vacancy", to: "vacancy#show"
   end
