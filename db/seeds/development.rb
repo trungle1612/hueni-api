@@ -4,7 +4,7 @@
 #   bin/rails db:seed
 #
 # Logins: 0900 000 001 / password123 (admin: accounts only, member of nothing). Owner (3 homestays) and staff (first
-# homestay) log in with the fake Zalo on the login page (config/initializers/omniauth.rb).
+# homestay) have fake Zalo ids: log in as them with ZALO_FAKE=1 bin/dev (config/initializers/omniauth.rb).
 
 # db/places/*.json is git-ignored (copied from hue-ni), so a fresh clone may have no places: make some up.
 if Place.none?
@@ -87,4 +87,4 @@ SyncRun.insert_all!(runs.sort_by { it[:started_at] }) # ids follow time, like re
 
 Vacancy.bust
 puts "Seeded #{places.map(&:name).join(", ")}: #{Room.count} rooms, #{Booking.count} bookings, #{CalendarFeed.count} feeds, #{SyncRun.count} sync runs."
-puts "Log in at /session/new with the fake Zalo as Chị Hoa (owner) or Em Hằng (staff), or as 0900 000 001 / password123 (admin)."
+puts "Log in at /session/new as 0900 000 001 / password123 (admin), with real Zalo, or (ZALO_FAKE=1 bin/dev) fake Zalo as Chị Hoa / Em Hằng."

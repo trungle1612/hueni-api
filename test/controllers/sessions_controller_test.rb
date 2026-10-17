@@ -85,4 +85,16 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     head admin_root_path
     assert_equal admin_root_url, session[:return_to_after_authenticating]
   end
+
+  test "without Zalo keys the button is disabled with a notice instead of failing at Zalo" do
+    OmniAuth.config.test_mode = false
+    configured, Rails.configuration.x.zalo_configured = Rails.configuration.x.zalo_configured, false
+    get new_session_path
+    assert_select "form[action='/auth/zalo2']", 0
+    assert_select "button[disabled]", "Đăng nhập bằng Zalo"
+    assert_select "[role=alert]", text: /Chưa cấu hình Zalo/
+  ensure
+    OmniAuth.config.test_mode = true
+    Rails.configuration.x.zalo_configured = configured
+  end
 end
