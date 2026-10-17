@@ -1,0 +1,39 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 4,
+      "fingerprint": "abcc3015545a50fa942d253139b43f9a0e2e7f82c3f60e93b7922d0128b8d20c",
+      "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
+      "file": "app/views/admin/registration_requests/show.html.erb",
+      "line": 43,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to(\"M\\u1EDF Google Maps \\u2197\", RegistrationRequest.find(params[:id]).maps_url, :target => \"_blank\", :rel => \"noopener noreferrer\", :class => \"link text-sm\")",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Admin::RegistrationRequestsController",
+          "method": "show",
+          "line": 10,
+          "file": "app/controllers/admin/registration_requests_controller.rb",
+          "rendered": {
+            "name": "admin/registration_requests/show",
+            "file": "app/views/admin/registration_requests/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "admin/registration_requests/show"
+      },
+      "user_input": "RegistrationRequest.find(params[:id]).maps_url",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
+      "note": "maps_url is validated as \\Ahttps?://\\S+\\z in RegistrationRequest"
+    }
+  ],
+  "brakeman_version": "8.1.0"
+}
