@@ -10,8 +10,10 @@ OmniAuth::Strategies::Zalo2.info { { "name" => raw_info["name"], "picture" => ra
 
 OmniAuth.config.logger = Rails.logger
 
-if Rails.env.development?
-  # No real Zalo app in development: the Zalo button logs in as the Zalo id picked next to it.
+if Rails.env.development? && ENV["ZALO_APP_ID"].blank?
+  # No Zalo app keys in development: the Zalo button logs in as the Zalo id picked next to it.
+  # Real Zalo locally: start with the keys set (set -a; source .env; set +a; bin/dev) and add
+  # http://localhost:3000/auth/zalo2/callback as a callback URL in the Zalo app.
   OmniAuth.config.test_mode = true
   OmniAuth.config.before_request_phase = ->(env) do
     OmniAuth.config.mock_auth[:zalo2] = OmniAuth::AuthHash.new(provider: "zalo2", uid: Rack::Request.new(env).params["dev_zalo_id"].to_s)
