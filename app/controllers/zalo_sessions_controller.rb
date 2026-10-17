@@ -1,5 +1,5 @@
-# Zalo login and linking (#97). Zalo gives no phone number, so a Zalo id is bound to an account only when
-# we already know who it is: through a one-time link (/dat-mat-khau/:token) or while logged in.
+# Zalo login and linking (#97). A Zalo id is bound to an account only when we know who it is: through a
+# one-time link (/dat-mat-khau/:token), while logged in, or by the Zalo account's phone number (#98).
 # Never creates accounts.
 class ZaloSessionsController < ApplicationController
   ALREADY_LINKED = "Tài khoản Zalo này đã liên kết với người dùng khác.".freeze
@@ -26,12 +26,22 @@ class ZaloSessionsController < ApplicationController
 
   private
     def log_in(zalo_id)
-      if (user = User.find_by(zalo_id:))
+      if (user = User.find_by(zalo_id:) || link_by_phone(zalo_id))
         start_new_session_for user
         redirect_to after_authentication_url
       else
         redirect_to new_session_path, alert: "Tài khoản Zalo này chưa được liên kết. Liên hệ quản trị viên."
       end
+    end
+
+    # #98: with Zalo's phone permission, the number on the Zalo account (verified by Zalo) links an owner or
+    # staff member who has none yet. `normalizes` turns Zalo's 84… / +84… into our 0…. Never admins.
+    def link_by_phone(zalo_id)
+      phone = request.env.dig("omniauth.auth", "extra", "raw_info", "phone").to_s
+      return if phone.blank?
+
+      user = User.user.find_by(phone_number: phone, zalo_id: nil)
+      user if user&.update(zalo_id:)
     end
 
     # The token (kept in the session by PasswordSetupsController#edit) proves who this is.
