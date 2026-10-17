@@ -184,6 +184,17 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "#stat_dirty_rooms", text: /1\s*Cần dọn/
   end
 
+  test "a hold due today is an arrival marked as unconfirmed, not listed again under Đang giữ chỗ" do
+    travel_to Time.zone.local(2026, 10, 5, 9)
+    hold = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-06", status: "hold", guest_name: "Chị Hoa", guests: 2)
+    log_in users(:owner)
+    get admin_root_path
+
+    assert_select "#today_booking_#{hold.id} .badge", text: "Giữ chỗ · chưa xác nhận"
+    assert_select "#arrivals form[action='#{check_in_admin_booking_path(hold)}'][data-turbo-confirm^='Đang giữ chỗ, chưa xác nhận.'] button.btn-outline", text: "Nhận phòng"
+    assert_select "#holds", count: 0
+  end
+
   test "homestay name shows in rows only for users with several homestays" do
     travel_to Time.zone.local(2026, 10, 1, 9)
     log_in users(:owner)
