@@ -37,6 +37,8 @@ env:
     - RAILS_MASTER_KEY
     - ZALO_APP_ID
     - ZALO_APP_SECRET
+    - TELEGRAM_BOT_TOKEN
+    - TELEGRAM_CHAT_ID
   clear:
     # Solid Queue (hourly iCal sync) runs inside Puma: one small server.
     SOLID_QUEUE_IN_PUMA: true
