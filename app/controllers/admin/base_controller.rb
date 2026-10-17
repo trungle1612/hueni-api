@@ -20,6 +20,11 @@ class Admin::BaseController < ApplicationController
       raise Forbidden unless allowed_to?(action, place)
     end
 
+    # Accounts and registrations are the admins' job; everyone else gets the same 404 as a missing page.
+    def require_admin
+      raise ActiveRecord::RecordNotFound unless Current.user.admin?
+    end
+
     # A YYYY-MM-DD query param, or nil when missing or malformed.
     def date_param(key)
       Date.iso8601(params[key].to_s)

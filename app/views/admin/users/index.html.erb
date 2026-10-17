@@ -5,6 +5,41 @@
   <%= link_to "+ Thêm", new_admin_user_path, class: "btn btn-primary btn-sm" %>
 </div>
 
+<% pending, decided = @registrations.partition(&:pending?) %>
+<% if pending.any? %>
+  <section id="registrations" class="mb-6">
+    <h2 class="font-semibold mb-2">Yêu cầu đăng ký <span class="badge badge-error badge-sm"><%= pending.size %></span></h2>
+    <div class="flex flex-col gap-2">
+      <% pending.each do |registration| %>
+        <%= link_to admin_registration_request_path(registration), id: dom_id(registration), class: "card bg-base-100 shadow-sm hover:shadow-md transition-shadow" do %>
+          <div class="card-body p-3 gap-0">
+            <div class="font-semibold"><%= registration.name %></div>
+            <div class="text-xs opacity-70">
+              <%= registration.place ? registration.place.name : "\"#{registration.place_name}\" (chưa có trên hueni)" %>
+              · gửi lúc <%= registration.created_at.strftime("%H:%M %d/%m") %>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </section>
+<% end %>
+<% if decided.any? %>
+  <details id="decided_registrations" class="mb-6">
+    <summary class="text-sm opacity-70 cursor-pointer">Yêu cầu đăng ký đã xử lý (<%= decided.size %>)</summary>
+    <ul class="mt-2 bg-base-100 rounded-box shadow-sm divide-y divide-base-200 text-sm">
+      <% decided.each do |registration| %>
+        <li class="p-3">
+          <%= link_to registration.name, admin_registration_request_path(registration), class: "link font-semibold" %>
+          · <%= registration.homestay_name %>
+          · <%= registration.approved? ? "Đã duyệt" : "Đã từ chối" %> bởi <%= registration.decided_by&.name %>
+          <%= registration.decided_at&.strftime("%d/%m/%Y") %>
+        </li>
+      <% end %>
+    </ul>
+  </details>
+<% end %>
+
 <div class="flex flex-col gap-3">
   <% @users.each do |user| %>
     <%= link_to edit_admin_user_path(user), id: dom_id(user), class: "card bg-base-100 shadow-sm hover:shadow-md transition-shadow" do %>

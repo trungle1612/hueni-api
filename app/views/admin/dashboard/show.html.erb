@@ -4,6 +4,11 @@
 
 <%# Admins link from their own page in Người dùng. %>
 <%= render "shared/link_zalo" unless Current.user.zalo_id || Current.user.admin? %>
+<% if @pending_registrations.to_i.positive? %>
+  <%= link_to admin_users_path(anchor: "registrations"), id: "pending_registrations", class: "alert alert-info alert-soft mb-4" do %>
+    <span><%= @pending_registrations %> yêu cầu đăng ký chờ duyệt</span>
+  <% end %>
+<% end %>
 
 <% if @places.any? %>
   <div id="stats" class="grid grid-cols-4 gap-2 mb-4">

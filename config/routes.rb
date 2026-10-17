@@ -40,6 +40,12 @@ Rails.application.routes.draw do
     resources :users, only: %i[index new create edit update] do
       post :reset_password, on: :member
     end
+    resources :registration_requests, only: %i[show update] do
+      member do
+        patch :approve
+        patch :reject
+      end
+    end
     resources :calendar_feeds, only: %i[index destroy] do
       post :sync, on: :member
     end
