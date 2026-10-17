@@ -1,10 +1,6 @@
 require "test_helper"
 
 class Admin::ReportsControllerTest < ActionDispatch::IntegrationTest
-  def log_in(user)
-    post session_path, params: { phone_number: user.phone_number, password: "password123" }
-  end
-
   def staff
     @staff ||= User.create!(name: "Em Hằng", phone_number: "0987111222", password: "password123").tap do
       it.place_memberships.create!(place: places(:tomo), role: "staff")

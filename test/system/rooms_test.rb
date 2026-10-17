@@ -2,11 +2,7 @@ require "application_system_test_case"
 
 class RoomsTest < ApplicationSystemTestCase
   setup do
-    visit new_session_path
-    fill_in "Số điện thoại", with: "0912 345 678"
-    fill_in "Mật khẩu", with: "password123"
-    click_button "Đăng nhập"
-    assert_selector "h1", text: "Tổng quan"
+    log_in_with_zalo
   end
 
   test "owner adds a room from the dashboard" do

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_11_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_17_000000) do
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -122,7 +122,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_11_000000) do
     t.string "role", default: "user", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "zalo_id"
     t.index ["phone_number"], name: "index_users_on_phone_number", unique: true
+    t.index ["zalo_id"], name: "index_users_on_zalo_id", unique: true
     t.check_constraint "role IN ('admin', 'user')", name: "users_role_values"
   end
 

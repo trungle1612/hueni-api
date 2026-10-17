@@ -103,7 +103,7 @@
               <span class="badge badge-soft badge-sm <%= membership.owner? ? "badge-primary" : "badge-info" %>"><%= membership.role_label %></span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-sm opacity-70"><%= phone(membership.user.phone_number) %></span>
+              <span class="flex items-center gap-2 text-sm"><span class="opacity-70"><%= phone(membership.user.phone_number) %></span><%= zalo_badge(membership.user) %></span>
               <%= link_to render("shared/icon", name: "pencil"), edit_admin_place_member_path(@place.slug, membership), class: "btn btn-ghost btn-square btn-xs", aria: { label: "Sửa #{membership.user.name}" } %>
             </div>
           </div>

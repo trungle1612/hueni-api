@@ -5,13 +5,20 @@
 
 <%= render "form", user: @user %>
 
-<% unless @user == Current.user %>
+<% if @user != Current.user %>
   <div class="card bg-base-100 shadow-sm mt-4">
     <div class="card-body p-4 gap-2">
-      <div class="font-semibold">Quên mật khẩu?</div>
-      <div class="text-sm opacity-70">Tạo link mới để <%= @user.name %> tự đặt lại mật khẩu. Mật khẩu cũ và các link cũ hết dùng được; <%= @user.name %> bị đăng xuất khỏi mọi thiết bị.</div>
-      <%= button_to "Tạo link đặt lại mật khẩu", reset_password_admin_user_path(@user), class: "btn btn-outline btn-error btn-block",
-            form: { data: { turbo_confirm: "Khoá mật khẩu hiện tại của #{@user.name} và tạo link mới?" } } %>
+      <% if @user.admin? %>
+        <div class="font-semibold">Quên mật khẩu?</div>
+        <div class="text-sm opacity-70">Tạo link mới để <%= @user.name %> tự đặt lại mật khẩu. Mật khẩu cũ, liên kết Zalo và các link cũ hết dùng được; <%= @user.name %> bị đăng xuất khỏi mọi thiết bị.</div>
+      <% else %>
+        <div class="font-semibold">Đổi Zalo hoặc mất điện thoại?</div>
+        <div class="text-sm opacity-70">Tạo link mới để <%= @user.name %> liên kết lại Zalo. Liên kết Zalo cũ và các link cũ hết dùng được; <%= @user.name %> bị đăng xuất khỏi mọi thiết bị.</div>
+      <% end %>
+      <%= button_to @user.admin? ? "Tạo link đặt lại mật khẩu" : "Tạo link liên kết Zalo", reset_password_admin_user_path(@user), class: "btn btn-outline btn-error btn-block",
+            form: { data: { turbo_confirm: "Huỷ đăng nhập hiện tại của #{@user.name} và tạo link mới?" } } %>
     </div>
   </div>
+<% elsif !@user.zalo_id %>
+  <div class="mt-4"><%= render "shared/link_zalo" %></div>
 <% end %>

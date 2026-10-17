@@ -5,6 +5,7 @@ require_relative "test_helpers/session_test_helper"
 require "webmock/minitest"
 
 WebMock.disable_net_connect!(allow_localhost: true)
+OmniAuth.config.test_mode = true
 
 module ActiveSupport
   class TestCase

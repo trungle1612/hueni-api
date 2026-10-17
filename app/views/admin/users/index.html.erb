@@ -13,7 +13,7 @@
           <div class="font-semibold"><%= user.name %><%= " (bạn)" if user == Current.user %></div>
           <span class="badge badge-soft badge-sm <%= user.admin? ? "badge-primary" : "badge-neutral" %>"><%= user.role_label %></span>
         </div>
-        <div class="text-sm opacity-70"><%= phone(user.phone_number) %></div>
+        <div class="flex items-center gap-2 text-sm"><span class="opacity-70"><%= phone(user.phone_number) %></span><%= zalo_badge(user) %></div>
         <% if user.place_memberships.any? %>
           <div class="text-xs opacity-60"><%= user.place_memberships.sort_by { it.place.name }.map { "#{it.place.name} (#{it.role_label})" }.join(", ") %></div>
         <% elsif !user.admin? %>

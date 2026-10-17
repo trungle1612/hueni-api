@@ -1,7 +1,7 @@
 require "test_helper"
 
 class SessionsControllerTest < ActionDispatch::IntegrationTest
-  def log_in(phone, password = "password123")
+  def log_in_with_password(phone, password = "password123")
     post session_path, params: { phone_number: phone, password: password }
   end
 
@@ -11,42 +11,59 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1, h2", text: "Đăng nhập"
   end
 
-  test "correct credentials start a session and go to admin" do
-    assert_difference -> { users(:owner).sessions.count }, 1 do
-      log_in "0912345678"
+  test "login page leads with Zalo; the password form is for admins" do
+    get new_session_path
+    assert_select "form[action='/auth/zalo2'] button", "Đăng nhập bằng Zalo"
+    assert_select "details summary", "Quản trị viên đăng nhập bằng mật khẩu"
+    assert_select "details:not([open]) input[name=password]"
+  end
+
+  test "admin with correct credentials starts a session and goes to admin" do
+    assert_difference -> { users(:admin).sessions.count }, 1 do
+      log_in_with_password "0905111222"
     end
     assert_redirected_to admin_root_url
   end
 
   test "phone number spacing and +84 prefix don't matter" do
-    log_in "+84 912.345-678"
+    log_in_with_password "+84 905.111-222"
     assert_redirected_to admin_root_url
   end
 
   test "wrong password goes back to login with an error and no session" do
     assert_no_difference -> { Session.count } do
-      log_in "0912345678", "wrong-password"
+      log_in_with_password "0905111222", "wrong-password"
     end
-    assert_redirected_to new_session_path
+    assert_redirected_to new_session_path(admin: 1)
+    follow_redirect!
+    assert_select "[role=alert]", text: /Số điện thoại hoặc mật khẩu không đúng/
+    assert_select "details[open] input[name=password]"
+  end
+
+  test "a non-admin with the right password is refused with the wrong-password message" do
+    assert_no_difference -> { Session.count } do
+      log_in_with_password "0912345678"
+    end
+    assert_redirected_to new_session_path(admin: 1)
     follow_redirect!
     assert_select "[role=alert]", text: /Số điện thoại hoặc mật khẩu không đúng/
   end
 
   test "logout ends only this device's session" do
-    other_device = users(:owner).sessions.create!(ip_address: "1.1.1.1", user_agent: "phone")
-    log_in "0912345678"
+    other_device = users(:admin).sessions.create!(ip_address: "1.1.1.1", user_agent: "phone")
+    log_in_with_password "0905111222"
 
     delete session_path
 
     assert_redirected_to new_session_path
-    assert_equal [ other_device ], users(:owner).sessions.reload.to_a
+    assert_equal [ other_device ], users(:admin).sessions.reload.to_a
     get admin_root_path
     assert_redirected_to new_session_path
   end
 
   test "session of a deleted user no longer works" do
-    log_in "0912345678"
-    users(:owner).destroy!
+    log_in_with_password "0905111222"
+    users(:admin).destroy!
     get admin_root_path
     assert_redirected_to new_session_path
   end
@@ -55,7 +72,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     delete session_path
     assert_redirected_to new_session_path
 
-    log_in "0912345678"
+    log_in_with_password "0905111222"
     assert_redirected_to admin_root_url
   end
 

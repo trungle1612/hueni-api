@@ -1,10 +1,6 @@
 require "test_helper"
 
 class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
-  def log_in(user)
-    post session_path, params: { phone_number: user.phone_number, password: "password123" }
-  end
-
   setup do
     log_in users(:owner)
     travel_to Time.zone.local(2026, 10, 1, 12)
