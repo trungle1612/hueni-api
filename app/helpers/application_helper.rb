@@ -22,6 +22,13 @@ module ApplicationHelper
     tag.span(PlaceMembership::ROLE_LABELS.fetch(role), class: "badge badge-soft badge-sm #{role == "owner" ? "badge-primary" : "badge-info"}")
   end
 
+  # Owners and staff can only log in once Zalo is linked (#97); admins also have a password.
+  def zalo_badge(user)
+    if user.zalo_id then tag.span("Zalo", class: "badge badge-soft badge-sm badge-success")
+    elsif !user.admin? then tag.span("Chưa liên kết Zalo", class: "badge badge-soft badge-sm badge-warning")
+    end
+  end
+
   # "0912345678" → "0912 345 678"
   def phone(number)
     number.to_s.sub(/\A(\d{4})(\d{3})(\d{3})\z/, '\1 \2 \3')

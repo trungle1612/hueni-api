@@ -1,4 +1,4 @@
-# Admin only. No email yet: the admin sends each user a one-time link to set their own password (Zalo login later).
+# Admin only. No email: the admin sends each user a one-time link over Zalo, to link Zalo (or, for admins, set a password).
 class Admin::UsersController < Admin::BaseController
   before_action :require_admin
   before_action :set_user, only: %i[edit update reset_password]
@@ -31,13 +31,12 @@ class Admin::UsersController < Admin::BaseController
     end
   end
 
-  # Locks the old password and older links and logs the user out everywhere: a reset usually means a
-  # forgotten password, a lost phone or a leaked one. Not for yourself: it would end your own session.
+  # A reset usually means a forgotten password, a lost phone or a new Zalo account (User#reset_login!).
+  # Not for yourself: it would end your own session.
   def reset_password
     raise ActiveRecord::RecordNotFound if @user == Current.user
-    @user.update!(password: User.unknown_password)
-    @user.sessions.destroy_all
-    redirect_to edit_admin_user_path(@user), notice: "Đã khoá mật khẩu cũ và đăng xuất #{@user.name} khỏi mọi thiết bị.",
+    @user.reset_login!
+    redirect_to edit_admin_user_path(@user), notice: "Đã huỷ đăng nhập cũ và đăng xuất #{@user.name} khỏi mọi thiết bị.",
       flash: { setup_link: setup_link }
   end
 

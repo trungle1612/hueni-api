@@ -1,17 +1,9 @@
 require "application_system_test_case"
 
 class MembersTest < ApplicationSystemTestCase
-  def log_in(phone, password)
-    visit new_session_path
-    fill_in "Số điện thoại", with: phone
-    fill_in "Mật khẩu", with: password
-    click_button "Đăng nhập"
-    assert_selector "h1", text: "Tổng quan"
-  end
-
-  test "owner adds staff, who sets a password, takes a booking, and can't edit rooms" do
+  test "owner adds staff, who links Zalo, takes a booking, and can't edit rooms" do
     travel_to Time.zone.local(2026, 10, 1, 12)
-    log_in "0912 345 678", "password123"
+    log_in_with_zalo
     click_on "tomo homestay"
     within("#members") { click_on "+ Thêm" }
     fill_in "Tên", with: "Em Hằng"
@@ -23,9 +15,8 @@ class MembersTest < ApplicationSystemTestCase
     assert_current_path new_session_path
 
     visit link
-    fill_in "Mật khẩu mới", with: "hang-hue-2026"
-    fill_in "Nhập lại mật khẩu", with: "hang-hue-2026"
-    click_button "Lưu mật khẩu"
+    OmniAuth.config.mock_auth[:zalo2] = OmniAuth::AuthHash.new(provider: "zalo2", uid: "zalo-hang")
+    click_button "Liên kết Zalo"
     assert_selector "h1", text: "Tổng quan"
     visit admin_place_path("tomo-homestay")
     assert_selector ".badge", text: "Nhân viên"

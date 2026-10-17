@@ -2,6 +2,9 @@ Rails.application.routes.draw do
   resource :session, only: %i[new create destroy]
   get "dat-mat-khau/:token", to: "password_setups#edit", as: :password_setup
   patch "dat-mat-khau/:token", to: "password_setups#update"
+  # POST /auth/zalo2 (the Zalo button) is OmniAuth middleware, not a route.
+  get "auth/zalo2/callback", to: "zalo_sessions#create"
+  get "auth/failure", to: "zalo_sessions#failure"
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

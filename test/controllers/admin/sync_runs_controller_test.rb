@@ -1,10 +1,6 @@
 require "test_helper"
 
 class Admin::SyncRunsControllerTest < ActionDispatch::IntegrationTest
-  def log_in(user)
-    post session_path, params: { phone_number: user.phone_number, password: "password123" }
-  end
-
   setup do
     travel_to Time.zone.local(2026, 10, 5, 15, 30)
     @feed = calendar_feeds(:limdim_airbnb)

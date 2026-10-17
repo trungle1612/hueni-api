@@ -1,10 +1,6 @@
 require "test_helper"
 
 class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
-  def log_in(user, password = "password123")
-    post session_path, params: { phone_number: user.phone_number, password: }
-  end
-
   # The one-time link shown to the admin; its token is the last path segment.
   def setup_token = flash[:setup_link].to_s.split("/").last
 
@@ -33,6 +29,13 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_select "#user_#{users(:owner).id}", text: /Chị Lan.*0912 345 678.*tomo homestay \(Chủ\)/m
     assert_select "#user_#{users(:admin).id}", text: /Quản trị viên/
     assert_select "#user_#{users(:admin).id}", text: /homestay/, count: 0
+    assert_select "#user_#{users(:owner).id} .badge", text: "Zalo"
+
+    users(:owner).update!(zalo_id: nil)
+    users(:admin).update!(zalo_id: nil)
+    get admin_users_path
+    assert_select "#user_#{users(:owner).id} .badge-warning", text: "Chưa liên kết Zalo"
+    assert_select "#user_#{users(:admin).id} .badge-warning", 0 # admins have a password
 
     users(:admin).place_memberships.create!(place: places(:tomo), role: "staff")
     get admin_users_path
@@ -100,7 +103,9 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     assert users(:admin).reload.admin?
   end
 
-  test "a new link locks the old password, older links and every session" do
+  test "a new link unlinks Zalo and locks the old password, older links and every session" do
+    get edit_admin_user_path(users(:owner))
+    assert_select "button", "Tạo link liên kết Zalo"
     users(:owner).sessions.create!(ip_address: "1.1.1.1", user_agent: "phone")
     post reset_password_admin_user_path(users(:owner))
     old_token = setup_token
@@ -109,6 +114,7 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to edit_admin_user_path(users(:owner))
     assert_empty users(:owner).sessions.reload
     assert_not users(:owner).reload.authenticate("password123")
+    assert_nil users(:owner).zalo_id
     assert_nil User.find_by_token_for(:password_setup, old_token)
     assert_equal users(:owner), User.find_by_token_for(:password_setup, setup_token)
   end

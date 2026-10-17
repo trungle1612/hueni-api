@@ -3,8 +3,8 @@
 #
 #   bin/rails db:seed
 #
-# Logins (password "password123"): 0900 000 001 (admin: accounts only, member of nothing), 0900 000 002 (owner of 3 homestays),
-# 0900 000 003 (staff at the first homestay).
+# Logins: 0900 000 001 / password123 (admin: accounts only, member of nothing). Owner (3 homestays) and staff (first
+# homestay) log in with the fake Zalo on the login page (config/initializers/omniauth.rb).
 
 # db/places/*.json is git-ignored (copied from hue-ni), so a fresh clone may have no places: make some up.
 if Place.none?
@@ -16,8 +16,10 @@ places = Place.order(:name).first(3)
 
 User.find_or_create_by!(phone_number: "0900000001") { it.assign_attributes(name: "Quản trị", role: "admin", password: "password123") }
 owner = User.find_or_create_by!(phone_number: "0900000002") { it.assign_attributes(name: "Chị Hoa", role: "user", password: "password123") }
+owner.update!(zalo_id: "dev-zalo-owner")
 places.each { |place| owner.place_memberships.find_or_create_by!(place:) }
 staff = User.find_or_create_by!(phone_number: "0900000003") { it.assign_attributes(name: "Em Hằng", role: "user", password: "password123") }
+staff.update!(zalo_id: "dev-zalo-staff")
 staff.place_memberships.find_or_create_by!(place: places.first) { it.role = "staff" }
 
 ROOMS = [
@@ -85,4 +87,4 @@ SyncRun.insert_all!(runs.sort_by { it[:started_at] }) # ids follow time, like re
 
 Vacancy.bust
 puts "Seeded #{places.map(&:name).join(", ")}: #{Room.count} rooms, #{Booking.count} bookings, #{CalendarFeed.count} feeds, #{SyncRun.count} sync runs."
-puts "Log in at /session/new as 0900 000 002 (owner), 0900 000 003 (staff) or 0900 000 001 (admin), password password123."
+puts "Log in at /session/new with the fake Zalo as Chị Hoa (owner) or Em Hằng (staff), or as 0900 000 001 / password123 (admin)."

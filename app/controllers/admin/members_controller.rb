@@ -51,14 +51,13 @@ class Admin::MembersController < Admin::BaseController
     end
   end
 
-  # Same as the admin reset (#23): locks the old password and older links, logs out everywhere.
+  # Same as the admin reset (#23, User#reset_login!): a new Zalo link.
   def setup_link
     user = @membership.user
     raise Forbidden unless can_send_link?(user)
-    user.update!(password: User.unknown_password)
-    user.sessions.destroy_all
+    user.reset_login!
     redirect_to edit_admin_place_member_path(@place.slug, @membership),
-      notice: "Đã khoá mật khẩu cũ và đăng xuất #{user.name} khỏi mọi thiết bị.", flash: { setup_link: setup_link_for(user) }
+      notice: "Đã huỷ liên kết Zalo cũ và đăng xuất #{user.name} khỏi mọi thiết bị.", flash: { setup_link: setup_link_for(user) }
   end
 
   private

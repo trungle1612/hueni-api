@@ -11,7 +11,7 @@
         <ul><% @membership.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul>
       </div>
     <% end %>
-    <div class="text-sm opacity-70"><%= phone(user.phone_number) %></div>
+    <div class="flex items-center gap-2 text-sm"><span class="opacity-70"><%= phone(user.phone_number) %></span><%= zalo_badge(user) %></div>
     <%= form.label :role, "Vai trò tại #{@place.name}", class: "label text-sm" %>
     <%= form.select :role, PlaceMembership::ROLE_LABELS.invert, {}, class: "select w-full" %>
     <%= form.submit "Lưu", class: "btn btn-primary btn-block mt-2" %>
@@ -19,8 +19,8 @@
 <% end %>
 
 <% if can_send_link?(user) %>
-  <%= button_to "Tạo link đặt lại mật khẩu", setup_link_admin_place_member_path(@place.slug, @membership), class: "btn btn-outline btn-error btn-block mt-4",
-        form: { data: { turbo_confirm: "Khoá mật khẩu hiện tại của #{user.name} và tạo link mới?" } } %>
+  <%= button_to "Tạo link liên kết Zalo", setup_link_admin_place_member_path(@place.slug, @membership), class: "btn btn-outline btn-error btn-block mt-4",
+        form: { data: { turbo_confirm: "Huỷ liên kết Zalo hiện tại của #{user.name}, đăng xuất khỏi mọi thiết bị và tạo link mới?" } } %>
 <% end %>
 <%= button_to "Xoá khỏi #{@place.name}", admin_place_member_path(@place.slug, @membership), method: :delete, class: "btn btn-ghost btn-block text-error mt-2",
       form: { data: { turbo_confirm: "Xoá #{user.name} khỏi #{@place.name}? Tài khoản vẫn được giữ." } } %>

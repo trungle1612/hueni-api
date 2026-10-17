@@ -8,17 +8,23 @@
 <div class="card bg-base-100 shadow-md">
   <div class="card-body">
     <h1 class="card-title">Đăng nhập</h1>
-    <%= form_with url: session_path, class: "flex flex-col gap-3" do |form| %>
-      <div>
-        <%= form.label :phone_number, "Số điện thoại", class: "label mb-1" %>
-        <%= form.telephone_field :phone_number, required: true, autofocus: true, autocomplete: "username", value: params[:phone_number], class: "input w-full" %>
-      </div>
-      <div>
-        <%= form.label :password, "Mật khẩu", class: "label mb-1" %>
-        <%= form.password_field :password, required: true, autocomplete: "current-password", maxlength: 72, class: "input w-full" %>
-      </div>
-      <%= form.submit "Đăng nhập", class: "btn btn-primary btn-block mt-2" %>
-    <% end %>
-    <p class="text-sm opacity-70 mt-2">Quên mật khẩu? Liên hệ quản trị viên để đặt lại.</p>
+    <%= render "sessions/zalo_button" %>
+    <p class="text-sm opacity-70 mt-2">Đổi Zalo hoặc mất điện thoại? Nhờ quản trị viên hoặc chủ homestay gửi link liên kết mới.</p>
+
+    <%# Password login is for admins only (SessionsController#create). %>
+    <details class="mt-2" <%= "open" if params[:admin] %>>
+      <summary class="text-xs opacity-60 cursor-pointer">Quản trị viên đăng nhập bằng mật khẩu</summary>
+      <%= form_with url: session_path, class: "flex flex-col gap-3 mt-3" do |form| %>
+        <div>
+          <%= form.label :phone_number, "Số điện thoại", class: "label mb-1" %>
+          <%= form.telephone_field :phone_number, required: true, autocomplete: "username", class: "input w-full" %>
+        </div>
+        <div>
+          <%= form.label :password, "Mật khẩu", class: "label mb-1" %>
+          <%= form.password_field :password, required: true, autocomplete: "current-password", maxlength: 72, class: "input w-full" %>
+        </div>
+        <%= form.submit "Đăng nhập", class: "btn btn-outline btn-block mt-2" %>
+      <% end %>
+    </details>
   </div>
 </div>

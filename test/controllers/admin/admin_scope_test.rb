@@ -4,7 +4,7 @@ require "test_helper"
 class Admin::AdminScopeTest < ActionDispatch::IntegrationTest
   setup do
     travel_to Time.zone.local(2026, 10, 1, 12)
-    post session_path, params: { phone_number: users(:admin).phone_number, password: "password123" }
+    log_in users(:admin)
   end
 
   test "a homestay's pages are not found for an admin who isn't a member" do

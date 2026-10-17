@@ -1,10 +1,6 @@
 require "test_helper"
 
 class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
-  def log_in(user)
-    post session_path, params: { phone_number: user.phone_number, password: "password123" }
-  end
-
   test "requires login" do
     get admin_root_path
     assert_redirected_to new_session_path

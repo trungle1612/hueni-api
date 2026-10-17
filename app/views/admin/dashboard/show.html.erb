@@ -2,6 +2,9 @@
 
 <h1 class="text-xl font-semibold mb-4">Tổng quan</h1>
 
+<%# Admins link from their own page in Người dùng. %>
+<%= render "shared/link_zalo" unless Current.user.zalo_id || Current.user.admin? %>
+
 <% if @places.any? %>
   <div id="stats" class="grid grid-cols-4 gap-2 mb-4">
     <% { arrivals: [ "Sắp đến", @arrivals ], in_house: [ "Đang ở", @in_house ], departures: [ "Trả phòng", @departures ], dirty_rooms: [ "Cần dọn", @dirty_rooms ] }.each do |key, (label, list)| %>

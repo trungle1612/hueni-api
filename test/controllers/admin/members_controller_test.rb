@@ -1,10 +1,6 @@
 require "test_helper"
 
 class Admin::MembersControllerTest < ActionDispatch::IntegrationTest
-  def log_in(user)
-    post session_path, params: { phone_number: user.phone_number, password: "password123" }
-  end
-
   def setup_token = flash[:setup_link].to_s.split("/").last
 
   setup do
@@ -91,10 +87,17 @@ class Admin::MembersControllerTest < ActionDispatch::IntegrationTest
     assert_not users(:owner).places.exists?
   end
 
-  test "set-password link only for members who belong to no one else's homestay" do
+  test "Zalo link only for members who belong to no one else's homestay" do
+    @staff.update!(zalo_id: "zalo-staff")
+    get edit_admin_place_member_path("tomo-homestay", @staff_membership)
+    assert_select "button", "Tạo link liên kết Zalo"
     post setup_link_admin_place_member_path("tomo-homestay", @staff_membership)
     assert_redirected_to edit_admin_place_member_path("tomo-homestay", @staff_membership)
     assert_not @staff.reload.authenticate("password123")
+    assert_nil @staff.zalo_id
+    follow_redirect!
+    assert_select "[data-setup-link]"
+    assert_select "body", text: /Link liên kết Zalo cho/
     assert_equal @staff, User.find_by_token_for(:password_setup, setup_token)
 
     @staff.place_memberships.create!(place: places(:hiuhill), role: "staff") # hiuhill isn't Chị Lan's
@@ -119,6 +122,9 @@ class Admin::MembersControllerTest < ActionDispatch::IntegrationTest
     assert @staff_membership.reload.staff?
     delete admin_place_member_path("tomo-homestay", place_memberships(:owner_tomo))
     assert_response :forbidden
+    post setup_link_admin_place_member_path("tomo-homestay", place_memberships(:owner_tomo))
+    assert_response :forbidden
+    assert_equal "zalo-chi-lan", users(:owner).reload.zalo_id
     get new_admin_place_member_path("hiuhill-homestay")
     assert_response :not_found
   end
@@ -127,6 +133,8 @@ class Admin::MembersControllerTest < ActionDispatch::IntegrationTest
     other = User.create!(name: "Anh Bình", phone_number: "0987000001", password: "password123")
     hiuhill_membership = other.place_memberships.create!(place: places(:hiuhill))
     delete admin_place_member_path("tomo-homestay", hiuhill_membership)
+    assert_response :not_found
+    post setup_link_admin_place_member_path("hiuhill-homestay", hiuhill_membership)
     assert_response :not_found
     assert PlaceMembership.exists?(hiuhill_membership.id)
   end

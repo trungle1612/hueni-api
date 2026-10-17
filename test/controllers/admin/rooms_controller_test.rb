@@ -1,10 +1,6 @@
 require "test_helper"
 
 class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
-  def log_in(user)
-    post session_path, params: { phone_number: user.phone_number, password: "password123" }
-  end
-
   setup { log_in users(:owner) }
 
   test "new form renders" do
@@ -127,7 +123,7 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
   test "admins who aren't members can't mark a room clean" do
     rooms(:garden).dirty!
     delete session_path
-    post session_path, params: { phone_number: users(:admin).phone_number, password: "password123" }
+    log_in users(:admin)
     post clean_admin_room_path(rooms(:garden))
     assert_response :not_found
     assert rooms(:garden).reload.dirty?

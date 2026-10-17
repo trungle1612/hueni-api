@@ -1,16 +1,12 @@
 require "application_system_test_case"
 
 class UsersTest < ApplicationSystemTestCase
-  def log_in(phone, password)
+  test "admin creates an owner, who links Zalo from the link and sees their homestay" do
     visit new_session_path
-    fill_in "Số điện thoại", with: phone
-    fill_in "Mật khẩu", with: password
+    find("summary", text: "Quản trị viên đăng nhập bằng mật khẩu").click
+    fill_in "Số điện thoại", with: "0905 111 222"
+    fill_in "Mật khẩu", with: "password123"
     click_button "Đăng nhập"
-    assert_selector "h1", text: "Tổng quan"
-  end
-
-  test "admin creates an owner, who sets their own password from the link and sees their homestay" do
-    log_in "0905 111 222", "password123"
     click_on "Người dùng", match: :first
     click_on "+ Thêm"
     fill_in "Tên", with: "Chị Hoa"
@@ -25,15 +21,15 @@ class UsersTest < ApplicationSystemTestCase
 
     visit link
     assert_text "Chị Hoa"
-    fill_in "Mật khẩu mới", with: "hoa-hue-2026"
-    fill_in "Nhập lại mật khẩu", with: "hoa-hue-2026"
-    click_button "Lưu mật khẩu"
+    assert_no_field "Mật khẩu mới"
+    OmniAuth.config.mock_auth[:zalo2] = OmniAuth::AuthHash.new(provider: "zalo2", uid: "zalo-hoa")
+    click_button "Liên kết Zalo"
     assert_text "Hiu Hill Homestay"
     assert_no_text "tomo homestay"
 
     click_button "Đăng xuất", match: :first
     assert_current_path new_session_path
-    log_in "0987654321", "hoa-hue-2026"
+    log_in_with_zalo "zalo-hoa"
     assert_text "Hiu Hill Homestay"
     assert_no_text "tomo homestay"
   end

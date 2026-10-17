@@ -17,7 +17,8 @@
     <div>
       <%= form.label :role, "Vai trò", class: "label text-sm mb-1" %>
       <%= form.select :role, User::ROLE_LABELS.invert, {}, class: "select w-full", disabled: user == Current.user %>
-      <% if user == Current.user %><div class="text-xs opacity-60 mt-1">Không thể đổi vai trò của chính bạn.</div><% end %>
+      <% if user == Current.user %><div class="text-xs opacity-60 mt-1">Không thể đổi vai trò của chính bạn.</div>
+      <% elsif user.persisted? && user.admin? && !user.zalo_id %><div class="text-xs text-warning mt-1">Thành viên chỉ đăng nhập bằng Zalo: đổi vai trò thì gửi thêm link liên kết Zalo.</div><% end %>
     </div>
     <fieldset>
       <legend class="label text-sm mb-1">Homestay</legend>
@@ -34,7 +35,7 @@
         <% end %>
       </div>
     </fieldset>
-    <% if user.new_record? %><div class="text-xs opacity-60">Sau khi lưu, bạn nhận một link để gửi qua Zalo; người dùng mở link và tự chọn mật khẩu.</div><% end %>
+    <% if user.new_record? %><div class="text-xs opacity-60">Sau khi lưu, bạn nhận một link để gửi qua Zalo; người dùng mở link và liên kết Zalo (quản trị viên: tự chọn mật khẩu).</div><% end %>
     <%= form.submit user.new_record? ? "Tạo tài khoản" : "Lưu", class: "btn btn-primary btn-block mt-2" %>
   </div>
 <% end %>

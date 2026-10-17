@@ -14,9 +14,10 @@ class User < ApplicationRecord
   validates :name, presence: true
   validates :phone_number, presence: true, uniqueness: true, format: { with: /\A0\d{9}\z/, allow_blank: true }
   validates :password, length: { minimum: 8 }, allow_nil: true
+  validates :zalo_id, uniqueness: true, allow_nil: true
 
-  # One-time link for the owner to choose a password (no email yet; the admin sends it over Zalo).
-  # Any password change, including setting one through the link, invalidates every earlier link.
+  # One-time link (sent over Zalo): admins choose a password, everyone else links their Zalo (#97).
+  # Any password change, including the new placeholder when Zalo gets linked, invalidates every earlier link.
   generates_token_for :password_setup, expires_in: 7.days do
     password_salt.last(10)
   end
@@ -25,6 +26,13 @@ class User < ApplicationRecord
   def self.unknown_password = SecureRandom.base58(24)
 
   def role_label = ROLE_LABELS.fetch(role)
+
+  # Lost phone, new Zalo account or forgotten password: locks the old password, unlinks Zalo,
+  # kills older links and logs out everywhere. Then send a new link.
+  def reset_login!
+    update!(password: User.unknown_password, zalo_id: nil)
+    sessions.destroy_all
+  end
 
   def initial = name.to_s.first.to_s.upcase
 

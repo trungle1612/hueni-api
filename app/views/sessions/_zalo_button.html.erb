@@ -1,0 +1,12 @@
+<%# locals: (label: "Đăng nhập bằng Zalo", link: nil) -%>
+<%# OmniAuth only accepts POST (CSRF token via omniauth-rails_csrf_protection). ?link= tells ZaloSessionsController to link, not log in. %>
+<%= form_with url: link ? "/auth/zalo2?link=#{link}" : "/auth/zalo2", data: { turbo: false }, class: "flex flex-col gap-2" do %>
+  <% if Rails.env.development? %>
+    <%# Fake Zalo in development (config/initializers/omniauth.rb). %>
+    <select name="dev_zalo_id" class="select select-sm w-full" aria-label="Zalo giả (development)">
+      <% User.where.not(zalo_id: nil).order(:name).each do |user| %><option value="<%= user.zalo_id %>">Zalo của <%= user.name %></option><% end %>
+      <option value="dev-<%= SecureRandom.hex(4) %>" <%= "selected" if link %>>Zalo mới (chưa liên kết)</option>
+    </select>
+  <% end %>
+  <button class="btn btn-block border-0 bg-[#0068ff] text-white hover:bg-[#0054cc]"><%= label %></button>
+<% end %>

@@ -3,11 +3,7 @@ require "application_system_test_case"
 class CalendarTest < ApplicationSystemTestCase
   setup do
     travel_to Time.zone.local(2026, 10, 1, 12) # limdim_confirmed occupies Limdim 10-01..10-03
-    visit new_session_path
-    fill_in "Số điện thoại", with: "0912 345 678"
-    fill_in "Mật khẩu", with: "password123"
-    click_button "Đăng nhập"
-    assert_selector "h1", text: "Tổng quan"
+    log_in_with_zalo
   end
 
   # Straight from the server: the browser would reuse the endpoint's 1-minute public cache.

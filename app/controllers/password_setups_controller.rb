@@ -1,13 +1,16 @@
-# The one-time link from /admin/users: the owner chooses a password and is logged in. Works once, for 7 days.
+# The one-time link from /admin/users and Thành viên. Works once, for 7 days. Admins choose a password;
+# everyone else links their Zalo (ZaloSessionsController) and is logged in.
 class PasswordSetupsController < ApplicationController
   allow_unauthenticated_access
   rate_limit to: 10, within: 3.minutes, only: :update, with: -> { redirect_to new_session_path, alert: "Thử lại sau ít phút." }
   before_action :set_user
 
   def edit
+    session[:zalo_link_token] = params[:token] unless @user.admin?
   end
 
   def update
+    return redirect_to password_setup_path(token: params[:token]) unless @user.admin?
     password, confirmation = params.expect(user: %i[password password_confirmation]).values_at(:password, :password_confirmation)
     # has_secure_password silently ignores a blank password on update, which would log in without setting one.
     if password.present? && @user.update(password:, password_confirmation: confirmation)

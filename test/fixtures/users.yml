@@ -8,4 +8,5 @@ owner:
   phone_number: "0912345678"
   name: Chị Lan
   role: user
+  zalo_id: "zalo-chi-lan"
   password_digest: <%= BCrypt::Password.create("password123") %>
