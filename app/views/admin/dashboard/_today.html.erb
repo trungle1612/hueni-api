@@ -16,8 +16,8 @@
         <div class="divide-y divide-base-200">
           <% @dirty_rooms.each do |room| %>
             <div class="flex justify-between items-center gap-3 py-3">
-              <div class="min-w-0 truncate"><span class="font-semibold">Phòng <%= room.name %></span><% if many_places %> <span class="text-xs opacity-60">· <%= room.place.name %></span><% end %></div>
-              <%= clean_button(room, size: "btn-sm shrink-0") %>
+              <div class="min-w-0 truncate"><span class="font-semibold">Phòng <%= room.name %></span><% if many_places %> <span class="text-sm opacity-80">· <%= room.place.name %></span><% end %></div>
+              <%= clean_button(room, size: "shrink-0") %>
             </div>
           <% end %>
         </div>
@@ -39,7 +39,7 @@
       <details id="holds">
         <summary class="flex items-center gap-2 font-semibold cursor-pointer"><%= heading.(:hold, "Đang giữ chỗ", @holds.size) %></summary>
         <div class="divide-y divide-base-200"><%= stays.(:holds, @holds) %></div>
-        <div class="text-sm opacity-70 mt-1">Giữ chỗ trong <%= Admin::DashboardController::HOLDS_DAYS %> ngày tới · <%= link_to "Xem lịch", admin_calendar_path, class: "link" %></div>
+        <div class="text-sm opacity-80 mt-1">Giữ chỗ trong <%= Admin::DashboardController::HOLDS_DAYS %> ngày tới · <%= link_to "Xem lịch", admin_calendar_path, class: "link" %></div>
       </details>
     <% end %>
   </div>

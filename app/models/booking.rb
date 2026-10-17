@@ -126,7 +126,7 @@ class Booking < ApplicationRecord
     end
   end
 
-  # Hoàn tác: a wrong tap on Check-in / Check-out, put right the same day. Logged like any change.
+  # Hoàn tác: a wrong tap on Nhận phòng / Trả phòng, put right the same day. Logged like any change.
   # An early check-in keeps its moved start_date (edit the dates if needed).
   def undo_check_in
     with_lock do

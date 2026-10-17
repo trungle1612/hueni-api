@@ -10,3 +10,8 @@
   --color-base-200: #efebe6;
   --color-base-300: #e2dcd5;
 }
+
+/* Soft badges: autumn's warning/success text on their own 8% tint is ~2.6–3.3:1. Darken the text, keep the hue. */
+.badge-soft {
+  color: color-mix(in oklab, var(--badge-color, var(--color-base-content)) 60%, black);
+}

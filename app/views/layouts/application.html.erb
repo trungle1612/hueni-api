@@ -62,12 +62,12 @@
         </div>
       </div>
 
-      <div class="dock dock-sm bg-base-100 border-t border-base-300 lg:hidden">
+      <div class="dock bg-base-100 border-t border-base-300 lg:hidden">
         <% admin_menu_items.each do |item| %>
           <% if item[:path] %>
-            <%= link_to item[:path], class: ("dock-active text-primary" if item[:active]) do %><%= render "shared/icon", name: item[:icon] %><span class="dock-label"><%= item[:label] %></span><% end %>
+            <%= link_to item[:path], class: ("dock-active text-primary" if item[:active]) do %><%= render "shared/icon", name: item[:icon] %><span class="dock-label text-xs"><%= item[:label] %></span><% end %>
           <% else %>
-            <span class="opacity-40" aria-disabled="true"><%= render "shared/icon", name: item[:icon] %><span class="dock-label"><%= item[:label] %></span></span>
+            <span class="opacity-40" aria-disabled="true"><%= render "shared/icon", name: item[:icon] %><span class="dock-label text-xs"><%= item[:label] %></span></span>
           <% end %>
         <% end %>
       </div>

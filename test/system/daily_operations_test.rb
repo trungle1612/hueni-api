@@ -17,7 +17,7 @@ class DailyOperationsTest < ApplicationSystemTestCase
     within("#today_booking_#{booking.id}") do
       assert_text "Trễ 1 ngày"
       fill_in "Số khách", with: 2
-      accept_confirm("Chị Mai nhận phòng Garden?") { click_button "Check-in" }
+      accept_confirm("Chị Mai nhận phòng Garden?") { click_button "Nhận phòng" }
     end
     assert_text "Đã nhận phòng: Chị Mai · Garden"
     within("#tile_room_#{rooms(:garden).id}") { assert_text "Đang có khách" }
@@ -25,7 +25,7 @@ class DailyOperationsTest < ApplicationSystemTestCase
     assert_text "Đã khai báo lưu trú: Chị Mai · Garden"
 
     within("#in_house") { click_on "Chị Mai" }
-    accept_confirm("Chị Mai trả phòng Garden?") { click_button "Check-out" }
+    accept_confirm("Chị Mai trả phòng Garden?") { click_button "Trả phòng" }
     assert_text "Đã trả phòng: Chị Mai · Garden. Phòng chuyển sang chưa dọn."
 
     visit admin_root_path

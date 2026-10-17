@@ -22,6 +22,6 @@ class Admin::DashboardController < Admin::BaseController
     @dirty_rooms = rooms.dirty.includes(:place).order(:name).to_a
     @arrivals = bookings.blocking.not_checked_in.where(start_date: ..today, end_date: Booking.arrival_date.next_day..).to_a
     @in_house = bookings.in_house.where(end_date: today.next_day..).to_a
-    @holds = bookings.hold.where(start_date: ..(today + HOLDS_DAYS), end_date: today.next_day..).to_a
+    @holds = bookings.hold.where(start_date: today.next_day..(today + HOLDS_DAYS)).to_a # due today or late → already in @arrivals
   end
 end

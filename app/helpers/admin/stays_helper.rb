@@ -33,16 +33,19 @@ module Admin::StaysHelper
       if booking.early_check_in?
         [ "Nhận phòng sớm", "#{booking_label(booking)} nhận phòng sớm #{booking.room.name}? Ngày đến đổi #{booking.start_date.strftime("%d/%m")} → #{Date.current.strftime("%d/%m")}" ]
       else
-        [ "Check-in", "#{booking_label(booking)} nhận phòng #{booking.room.name}?" ]
+        [ "Nhận phòng", "#{booking_label(booking)} nhận phòng #{booking.room.name}?" ]
       end
+    confirm = "Đang giữ chỗ, chưa xác nhận. #{confirm}" if booking.hold?
     confirm += "\n⚠ #{booking.errors.full_messages.join(". ")}" if !booking.changed? && booking.errors.empty? && booking.invalid?
-    return button_to(label, check_in_admin_booking_path(booking), class: [ "btn btn-primary", size ].compact.join(" "),
+    # A hold isn't a sure arrival: its button doesn't shout like a confirmed one.
+    button_class = [ "btn", booking.hold? ? "btn-outline btn-primary" : "btn-primary", size ].compact.join(" ")
+    return button_to(label, check_in_admin_booking_path(booking), class: button_class,
       form: { data: { turbo_confirm: confirm } }) if booking.guests
 
     form_with url: check_in_admin_booking_path(booking), class: "flex gap-1", data: { turbo_confirm: confirm } do |form|
       form.number_field(:guests, in: 1..booking.room.max_guests, required: true, placeholder: "Số khách",
-        class: [ "input w-24", size&.sub("btn", "input") ].compact.join(" "), aria: { label: "Số khách" }) +
-        form.button(label, class: [ "btn btn-primary", size ].compact.join(" "))
+        class: [ "input w-24 placeholder:text-base-content/70", size&.sub("btn", "input") ].compact.join(" "), aria: { label: "Số khách" }) +
+        form.button(label, class: button_class)
     end
   end
 
@@ -51,7 +54,7 @@ module Admin::StaysHelper
   end
 
   def check_out_button(booking, size: nil)
-    button_to "Check-out", check_out_admin_booking_path(booking), class: [ "btn", size ].compact.join(" "),
+    button_to "Trả phòng", check_out_admin_booking_path(booking), class: [ "btn", size ].compact.join(" "),
       form: { data: { turbo_confirm: "#{booking_label(booking)} trả phòng #{booking.room.name}?" } }
   end
 
