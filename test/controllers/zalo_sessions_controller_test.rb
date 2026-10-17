@@ -1,8 +1,8 @@
 require "test_helper"
 
 class ZaloSessionsControllerTest < ActionDispatch::IntegrationTest
-  def zalo(uid, link: nil)
-    mock_zalo uid
+  def zalo(uid, link: nil, phone: nil)
+    mock_zalo(uid, phone:)
     post link ? "/auth/zalo2?link=#{link}" : "/auth/zalo2"
     follow_redirect!
   end
@@ -112,5 +112,28 @@ class ZaloSessionsControllerTest < ActionDispatch::IntegrationTest
     users(:owner).update!(zalo_id: nil)
     get admin_root_path
     assert_select "#link_zalo form[action$='?link=me']"
+  end
+
+  test "an unknown Zalo id with an owner's phone number links that owner and logs in (#98)" do
+    users(:owner).update!(zalo_id: nil)
+    zalo "zalo-moi", phone: "84912345678" # Zalo's format; stored as 0912345678
+    assert_redirected_to admin_root_url
+    assert_equal "zalo-moi", users(:owner).reload.zalo_id
+    assert_equal 1, users(:owner).sessions.count
+  end
+
+  test "the phone number never links an admin, an already linked user, or a blank number" do
+    users(:admin).update!(zalo_id: nil)
+    zalo "zalo-moi", phone: "84905111222"
+    assert_nil users(:admin).reload.zalo_id
+
+    zalo "zalo-moi", phone: "84912345678" # Chị Lan is linked to zalo-chi-lan already
+    assert_equal "zalo-chi-lan", users(:owner).reload.zalo_id
+
+    users(:owner).update!(zalo_id: nil)
+    zalo "zalo-moi", phone: ""
+    assert_nil users(:owner).reload.zalo_id
+    assert_equal 0, Session.count
+    assert_redirected_to new_session_path
   end
 end
