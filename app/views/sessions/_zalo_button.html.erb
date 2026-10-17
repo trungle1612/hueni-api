@@ -16,7 +16,11 @@
       </select>
       <% end %>
     <% end %>
-    <button class="<%= register ? "btn btn-block btn-outline" : "btn btn-block border-0 bg-[#0068ff] text-white hover:bg-[#0054cc]" %>"><%= label %></button>
+    <% if register %>
+      <button class="btn btn-block btn-outline"><%= label %></button>
+    <% else %>
+      <button class="btn btn-block border-0 bg-[#0068ff] text-white hover:bg-[#0054cc]"><%= label %></button>
+    <% end %>
   <% end %>
 <% else %>
   <button type="button" disabled class="btn btn-block"><%= label %></button>
