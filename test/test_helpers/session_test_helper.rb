@@ -7,8 +7,8 @@ module SessionTestHelper
     follow_redirect!
   end
 
-  def mock_zalo(uid, phone: nil)
-    OmniAuth.config.mock_auth[:zalo2] = OmniAuth::AuthHash.new(provider: "zalo2", uid:, extra: { raw_info: { id: uid, phone: } })
+  def mock_zalo(uid, phone: nil, name: nil)
+    OmniAuth.config.mock_auth[:zalo2] = OmniAuth::AuthHash.new(provider: "zalo2", uid:, info: { name: }, extra: { raw_info: { id: uid, phone: } })
   end
 
   def sign_in_as(user)

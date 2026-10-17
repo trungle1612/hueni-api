@@ -1,18 +1,22 @@
-<%# locals: (label: "Đăng nhập bằng Zalo", link: nil) -%>
+<%# locals: (label: "Đăng nhập bằng Zalo", link: nil, register: false) -%>
 <%# OmniAuth only accepts POST (CSRF token via omniauth-rails_csrf_protection). ?link= tells ZaloSessionsController to link, not log in. %>
 <% fake = Rails.env.development? && OmniAuth.config.test_mode %>
 <% if OmniAuth.config.test_mode || Rails.configuration.x.zalo_configured %>
-  <%= form_with url: link ? "/auth/zalo2?link=#{link}" : "/auth/zalo2", data: { turbo: false }, class: "flex flex-col gap-2" do %>
+  <%= form_with url: link ? "/auth/zalo2?link=#{link}" : register ? "/auth/zalo2?register=1" : "/auth/zalo2", data: { turbo: false }, class: "flex flex-col gap-2" do %>
     <% if fake %>
       <%# ZALO_FAKE=1 (config/initializers/omniauth.rb). %>
+      <% if register %>
+        <input type="hidden" name="dev_zalo_id" value="dev-<%= SecureRandom.hex(4) %>">
+      <% else %>
       <label class="text-xs font-semibold text-warning" for="dev_zalo_id">Zalo giả (development) — không qua Zalo thật</label>
       <select name="dev_zalo_id" id="dev_zalo_id" required class="select select-sm select-warning w-full">
         <option value="">Chọn tài khoản Zalo giả…</option>
         <% User.where.not(zalo_id: nil).order(:name).each do |user| %><option value="<%= user.zalo_id %>">Zalo của <%= user.name %></option><% end %>
         <option value="dev-<%= SecureRandom.hex(4) %>">Zalo mới (chưa liên kết)</option>
       </select>
+      <% end %>
     <% end %>
-    <button class="btn btn-block border-0 bg-[#0068ff] text-white hover:bg-[#0054cc]"><%= label %></button>
+    <button class="<%= register ? "btn btn-block btn-outline" : "btn btn-block border-0 bg-[#0068ff] text-white hover:bg-[#0054cc]" %>"><%= label %></button>
   <% end %>
 <% else %>
   <button type="button" disabled class="btn btn-block"><%= label %></button>

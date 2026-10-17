@@ -1,6 +1,6 @@
 # Zalo login and linking (#97). A Zalo id is bound to an account only when we know who it is: through a
 # one-time link (/dat-mat-khau/:token), while logged in, or by the Zalo account's phone number (#98).
-# Never creates accounts.
+# Never creates accounts: an unknown Zalo goes to owner registration (/dang-ky), which an admin approves.
 class ZaloSessionsController < ApplicationController
   ALREADY_LINKED = "Tài khoản Zalo này đã liên kết với người dùng khác.".freeze
 
@@ -28,10 +28,17 @@ class ZaloSessionsController < ApplicationController
     def log_in(zalo_id)
       if (user = User.find_by(zalo_id:) || link_by_phone(zalo_id))
         start_new_session_for user
-        redirect_to after_authentication_url
+        redirect_to after_authentication_url, notice: ("Bạn đã có tài khoản." if request.env.dig("omniauth.params", "register"))
       else
-        redirect_to new_session_path, alert: "Tài khoản Zalo này chưa được liên kết. Liên hệ quản trị viên."
+        start_registration(zalo_id)
       end
+    end
+
+    # The Zalo id stays in the (encrypted) session for 30 minutes: RegistrationsController never takes it from params.
+    def start_registration(zalo_id)
+      session[:registration] = { "zalo_id" => zalo_id, "zalo_name" => request.env.dig("omniauth.auth", "info", "name").to_s,
+                                 "expires_at" => 30.minutes.from_now.to_i }
+      redirect_to registration_path
     end
 
     # #98: with Zalo's phone permission, the number on the Zalo account (verified by Zalo) links an owner or

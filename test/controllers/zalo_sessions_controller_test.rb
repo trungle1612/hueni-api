@@ -1,10 +1,10 @@
 require "test_helper"
 
 class ZaloSessionsControllerTest < ActionDispatch::IntegrationTest
-  def zalo(uid, link: nil, phone: nil)
-    mock_zalo(uid, phone:)
-    post link ? "/auth/zalo2?link=#{link}" : "/auth/zalo2"
-    follow_redirect!
+  def zalo(uid, link: nil, phone: nil, name: nil, register: false)
+    mock_zalo(uid, phone:, name:)
+    post link ? "/auth/zalo2?link=#{link}" : register ? "/auth/zalo2?register=1" : "/auth/zalo2"
+    follow_redirect! unless response.location.end_with?(registration_path) # RegistrationsController has its own tests
   end
 
   test "a linked Zalo id logs in, admin or not, and goes where they were headed" do
@@ -20,13 +20,26 @@ class ZaloSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, users(:admin).sessions.count
   end
 
-  test "an unknown Zalo id logs nobody in and creates no account" do
+  test "an unknown Zalo id logs nobody in and goes to registration, the Zalo id kept in the session" do
     assert_no_difference [ "User.count", "Session.count" ] do
-      zalo "zalo-unknown"
+      zalo "zalo-unknown", name: "Hoa Nguyễn"
     end
-    assert_redirected_to new_session_path
-    follow_redirect!
-    assert_select "[role=alert]", text: /Tài khoản Zalo này chưa được liên kết/
+    assert_redirected_to registration_path
+    assert_equal({ "zalo_id" => "zalo-unknown", "zalo_name" => "Hoa Nguyễn" }, session[:registration].except("expires_at"))
+    assert_in_delta 30.minutes.from_now.to_i, session[:registration]["expires_at"], 5
+  end
+
+  test "an unknown Zalo id with no name still goes to registration" do
+    zalo "zalo-unknown"
+    assert_redirected_to registration_path
+    assert_equal "", session[:registration]["zalo_name"]
+  end
+
+  test "the register button logs an existing account in, with a notice" do
+    zalo "zalo-chi-lan", register: true
+    assert_redirected_to admin_root_url
+    assert_equal "Bạn đã có tài khoản.", flash[:notice]
+    assert_nil session[:registration]
   end
 
   test "a blank uid is rejected, even with an unlinked user around" do
@@ -134,6 +147,6 @@ class ZaloSessionsControllerTest < ActionDispatch::IntegrationTest
     zalo "zalo-moi", phone: ""
     assert_nil users(:owner).reload.zalo_id
     assert_equal 0, Session.count
-    assert_redirected_to new_session_path
+    assert_redirected_to registration_path
   end
 end

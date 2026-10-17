@@ -5,6 +5,11 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     post session_path, params: { phone_number: phone, password: password }
   end
 
+  test "login page offers registration through the same Zalo login" do
+    get new_session_path
+    assert_select "form[action$='register=1'] button", text: "Đăng ký làm chủ homestay bằng Zalo"
+  end
+
   test "login page renders" do
     get new_session_path
     assert_response :success

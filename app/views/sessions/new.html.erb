@@ -9,6 +9,10 @@
   <div class="card-body">
     <h1 class="card-title">Đăng nhập</h1>
     <%= render "sessions/zalo_button" %>
+    <% if OmniAuth.config.test_mode || Rails.configuration.x.zalo_configured %>
+      <div class="divider text-xs opacity-70 my-1">Chưa có tài khoản?</div>
+      <%= render "sessions/zalo_button", label: "Đăng ký làm chủ homestay bằng Zalo", register: true %>
+    <% end %>
     <p class="text-sm opacity-70 mt-2">Đổi Zalo hoặc mất điện thoại? Nhờ quản trị viên hoặc chủ homestay gửi link liên kết mới.</p>
 
     <%# Password login is for admins only (SessionsController#create). %>
