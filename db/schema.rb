@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_17_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_17_100000) do
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -75,6 +75,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_000000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_places_on_slug", unique: true
+  end
+
+  create_table "registration_requests", force: :cascade do |t|
+    t.string "zalo_id", null: false
+    t.string "zalo_name"
+    t.string "name", null: false
+    t.string "phone_number", null: false
+    t.integer "place_id"
+    t.string "place_name", null: false
+    t.string "maps_url"
+    t.string "status", default: "pending", null: false
+    t.text "admin_note"
+    t.integer "decided_by_id"
+    t.datetime "decided_at"
+    t.integer "user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["decided_by_id"], name: "index_registration_requests_on_decided_by_id"
+    t.index ["place_id"], name: "index_registration_requests_on_place_id"
+    t.index ["user_id"], name: "index_registration_requests_on_user_id"
+    t.index ["zalo_id"], name: "index_registration_requests_one_pending_per_zalo", unique: true, where: "status = 'pending'"
+    t.check_constraint "status IN ('pending', 'approved', 'rejected')", name: "registration_requests_status_values"
   end
 
   create_table "rooms", force: :cascade do |t|
@@ -148,6 +170,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_000000) do
   add_foreign_key "calendar_feeds", "rooms"
   add_foreign_key "place_memberships", "places"
   add_foreign_key "place_memberships", "users"
+  add_foreign_key "registration_requests", "places"
+  add_foreign_key "registration_requests", "users"
+  add_foreign_key "registration_requests", "users", column: "decided_by_id"
   add_foreign_key "rooms", "places"
   add_foreign_key "sessions", "users"
   add_foreign_key "sync_runs", "calendar_feeds", on_delete: :cascade

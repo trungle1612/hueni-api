@@ -5,6 +5,7 @@ class Admin::UsersController < Admin::BaseController
 
   def index
     @users = User.includes(place_memberships: :place).order(:role, :name)
+    @registrations = RegistrationRequest.includes(:place, :decided_by).order(created_at: :desc)
   end
 
   def new
@@ -41,10 +42,6 @@ class Admin::UsersController < Admin::BaseController
   end
 
   private
-    def require_admin
-      raise ActiveRecord::RecordNotFound unless Current.user.admin?
-    end
-
     def set_user
       @user = User.find(params[:id])
     end

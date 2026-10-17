@@ -10,6 +10,7 @@ class Admin::DashboardController < Admin::BaseController
       .joins(:room).group("rooms.place_id").count
     # Admins: every homestay's members and failing feeds (platform health), no homestay data.
     if Current.user.admin?
+      @pending_registrations = RegistrationRequest.pending.count
       @all_places = Place.includes(place_memberships: :user).order(:name)
       @all_feed_errors = CalendarFeed.where.not(last_error: nil).joins(:room).group("rooms.place_id").count
     end

@@ -1,0 +1,63 @@
+<% content_for :title, "Đăng ký · hueni admin" %>
+
+<div class="text-center mb-6">
+  <div class="text-3xl font-bold text-primary">hueni</div>
+  <div class="text-sm opacity-70">Quản lý phòng cho chủ homestay</div>
+</div>
+
+<div class="card bg-base-100 shadow-md">
+  <div class="card-body gap-3">
+    <h1 class="card-title">Đăng ký làm chủ homestay</h1>
+
+    <% if @latest&.pending? %>
+      <div role="status" class="alert alert-success alert-soft">
+        <span><b>Đã gửi.</b> hueni sẽ gọi cho bạn ở số <b><%= phone(@latest.phone_number) %></b> trong 1–2 ngày để xác nhận.</span>
+      </div>
+      <div class="text-sm">
+        <span class="opacity-70">Homestay:</span> <%= @latest.homestay_name %>
+        <span class="badge badge-soft badge-warning badge-sm">Đang chờ duyệt</span>
+      </div>
+      <p class="text-sm opacity-70">Khi được duyệt, bạn chỉ cần bấm "Đăng nhập bằng Zalo".</p>
+      <%= render "sessions/zalo_button" %>
+    <% else %>
+      <% if @latest&.rejected? %>
+        <div class="alert alert-warning alert-soft"><span>Yêu cầu chưa được duyệt. Bạn có thể gửi lại thông tin.</span></div>
+      <% end %>
+      <p class="text-sm">Bạn là nhân viên? Nhờ chủ homestay thêm bạn ở mục Thành viên, không cần đăng ký.</p>
+
+      <%= form_with model: @registration, url: registration_path, class: "flex flex-col gap-3" do |form| %>
+        <% if @registration.errors.any? %>
+          <div role="alert" class="alert alert-error alert-soft">
+            <ul><% @registration.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul>
+          </div>
+        <% end %>
+        <div>
+          <%= form.label :name, "Tên của bạn", class: "label mb-1" %>
+          <%= form.text_field :name, required: true, maxlength: 100, autocomplete: "name", class: "input w-full" %>
+        </div>
+        <div>
+          <%= form.label :phone_number, "Số điện thoại", class: "label mb-1" %>
+          <%= form.telephone_field :phone_number, required: true, autocomplete: "tel", class: "input w-full" %>
+          <p class="text-xs opacity-70 mt-1">hueni sẽ gọi số này để xác nhận.</p>
+        </div>
+        <div>
+          <%= form.label :place_name, "Tên homestay", class: "label mb-1" %>
+          <%= form.text_field :place_name, required: true, maxlength: 100, list: "places", autocomplete: "off", class: "input w-full" %>
+          <datalist id="places">
+            <% Place.order(:name).each do |place| %><option value="<%= place.name %>"><%= place.address %></option><% end %>
+          </datalist>
+          <p class="text-xs opacity-70 mt-1">Gõ tên. Không thấy trong danh sách thì cứ gõ đầy đủ.</p>
+        </div>
+        <div>
+          <%= form.label :maps_url, "Link Google Maps (nếu có)", class: "label mb-1" %>
+          <%= form.url_field :maps_url, maxlength: 500, placeholder: "https://maps.app.goo.gl/…", class: "input w-full" %>
+        </div>
+        <%= form.submit "Gửi đăng ký", class: "btn btn-primary btn-block mt-2" %>
+      <% end %>
+    <% end %>
+
+    <p class="text-sm opacity-70">Cần giúp? Gọi / nhắn Zalo cho hueni:
+      <%= link_to phone(RegistrationsController::HELP_PHONE), "tel:#{RegistrationsController::HELP_PHONE}", class: "link" %></p>
+    <%= button_to "Thoát", registration_path, method: :delete, class: "btn btn-ghost btn-sm" %>
+  </div>
+</div>

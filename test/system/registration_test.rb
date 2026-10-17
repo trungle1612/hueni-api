@@ -1,0 +1,26 @@
+require "application_system_test_case"
+
+class RegistrationTest < ApplicationSystemTestCase
+  test "owner registers with Zalo, an admin approves after calling, the owner logs in" do
+    OmniAuth.config.mock_auth[:zalo2] = OmniAuth::AuthHash.new(provider: "zalo2", uid: "zalo-hoa", info: { name: "Hoa Nguyễn" })
+    visit new_session_path
+    click_button "Đăng ký làm chủ homestay bằng Zalo"
+    assert_selector "h1", text: "Đăng ký làm chủ homestay"
+    fill_in "Số điện thoại", with: "0905 123 456"
+    fill_in "Tên homestay", with: "Hiu Hill Homestay"
+    click_button "Gửi đăng ký"
+    assert_text "hueni sẽ gọi cho bạn ở số 0905 123 456"
+
+    users(:admin).update!(zalo_id: "zalo-trung")
+    log_in_with_zalo "zalo-trung"
+    click_link "Người dùng (1)", match: :first
+    click_link "Hoa Nguyễn"
+    check "Tôi đã gọi xác nhận"
+    click_button "Tạo tài khoản"
+    assert_text "Đã tạo tài khoản cho Hoa Nguyễn"
+
+    Capybara.reset_sessions!
+    log_in_with_zalo "zalo-hoa"
+    assert_text "Hiu Hill Homestay"
+  end
+end

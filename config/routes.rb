@@ -5,6 +5,10 @@ Rails.application.routes.draw do
   # POST /auth/zalo2 (the Zalo button) is OmniAuth middleware, not a route.
   get "auth/zalo2/callback", to: "zalo_sessions#create"
   get "auth/failure", to: "zalo_sessions#failure"
+  # Owner self-registration, after a Zalo login that matched no account.
+  get "dang-ky", to: "registrations#new", as: :registration
+  post "dang-ky", to: "registrations#create"
+  delete "dang-ky", to: "registrations#destroy"
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
@@ -39,6 +43,12 @@ Rails.application.routes.draw do
     resources :sync_runs, only: :index, path: "dong-bo"
     resources :users, only: %i[index new create edit update] do
       post :reset_password, on: :member
+    end
+    resources :registration_requests, only: %i[show update] do
+      member do
+        patch :approve
+        patch :reject
+      end
     end
     resources :calendar_feeds, only: %i[index destroy] do
       post :sync, on: :member
