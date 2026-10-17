@@ -35,10 +35,13 @@ class RegistrationsController < ApplicationController
   private
     def require_zalo_login
       @zalo = session[:registration]
-      return if @zalo && @zalo["expires_at"].to_i > Time.current.to_i
-
-      session.delete(:registration)
-      redirect_to new_session_path, alert: "Phiên đăng ký hết hạn. Đăng nhập Zalo lại."
+      if @zalo.nil? || @zalo["expires_at"].to_i <= Time.current.to_i
+        session.delete(:registration)
+        redirect_to new_session_path, alert: "Phiên đăng ký hết hạn. Đăng nhập Zalo lại."
+      elsif User.exists?(zalo_id: @zalo["zalo_id"]) # approved (or linked) meanwhile
+        session.delete(:registration)
+        redirect_to new_session_path, notice: "Tài khoản đã được duyệt. Bấm Đăng nhập bằng Zalo."
+      end
     end
 
     def latest_request = RegistrationRequest.where(zalo_id: @zalo["zalo_id"]).order(:id).last

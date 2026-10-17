@@ -4,7 +4,7 @@ class ZaloSessionsControllerTest < ActionDispatch::IntegrationTest
   def zalo(uid, link: nil, phone: nil, name: nil, register: false)
     mock_zalo(uid, phone:, name:)
     post link ? "/auth/zalo2?link=#{link}" : register ? "/auth/zalo2?register=1" : "/auth/zalo2"
-    follow_redirect! unless response.location.end_with?(registration_path) # RegistrationsController has its own tests
+    follow_redirect!
   end
 
   test "a linked Zalo id logs in, admin or not, and goes where they were headed" do

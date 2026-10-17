@@ -95,6 +95,32 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, RegistrationRequest.count
   end
 
+  test "after approval, the form and the status page send the owner to Zalo login" do
+    zalo_login
+    submit
+    RegistrationRequest.sole.approve!(by: users(:admin))
+    get registration_path
+    assert_redirected_to new_session_path
+    assert_equal "Tài khoản đã được duyệt. Bấm Đăng nhập bằng Zalo.", flash[:notice]
+    assert_nil session[:registration]
+  end
+
+  test "submitting after approval also goes to Zalo login" do
+    zalo_login
+    users(:admin).update!(zalo_id: "zalo-hoa")
+    submit
+    assert_redirected_to new_session_path
+    assert_equal "Tài khoản đã được duyệt. Bấm Đăng nhập bằng Zalo.", flash[:notice]
+    assert_equal 0, RegistrationRequest.count
+  end
+
+  test "the pending status page has the Zalo login button" do
+    zalo_login
+    submit
+    follow_redirect!
+    assert_select "form[action='/auth/zalo2'] button", text: /Đăng nhập bằng Zalo/
+  end
+
   test "Thoát clears the Zalo session" do
     zalo_login
     delete registration_path

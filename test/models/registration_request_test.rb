@@ -13,6 +13,13 @@ class RegistrationRequestTest < ActiveSupport::TestCase
     assert_equal %i[maps_url name phone_number place_name], registration.errors.attribute_names.sort
   end
 
+  test "name and homestay are capped at 100 characters, the maps link at 500" do
+    registration = RegistrationRequest.new(zalo_id: "z", name: "a" * 101, phone_number: "0905123456", place_name: "b" * 101,
+      maps_url: "https://x.co/#{"c" * 500}")
+    assert_not registration.valid?
+    assert_equal %i[maps_url name place_name], registration.errors.attribute_names.sort
+  end
+
   test "a phone that already has an account is refused" do
     registration = RegistrationRequest.new(zalo_id: "z", name: "X", phone_number: "+84 912 345 678", place_name: "X") # Chị Lan
     assert_not registration.valid?

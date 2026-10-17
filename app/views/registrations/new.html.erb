@@ -18,6 +18,7 @@
         <span class="badge badge-soft badge-warning badge-sm">Đang chờ duyệt</span>
       </div>
       <p class="text-sm opacity-70">Khi được duyệt, bạn chỉ cần bấm "Đăng nhập bằng Zalo".</p>
+      <%= render "sessions/zalo_button" %>
     <% else %>
       <% if @latest&.rejected? %>
         <div class="alert alert-warning alert-soft"><span>Yêu cầu chưa được duyệt. Bạn có thể gửi lại thông tin.</span></div>
@@ -32,7 +33,7 @@
         <% end %>
         <div>
           <%= form.label :name, "Tên của bạn", class: "label mb-1" %>
-          <%= form.text_field :name, required: true, autocomplete: "name", class: "input w-full" %>
+          <%= form.text_field :name, required: true, maxlength: 100, autocomplete: "name", class: "input w-full" %>
         </div>
         <div>
           <%= form.label :phone_number, "Số điện thoại", class: "label mb-1" %>
@@ -41,7 +42,7 @@
         </div>
         <div>
           <%= form.label :place_name, "Tên homestay", class: "label mb-1" %>
-          <%= form.text_field :place_name, required: true, list: "places", autocomplete: "off", class: "input w-full" %>
+          <%= form.text_field :place_name, required: true, maxlength: 100, list: "places", autocomplete: "off", class: "input w-full" %>
           <datalist id="places">
             <% Place.order(:name).each do |place| %><option value="<%= place.name %>"><%= place.address %></option><% end %>
           </datalist>
@@ -49,7 +50,7 @@
         </div>
         <div>
           <%= form.label :maps_url, "Link Google Maps (nếu có)", class: "label mb-1" %>
-          <%= form.url_field :maps_url, placeholder: "https://maps.app.goo.gl/…", class: "input w-full" %>
+          <%= form.url_field :maps_url, maxlength: 500, placeholder: "https://maps.app.goo.gl/…", class: "input w-full" %>
         </div>
         <%= form.submit "Gửi đăng ký", class: "btn btn-primary btn-block mt-2" %>
       <% end %>

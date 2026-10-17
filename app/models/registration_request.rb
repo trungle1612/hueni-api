@@ -11,6 +11,8 @@ class RegistrationRequest < ApplicationRecord
   enum :status, { pending: "pending", approved: "approved", rejected: "rejected" }, validate: true
 
   validates :zalo_id, :name, :place_name, presence: true
+  validates :name, :place_name, length: { maximum: 100 }
+  validates :maps_url, length: { maximum: 500 }
   validates :phone_number, presence: true, format: { with: /\A0\d{9}\z/, allow_blank: true }
   validates :maps_url, format: { with: %r{\Ahttps?://\S+\z}i, allow_blank: true }
   validate :phone_number_free, on: :create

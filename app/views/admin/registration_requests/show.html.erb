@@ -58,7 +58,10 @@
         </div>
         <%= form.submit "Lưu", formnovalidate: true, class: "btn btn-sm self-start" %>
 
-        <% if owners.any? %>
+        <% if @linked_user %>
+          <div class="alert alert-warning alert-soft"><span>Zalo này đã liên kết với tài khoản
+            <%= link_to @linked_user.name, edit_admin_user_path(@linked_user), class: "link font-semibold" %> — từ chối yêu cầu này.</span></div>
+        <% elsif owners.any? %>
           <div class="alert alert-warning alert-soft"><span>Hướng dẫn người này nhờ chủ hiện tại thêm ở mục Thành viên.</span></div>
         <% else %>
           <label class="flex items-center gap-2 cursor-pointer">

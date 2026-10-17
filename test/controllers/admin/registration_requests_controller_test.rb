@@ -43,6 +43,16 @@ class Admin::RegistrationRequestsControllerTest < ActionDispatch::IntegrationTes
     assert_select "input[type=submit][value=?]", "Từ chối"
   end
 
+  test "a pending request whose Zalo already has an account warns and offers only Từ chối" do
+    users(:owner).update!(zalo_id: "zalo-hoa")
+    get admin_registration_request_path(@registration)
+    assert_select ".alert-warning a[href=?]", edit_admin_user_path(users(:owner)), text: users(:owner).name
+    assert_select ".alert-warning", text: /Zalo này đã liên kết với tài khoản .* — từ chối yêu cầu này\./
+    assert_select "input[name=called]", 0
+    assert_select "input[type=submit][value^=?]", "Tạo tài khoản", 0
+    assert_select "input[type=submit][value=?]", "Từ chối"
+  end
+
   test "approving needs the call confirmed, then creates the Zalo-linked owner" do
     patch approve_admin_registration_request_path(@registration), params: choose
     assert_redirected_to admin_registration_request_path(@registration)

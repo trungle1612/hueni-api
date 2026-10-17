@@ -7,6 +7,7 @@ class Admin::RegistrationRequestsController < Admin::BaseController
 
   def show
     @places = Place.order(:name)
+    @linked_user = User.find_by(zalo_id: @registration.zalo_id) if @registration.pending?
   end
 
   def update
