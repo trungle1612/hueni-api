@@ -1,85 +1,121 @@
 <% content_for :title, "Yêu cầu đăng ký · hueni admin" %>
+<% place = @registration.place %>
 <% owners = @registration.place_owners %>
+<% note_needed = @registration.pending? && !@registration.verifiable? %>
 
-<div class="mb-4">
-  <%= link_to "‹ Người dùng", admin_users_path, class: "link text-sm opacity-70" %>
-  <h1 class="text-xl font-semibold">Yêu cầu đăng ký</h1>
-</div>
+<%= render "admin/rooms/header", back: admin_users_path(anchor: "registrations"), back_label: "Yêu cầu đăng ký", title: @registration.name %>
 
 <div class="flex flex-col gap-3 max-w-xl">
-  <section id="requester" class="card bg-base-100 shadow-sm">
-    <div class="card-body p-4 gap-1">
-      <div class="text-xs opacity-70">Người đăng ký</div>
-      <div class="font-semibold"><%= @registration.name %> <span class="text-sm font-normal opacity-70">(Zalo: <%= @registration.zalo_name.presence || "không có tên" %>)</span></div>
-      <div class="flex items-center gap-2">
-        <%= link_to phone(@registration.phone_number), "tel:#{@registration.phone_number}", class: "link" %>
-        <span class="badge badge-soft badge-warning badge-sm">chưa xác minh</span>
-      </div>
-      <div class="text-xs opacity-70">Gửi lúc <%= @registration.created_at.strftime("%H:%M %d/%m/%Y") %></div>
+  <% unless @registration.pending? %>
+    <div id="decision" role="status" class="alert alert-soft <%= "alert-success" if @registration.approved? %>">
+      <span>
+        <b><%= @registration.approved? ? "Đã duyệt" : "Đã từ chối" %></b> bởi <%= @registration.decided_by&.name %>
+        lúc <%= @registration.decided_at.strftime("%H:%M %d/%m/%Y") %>.
+        <%= link_to "Xem tài khoản", edit_admin_user_path(@registration.user), class: "link font-semibold" if @registration.user %>
+        <% if @registration.admin_note.present? %><br>Ghi chú: <%= @registration.admin_note %><% end %>
+      </span>
+    </div>
+  <% end %>
+
+  <section id="homestay" class="card bg-base-100 shadow-sm">
+    <div class="card-body p-4 gap-2">
+      <h2 class="font-semibold"><%= @registration.pending? ? "Bước 1 · Gọi homestay để xác minh" : "Homestay" %></h2>
+      <% if place %>
+        <div>
+          <div class="text-lg font-semibold"><%= place.name %></div>
+          <% if place.address.present? %><div class="text-sm opacity-70"><%= place.address %></div><% end %>
+          <% if @registration.place_name != place.name %>
+            <div class="text-sm">Người đăng ký gõ: "<%= @registration.place_name %>"</div>
+          <% end %>
+        </div>
+        <% if @registration.pending? %>
+          <% if owners.any? %>
+            <span class="badge badge-soft badge-warning">Đã có chủ: <%= owners.map(&:name).join(", ") %></span>
+          <% else %>
+            <span class="badge badge-soft badge-success">Chưa có chủ</span>
+          <% end %>
+        <% end %>
+      <% else %>
+        <div class="text-lg font-semibold">"<%= @registration.place_name %>" <span class="badge badge-soft">chưa có trên hueni</span></div>
+      <% end %>
+
+      <% if @registration.verifiable? %>
+        <% if @registration.pending? %>
+          <%= link_to "Gọi #{phone(place.phone)}", "tel:#{place.phone.gsub(/[^\d+]/, "")}", class: "btn btn-lg btn-block btn-neutral" %>
+          <p class="text-sm">SĐT của homestay trên hueni. Hỏi chủ nhà: <%= @registration.name %> có phải là chủ không?</p>
+        <% else %>
+          <div class="text-sm">SĐT homestay trên hueni: <%= link_to phone(place.phone), "tel:#{place.phone.gsub(/[^\d+]/, "")}", class: "link" %></div>
+        <% end %>
+      <% elsif note_needed %>
+        <div class="alert alert-warning alert-soft">
+          <span><%= place ? "Homestay chưa có SĐT trên hueni" : "Không có trên hueni" %>, nên không có số để gọi xác minh.
+            Chọn đúng homestay bên dưới, hoặc xác minh cách khác (Google Maps, hỏi người quen…) và ghi lại trong Ghi chú.</span>
+        </div>
+      <% end %>
+
+      <% if @registration.maps_url.present? %>
+        <%= link_to "Mở Google Maps ↗", @registration.maps_url, target: "_blank", rel: "noopener noreferrer", class: "link" %>
+      <% end %>
     </div>
   </section>
 
-  <section id="homestay" class="card bg-base-100 shadow-sm">
+  <section id="requester" class="card bg-base-100 shadow-sm">
     <div class="card-body p-4 gap-1">
-      <div class="text-xs opacity-70">Homestay</div>
-      <% if (place = @registration.place) %>
-        <div class="font-semibold"><%= place.name %></div>
-        <% if place.address.present? %><div class="text-sm opacity-70"><%= place.address %></div><% end %>
-        <div class="text-sm">SĐT homestay trên hueni:
-          <%= place.phone.present? ? link_to(place.phone, "tel:#{place.phone.gsub(/[^\d+]/, "")}", class: "link font-semibold") : "chưa có" %>
-        </div>
-        <% if owners.any? %>
-          <span class="badge badge-soft badge-error badge-sm">Đã có chủ: <%= owners.map(&:name).join(", ") %></span>
-        <% else %>
-          <span class="badge badge-soft badge-success badge-sm">Chưa có chủ</span>
-        <% end %>
-        <% if @registration.place_name != place.name %>
-          <div class="text-xs opacity-70">Người đăng ký gõ: "<%= @registration.place_name %>"</div>
-        <% end %>
-      <% else %>
-        <div class="font-semibold">"<%= @registration.place_name %>" <span class="badge badge-soft badge-sm">chưa có trên hueni</span></div>
-      <% end %>
-      <% if @registration.maps_url.present? %>
-        <%= link_to "Mở Google Maps ↗", @registration.maps_url, target: "_blank", rel: "noopener noreferrer", class: "link text-sm" %>
-      <% end %>
+      <h2 class="font-semibold">Người đăng ký</h2>
+      <div><%= @registration.name %> <span class="text-sm opacity-70">(Zalo: <%= @registration.zalo_name.presence || "không có tên" %>)</span></div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-sm opacity-70">SĐT để báo kết quả:</span>
+        <%= link_to phone(@registration.phone_number), "tel:#{@registration.phone_number}", class: "link" %>
+        <% if @registration.pending? %><span class="badge badge-soft badge-warning badge-sm">chưa xác minh</span><% end %>
+      </div>
+      <div class="text-sm opacity-70">Gửi lúc <%= @registration.created_at.strftime("%H:%M %d/%m/%Y") %></div>
     </div>
   </section>
 
   <% if @registration.pending? %>
-    <%= form_with model: [ :admin, @registration ], class: "card bg-base-100 shadow-sm" do |form| %>
+    <%= form_with model: [ :admin, @registration ], id: "decide", class: "card bg-base-100 shadow-sm" do |form| %>
       <div class="card-body p-4 gap-3">
-        <div>
-          <%= form.label :place_id, "Chọn homestay", class: "label mb-1" %>
-          <%= form.select :place_id, @places.map { [ it.name, it.id ] }, { include_blank: "— Chưa có trên hueni —" }, class: "select w-full" %>
-        </div>
-        <div>
-          <%= form.label :admin_note, "Ghi chú (chỉ admin thấy)", class: "label mb-1" %>
-          <%= form.text_area :admin_note, rows: 2, class: "textarea w-full" %>
-        </div>
-        <%= form.submit "Lưu", formnovalidate: true, class: "btn btn-sm self-start" %>
+        <h2 class="font-semibold">Bước 2 · Quyết định</h2>
+
+        <details class="rounded-box border border-base-300" <%= "open" if note_needed || @registration.admin_note.present? %>>
+          <summary class="cursor-pointer p-3 font-medium">Sửa homestay / ghi chú</summary>
+          <div class="flex flex-col gap-3 px-3 pb-3">
+            <div>
+              <%= form.label :place_id, "Homestay", class: "block mb-1 font-medium" %>
+              <%= form.select :place_id, @places.map { [ it.name, it.id ] }, { include_blank: "— Chưa có trên hueni —" }, class: "select w-full" %>
+            </div>
+            <div>
+              <%= form.label :admin_note, note_needed ? "Ghi chú: đã xác minh thế nào? (bắt buộc khi duyệt)" : "Ghi chú (chỉ admin thấy)",
+                    class: "block mb-1 font-medium" %>
+              <%= form.text_area :admin_note, rows: 2, class: "textarea w-full" %>
+            </div>
+            <%= form.submit "Lưu", formnovalidate: true, class: "btn self-start" %>
+          </div>
+        </details>
 
         <% if @linked_user %>
           <div class="alert alert-warning alert-soft"><span>Zalo này đã liên kết với tài khoản
             <%= link_to @linked_user.name, edit_admin_user_path(@linked_user), class: "link font-semibold" %> — từ chối yêu cầu này.</span></div>
         <% elsif owners.any? %>
-          <div class="alert alert-warning alert-soft"><span>Hướng dẫn người này nhờ chủ hiện tại thêm ở mục Thành viên.</span></div>
+          <div class="alert alert-warning alert-soft"><span>Homestay đã có chủ. Hướng dẫn người này nhờ
+            <% owners.each_with_index do |owner, index| %><%= ", " if index.positive? %><%= owner.name %>
+              (<%= link_to phone(owner.phone_number), "tel:#{owner.phone_number}", class: "link" %>)<% end %>
+            thêm ở mục Thành viên.</span></div>
         <% else %>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <%= check_box_tag :called, "1", false, required: true, class: "checkbox" %> Tôi đã gọi xác nhận
+          <label class="flex items-start gap-3 cursor-pointer py-1">
+            <%= check_box_tag :called, "1", false, class: "checkbox mt-0.5" %>
+            <span><%= @registration.verifiable? ? "Tôi đã gọi #{phone(place.phone)} và chủ nhà xác nhận" : "Tôi đã xác minh cách khác và ghi trong Ghi chú" %></span>
           </label>
-          <%= form.submit @registration.place ? "Tạo tài khoản" : "Tạo tài khoản (chưa có homestay)",
-                formaction: approve_admin_registration_request_path(@registration), class: "btn btn-primary btn-block" %>
+          <%= form.submit place ? "Tạo tài khoản chủ #{place.name}" : "Tạo tài khoản (chưa có homestay)",
+                formaction: approve_admin_registration_request_path(@registration), class: "btn btn-primary btn-block",
+                data: { turbo_confirm: place ? "Tạo tài khoản chủ #{place.name} cho #{@registration.name}?" : "Tạo tài khoản chưa có homestay cho #{@registration.name}?" } %>
+          <% unless place %>
+            <p class="text-sm opacity-70">Tài khoản chưa làm được gì cho đến khi được thêm vào một homestay (Người dùng → sửa).</p>
+          <% end %>
         <% end %>
         <%= form.submit "Từ chối", formaction: reject_admin_registration_request_path(@registration), formnovalidate: true,
               class: "btn btn-outline btn-error btn-block", data: { turbo_confirm: "Từ chối yêu cầu của #{@registration.name}?" } %>
       </div>
     <% end %>
-  <% else %>
-    <div class="text-sm">
-      <%= @registration.approved? ? "Đã duyệt" : "Đã từ chối" %> bởi <%= @registration.decided_by&.name %>
-      lúc <%= @registration.decided_at.strftime("%H:%M %d/%m/%Y") %>.
-      <%= link_to "Xem tài khoản", edit_admin_user_path(@registration.user), class: "link" if @registration.user %>
-    </div>
-    <% if @registration.admin_note.present? %><div class="text-sm opacity-70">Ghi chú: <%= @registration.admin_note %></div><% end %>
   <% end %>
 </div>

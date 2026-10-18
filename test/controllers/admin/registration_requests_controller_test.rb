@@ -24,21 +24,36 @@ class Admin::RegistrationRequestsControllerTest < ActionDispatch::IntegrationTes
     assert_nil @registration.admin_note
   end
 
-  test "request page shows the requester, the homestay's hueni phone to call and that it has no owner" do
-    places(:hiuhill).update!(phone: "0234 3 812 345")
+  test "request page leads with the homestay's hueni phone to call, then the requester" do
+    places(:hiuhill).update!(phone: "+84 912 000 111")
     get admin_registration_request_path(@registration)
-    assert_select "#requester", text: /Hoa Nguyễn.*Hoa Zalo.*0905 123 456.*chưa xác minh/m
-    assert_select "#homestay a[href=?]", "tel:02343812345"
+    assert_select "h1", "Hoa Nguyễn"
+    assert_select "#homestay a.btn[href=?]", "tel:+84912000111", text: "Gọi 0912 000 111"
     assert_select "#homestay", text: /Chưa có chủ/
-    assert_select "input[type=checkbox][name=called][required]"
-    assert_select "input[type=submit][value=?]", "Tạo tài khoản"
+    assert_select "#requester", text: /Hoa Nguyễn.*Hoa Zalo.*0905 123 456.*chưa xác minh/m
+    assert_select "label", text: /Tôi đã gọi 0912 000 111 và chủ nhà xác nhận/
+    assert_select "details:not([open])"
+    assert_select "input[type=submit][value=?][data-turbo-confirm=?]", "Tạo tài khoản chủ Hiu Hill Homestay",
+      "Tạo tài khoản chủ Hiu Hill Homestay cho Hoa Nguyễn?"
+  end
+
+  test "with no hueni phone to call, the page warns and approving needs a note" do
+    get admin_registration_request_path(@registration)
+    assert_select "#homestay .alert-warning", text: /chưa có SĐT trên hueni/
+    assert_select "details[open] label", text: /bắt buộc khi duyệt/
+    assert_select "label", text: /Tôi đã xác minh cách khác/
+
+    patch approve_admin_registration_request_path(@registration), params: choose.merge(called: "1")
+    assert_equal "Không có SĐT trên hueni để gọi: ghi cách đã xác minh vào Ghi chú.", flash[:alert]
+    assert @registration.reload.pending?
   end
 
   test "a homestay with an owner offers only Từ chối" do
     @registration.update!(place: places(:tomo))
     get admin_registration_request_path(@registration)
     assert_select "#homestay", text: /Đã có chủ: Chị Lan/
-    assert_select "body", text: /nhờ chủ hiện tại thêm ở mục Thành viên/
+    assert_select ".alert-warning", text: /nhờ\s+Chị Lan/
+    assert_select ".alert-warning a[href=?]", "tel:#{users(:owner).phone_number}"
     assert_select "input[type=submit][value^=?]", "Tạo tài khoản", 0
     assert_select "input[type=submit][value=?]", "Từ chối"
   end
@@ -63,7 +78,7 @@ class Admin::RegistrationRequestsControllerTest < ActionDispatch::IntegrationTes
       patch approve_admin_registration_request_path(@registration), params: choose(note: "Đã gọi").merge(called: "1")
     end
     user = User.find_by!(zalo_id: "zalo-hoa")
-    assert_redirected_to edit_admin_user_path(user)
+    assert_redirected_to admin_users_path(anchor: "registrations")
     assert_equal "Đã tạo tài khoản cho Hoa Nguyễn. Hãy báo người này đăng nhập bằng Zalo.", flash[:notice]
     assert_equal "owner", user.role_at(places(:hiuhill))
     assert_equal [ "approved", "Đã gọi" ], [ @registration.reload.status, @registration.admin_note ]
@@ -88,20 +103,27 @@ class Admin::RegistrationRequestsControllerTest < ActionDispatch::IntegrationTes
 
   test "rejecting keeps the request as history" do
     patch reject_admin_registration_request_path(@registration), params: choose(note: "Không phải chủ")
-    assert_redirected_to admin_users_path
+    assert_redirected_to admin_users_path(anchor: "registrations")
     assert_equal [ "rejected", users(:admin), "Không phải chủ" ], [ @registration.reload.status, @registration.decided_by, @registration.admin_note ]
 
     patch approve_admin_registration_request_path(@registration), params: choose.merge(called: "1")
     assert_equal "Yêu cầu đã được xử lý.", flash[:alert]
     get admin_registration_request_path(@registration)
     assert_select "form", text: /Tạo tài khoản/, count: 0
-    assert_select "body", text: /Đã từ chối bởi Trung/
+    assert_select "#decision", text: /Đã từ chối bởi Trung.*Ghi chú: Không phải chủ/m
+    assert_select "body", text: /chưa xác minh/, count: 0
+  end
+
+  test "after a decision, the next pending request opens" do
+    older = RegistrationRequest.create!(zalo_id: "zalo-mai", name: "Mai", phone_number: "0905000222", place_name: "Nhà Mai")
+    patch reject_admin_registration_request_path(@registration), params: choose
+    assert_redirected_to admin_registration_request_path(older)
   end
 
   test "Người dùng lists pending requests; the menu and Tổng quan show the count" do
     get admin_users_path
-    assert_select "#registrations a[href=?]", admin_registration_request_path(@registration)
-    assert_select "aside a", text: /Người dùng \(1\)/
+    assert_select "#registrations a[href=?]", admin_registration_request_path(@registration), text: /Không có SĐT để gọi/
+    assert_select "aside a .badge", text: "1 chờ duyệt"
     get admin_root_path
     assert_select "#pending_registrations", text: /1 yêu cầu đăng ký chờ duyệt/
 
@@ -109,6 +131,6 @@ class Admin::RegistrationRequestsControllerTest < ActionDispatch::IntegrationTes
     get admin_users_path
     assert_select "#registrations", 0
     assert_select "#decided_registrations", text: /Hoa Nguyễn/
-    assert_select "aside a", text: /Người dùng \(/, count: 0
+    assert_select "aside a .badge", count: 0
   end
 end

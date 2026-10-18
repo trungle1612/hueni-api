@@ -1,5 +1,6 @@
 module ApplicationHelper
-  # Single source for the admin dock (phone) and sidebar (desktop). path: nil = page not built yet.
+  # Single source for the admin dock (phone) and sidebar (desktop). path: nil = page not built yet;
+  # count: a number shown as a badge (pending registrations).
   def admin_menu_items
     items = [
       { label: "Tổng quan", icon: "home", path: admin_root_path, active: current_page?(admin_root_path) },
@@ -11,7 +12,7 @@ module ApplicationHelper
     end
     if Current.user&.admin?
       pending = RegistrationRequest.pending.count
-      items << { label: pending.positive? ? "Người dùng (#{pending})" : "Người dùng", icon: "users", path: admin_users_path,
+      items << { label: "Người dùng", count: pending, icon: "users", path: admin_users_path,
                  active: controller_name.in?(%w[users registration_requests]) }
       items << { label: "Đồng bộ", icon: "activity", path: admin_sync_runs_path, active: controller_name == "sync_runs" }
     end
@@ -42,8 +43,9 @@ module ApplicationHelper
     { invalid: (true if invalid), describedby: [ hint, ("#{attribute}_error" if invalid) ].compact.join(" ").presence }
   end
 
-  # "0912345678" → "0912 345 678"
+  # "0912345678" / "+84 912 345 678" → "0912 345 678"; anything else (landlines) as given.
   def phone(number)
-    number.to_s.sub(/\A(\d{4})(\d{3})(\d{3})\z/, '\1 \2 \3')
+    digits = number.to_s.gsub(/\D/, "").sub(/\A84(?=\d{9}\z)/, "0")
+    digits.match?(/\A\d{10}\z/) ? digits.sub(/\A(\d{4})(\d{3})(\d{3})\z/, '\1 \2 \3') : number.to_s
   end
 end

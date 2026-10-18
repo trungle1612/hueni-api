@@ -13,10 +13,11 @@ class RegistrationTest < ApplicationSystemTestCase
 
     users(:admin).update!(zalo_id: "zalo-trung")
     log_in_with_zalo "zalo-trung"
-    click_link "Người dùng (1)", match: :first
+    click_link "Người dùng", match: :first
     click_link "Hoa Nguyễn"
-    check "Tôi đã gọi xác nhận"
-    click_button "Tạo tài khoản"
+    check "Tôi đã xác minh cách khác và ghi trong Ghi chú"
+    fill_in "Ghi chú: đã xác minh thế nào? (bắt buộc khi duyệt)", with: "Gọi người quen ở Kim Long"
+    accept_confirm { click_button "Tạo tài khoản chủ Hiu Hill Homestay" }
     assert_text "Đã tạo tài khoản cho Hoa Nguyễn"
 
     Capybara.reset_sessions!

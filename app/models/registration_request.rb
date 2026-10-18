@@ -20,6 +20,8 @@ class RegistrationRequest < ApplicationRecord
   validate :phone_number_free, if: :will_save_change_to_phone_number?
 
   def homestay_name = place&.name || place_name
+  # The admin verifies by calling the homestay's number on hueni. Without one, the note must say how it was verified.
+  def verifiable? = place&.phone.present?
   def place_owners = place ? place.place_memberships.owner.includes(:user).map(&:user) : []
 
   # Re-checks what the admin saw: the request may be days old. Never makes anyone owner
@@ -31,6 +33,7 @@ class RegistrationRequest < ApplicationRecord
       return refuse("Số điện thoại này đã có tài khoản.") if User.exists?(phone_number:)
       return refuse("Zalo này đã liên kết với tài khoản khác.") if User.exists?(zalo_id:)
       return refuse("#{place.name} vừa có chủ. Không tạo tài khoản.") if place_owners.any?
+      return refuse("Không có SĐT trên hueni để gọi: ghi cách đã xác minh vào Ghi chú.") if !verifiable? && admin_note.blank?
 
       new_user = User.create!(name:, phone_number:, zalo_id:, role: "user", password: User.unknown_password)
       new_user.place_memberships.create!(place:, role: "owner") if place

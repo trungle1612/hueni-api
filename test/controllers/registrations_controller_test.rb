@@ -103,7 +103,7 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
   test "after approval, the form and the status page send the owner to Zalo login" do
     zalo_login
     submit
-    RegistrationRequest.sole.approve!(by: users(:admin))
+    RegistrationRequest.sole.tap { it.update!(admin_note: "Đã gọi") }.approve!(by: users(:admin))
     get registration_path
     assert_redirected_to new_session_path
     assert_equal "Tài khoản đã được duyệt. Bấm Đăng nhập bằng Zalo.", flash[:notice]

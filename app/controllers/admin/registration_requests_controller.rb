@@ -18,8 +18,7 @@ class Admin::RegistrationRequestsController < Admin::BaseController
     if params[:called] != "1"
       redirect_to admin_registration_request_path(@registration), alert: "Gọi xác nhận trước khi tạo tài khoản."
     elsif @registration.approve!(by: Current.user)
-      redirect_to edit_admin_user_path(@registration.user),
-        notice: "Đã tạo tài khoản cho #{@registration.name}. Hãy báo người này đăng nhập bằng Zalo."
+      redirect_to next_request_path, notice: "Đã tạo tài khoản cho #{@registration.name}. Hãy báo người này đăng nhập bằng Zalo."
     else
       redirect_to admin_registration_request_path(@registration), alert: @registration.errors[:base].to_sentence
     end
@@ -27,7 +26,7 @@ class Admin::RegistrationRequestsController < Admin::BaseController
 
   def reject
     if @registration.reject!(by: Current.user)
-      redirect_to admin_users_path, notice: "Đã từ chối yêu cầu của #{@registration.name}."
+      redirect_to next_request_path, notice: "Đã từ chối yêu cầu của #{@registration.name}."
     else
       redirect_to admin_registration_request_path(@registration), alert: @registration.errors[:base].to_sentence
     end
@@ -36,6 +35,12 @@ class Admin::RegistrationRequestsController < Admin::BaseController
   private
     def set_registration
       @registration = RegistrationRequest.find(params[:id])
+    end
+
+    # After a decision: the next one waiting, oldest first, or back to the list.
+    def next_request_path
+      following = RegistrationRequest.pending.order(:id).first
+      following ? admin_registration_request_path(following) : admin_users_path(anchor: "registrations")
     end
 
     # Lưu, Tạo tài khoản and Từ chối all submit the one form: keep the homestay and note first, then act.
