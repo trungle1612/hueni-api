@@ -97,6 +97,20 @@ class BookingTest < ActiveSupport::TestCase
     assert ical.valid? # overlaps limdim_confirmed: the OTA already sold the nights
   end
 
+  test "guest name and phone are optional; a phone must be dialable, in any country's format" do
+    assert build(guest_name: "  ", guest_phone: " ").tap { assert it.valid? }.then { [ it.guest_name, it.guest_phone ] }.all?(&:nil?)
+    [ "0905 123 456", "+84 905.123.456", "+82 10-1234-5678", "(028) 3822 1234" ].each do |phone|
+      assert build(guest_phone: phone).valid?, phone
+    end
+    [ "abc", "09o5 123 456", "1234567", "+1 234 567 890 123 456" ].each do |phone|
+      booking = build(guest_phone: phone)
+      assert_not booking.valid?, phone
+      assert_equal [ "Số điện thoại không hợp lệ" ], booking.errors.full_messages_for(:guest_phone)
+    end
+    assert_equal "+84905123456", build(guest_phone: " +84 905.123.456 ").guest_phone_dial
+    assert_not build(guest_name: "a" * 101).valid?
+  end
+
   test "guests is optional and must fit the room" do
     assert build(guests: nil).valid?
     assert build(guests: 2).valid?

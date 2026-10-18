@@ -53,6 +53,13 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "a mistyped phone is shown under the phone field" do
+    post admin_place_bookings_path("tomo-homestay"), params: { booking: { room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06", guest_phone: "09o5" } }
+    assert_response :unprocessable_entity
+    assert_select "#guest_phone_error", "Số điện thoại không hợp lệ"
+    assert_select "input[name='booking[guest_phone]'][value='09o5'][autofocus][aria-invalid=true]"
+  end
+
   test "too many guests is shown under the guest field" do
     post admin_place_bookings_path("tomo-homestay"), params: { booking: { room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06", guests: 5 } }
     assert_response :unprocessable_entity

@@ -7,7 +7,7 @@ class Booking < ApplicationRecord
   after_commit { Vacancy.bust }
 
   # Blank form fields stay nil, so saving the form unchanged logs no "— → —" change.
-  normalizes :guest_name, :guest_phone, :note, with: ->(value) { value.presence }
+  normalizes :guest_name, :guest_phone, :note, with: ->(value) { value.strip.presence }
 
   # Guests arriving after midnight still count as the previous day's arrivals until this hour (Huế time),
   # like a hotel's night audit: they can be checked in and stay in Hôm nay.
@@ -36,6 +36,10 @@ class Booking < ApplicationRecord
   # iCal bookings skip this: the OTA already sold those nights, so an overlap is shown as a conflict instead.
   validate :room_is_free, if: -> { manual? && (hold? || confirmed?) && room && start_date && end_date }
   validate :guests_fit_room, if: -> { guests && room }
+  validates :guest_name, length: { maximum: 100 }
+  # Kept as typed (foreign guests: "+82 10 1234 5678"), but it must be dialable for the Gọi button.
+  validate -> { errors.add(:guest_phone, "không hợp lệ") unless guest_phone.match?(/\A\+?[\d\s.\-()]+\z/) && guest_phone.count("0-9").between?(8, 15) },
+    if: :guest_phone
   validate :not_cancelled_after_check_in, if: -> { cancelled? && checked_in_at }
 
   # Holds and confirmed stays occupy the room from start_date up to, not including, end_date —
@@ -63,6 +67,7 @@ class Booking < ApplicationRecord
     end
   end
   # How the calendar, Hôm nay and messages name a booking.
+  def guest_phone_dial = guest_phone&.gsub(/[^\d+]/, "")
   def label = guest_name.presence || note.presence || (ical? ? calendar_feed&.provider_label || "iCal" : "Khách")
   def overlaps?(other) = start_date < other.occupied_until && other.start_date < occupied_until
   def early_check_in? = !checked_in_at && start_date > Date.current
