@@ -11,6 +11,13 @@ class RegistrationRequestTest < ActiveSupport::TestCase
     registration = RegistrationRequest.new(zalo_id: "z", name: "", phone_number: "123", place_name: "", maps_url: "javascript:alert(1)")
     assert_not registration.valid?
     assert_equal %i[maps_url name phone_number place_name], registration.errors.attribute_names.sort
+    assert_equal [ "Số điện thoại cần đủ 10 số, ví dụ 0912 345 678" ], registration.errors.full_messages_for(:phone_number)
+  end
+
+  test "a maps link without a scheme gets https://, a blank one is nil" do
+    assert_equal "https://maps.app.goo.gl/abc", RegistrationRequest.new(maps_url: " maps.app.goo.gl/abc ").maps_url
+    assert_equal "http://goo.gl/x", RegistrationRequest.new(maps_url: "http://goo.gl/x").maps_url
+    assert_nil RegistrationRequest.new(maps_url: " ").maps_url
   end
 
   test "name and homestay are capped at 100 characters, the maps link at 500" do

@@ -7,15 +7,17 @@ class RegistrationRequest < ApplicationRecord
   belongs_to :user, optional: true
 
   normalizes :phone_number, with: ->(phone) { phone.gsub(/\D/, "").sub(/\A84(?=\d{9}\z)/, "0") }
+  # Links copied from the Maps app often come without "https://".
+  normalizes :maps_url, with: ->(url) { url.strip.presence&.sub(%r{\A(?![a-z][a-z0-9+.-]*:)}i, "https://") }
 
   enum :status, { pending: "pending", approved: "approved", rejected: "rejected" }, validate: true
 
   validates :zalo_id, :name, :place_name, presence: true
   validates :name, :place_name, length: { maximum: 100 }
   validates :maps_url, length: { maximum: 500 }
-  validates :phone_number, presence: true, format: { with: /\A0\d{9}\z/, allow_blank: true }
+  validates :phone_number, presence: true, format: { with: /\A0\d{9}\z/, allow_blank: true, message: "cần đủ 10 số, ví dụ 0912 345 678" }
   validates :maps_url, format: { with: %r{\Ahttps?://\S+\z}i, allow_blank: true }
-  validate :phone_number_free, on: :create
+  validate :phone_number_free, if: :will_save_change_to_phone_number?
 
   def homestay_name = place&.name || place_name
   def place_owners = place ? place.place_memberships.owner.includes(:user).map(&:user) : []

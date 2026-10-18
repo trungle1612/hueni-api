@@ -71,9 +71,12 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     submit(phone_number: "0912 345 678") # Chị Lan
     assert_response :unprocessable_entity
     assert_select "[role=alert]", text: /Số điện thoại này đã có tài khoản\. Liên hệ quản trị viên\./
-    submit(maps_url: "javascript:alert(1)", name: "")
+    submit(maps_url: "javascript:alert(1)", name: "", phone_number: "0905 12")
     assert_response :unprocessable_entity
-    assert_select "[role=alert]", text: /Link Google Maps/
+    assert_select "#maps_url_error", text: /Link Google Maps/
+    assert_select "input[aria-invalid=true][aria-describedby='phone_hint phone_number_error'].input-error[name='registration_request[phone_number]']"
+    assert_select "#phone_number_error", text: "Số điện thoại cần đủ 10 số, ví dụ 0912 345 678"
+    assert_select "input[aria-invalid=true][aria-describedby=name_error][name='registration_request[name]']"
     assert_equal 0, RegistrationRequest.count
   end
 
@@ -90,7 +93,9 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     submit
     RegistrationRequest.sole.update!(status: "rejected")
     get registration_path
-    assert_select "body", text: /Yêu cầu chưa được duyệt\./
+    assert_select "[role=alert]", text: /Yêu cầu trước chưa được duyệt\./
+    assert_select "input[name='registration_request[phone_number]'][value=?]", "0905123456"
+    assert_select "input[name='registration_request[place_name]'][value=?]", "Hiu Hill Homestay"
     submit
     assert_equal 2, RegistrationRequest.count
   end
@@ -114,11 +119,43 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0, RegistrationRequest.count
   end
 
-  test "the pending status page has the Zalo login button" do
+  test "the pending status page offers to correct the request, not a login that would loop back here" do
     zalo_login
     submit
     follow_redirect!
-    assert_select "form[action='/auth/zalo2'] button", text: /Đăng nhập bằng Zalo/
+    assert_select "h1", "Đã gửi đăng ký"
+    assert_select "form[action='/auth/zalo2']", 0
+    assert_select "a[href=?]", registration_path(sua: 1), text: "Sai thông tin? Sửa lại"
+  end
+
+  test "a pending request is corrected in place" do
+    zalo_login
+    submit
+    get registration_path(sua: 1)
+    assert_select "input[name='registration_request[phone_number]'][value=?]", "0905123456"
+    assert_no_enqueued_jobs do
+      patch registration_path, params: { registration_request: { name: "Hoa", phone_number: "0905 000 111",
+        place_name: "Nhà Mơ Kim Long", maps_url: "maps.app.goo.gl/abc", zalo_id: "zalo-x" } }
+    end
+    assert_redirected_to registration_path
+    registration = RegistrationRequest.sole
+    assert_equal [ "Hoa", "0905000111", nil, "Nhà Mơ Kim Long", "https://maps.app.goo.gl/abc", "zalo-hoa", "pending" ],
+      [ registration.name, registration.phone_number, registration.place, registration.place_name, registration.maps_url,
+        registration.zalo_id, registration.status ]
+
+    patch registration_path, params: { registration_request: { phone_number: "0912 345 678" } } # Chị Lan
+    assert_response :unprocessable_entity
+    assert_select "[role=alert]", text: /Số điện thoại này đã có tài khoản/
+    assert_equal "0905000111", registration.reload.phone_number
+  end
+
+  test "a decided request can't be edited" do
+    zalo_login
+    submit
+    RegistrationRequest.sole.update!(status: "rejected")
+    patch registration_path, params: { registration_request: { phone_number: "0905000111" } }
+    assert_redirected_to registration_path
+    assert_equal "0905123456", RegistrationRequest.sole.phone_number
   end
 
   test "Thoát clears the Zalo session" do

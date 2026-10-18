@@ -1,4 +1,5 @@
 <% content_for :title, "Đăng ký · hueni admin" %>
+<% help = RegistrationsController::HELP_PHONE %>
 
 <div class="text-center mb-6">
   <div class="text-3xl font-bold text-primary">hueni</div>
@@ -6,58 +7,88 @@
 </div>
 
 <div class="card bg-base-100 shadow-md">
-  <div class="card-body gap-3">
-    <h1 class="card-title">Đăng ký làm chủ homestay</h1>
-
-    <% if @latest&.pending? %>
+  <div class="card-body gap-4">
+    <% if @registration.nil? %>
+      <h1 class="card-title">Đã gửi đăng ký</h1>
       <div role="status" class="alert alert-success alert-soft">
-        <span><b>Đã gửi.</b> hueni sẽ gọi cho bạn ở số <b><%= phone(@latest.phone_number) %></b> trong 1–2 ngày để xác nhận.</span>
+        <span>hueni sẽ gọi cho bạn ở số <b><%= phone(@latest.phone_number) %></b> trong 1–2 ngày để xác nhận.</span>
       </div>
-      <div class="text-sm">
+      <div>
         <span class="opacity-70">Homestay:</span> <%= @latest.homestay_name %>
         <span class="badge badge-soft badge-warning badge-sm">Đang chờ duyệt</span>
       </div>
-      <p class="text-sm opacity-70">Khi được duyệt, bạn chỉ cần bấm "Đăng nhập bằng Zalo".</p>
-      <%= render "sessions/zalo_button" %>
+      <p>Bạn có thể đóng trang này. Khi gọi, hueni sẽ hướng dẫn bạn đăng nhập.</p>
+      <%= link_to "Sai thông tin? Sửa lại", registration_path(sua: 1), class: "btn btn-outline btn-block" %>
     <% else %>
-      <% if @latest&.rejected? %>
-        <div class="alert alert-warning alert-soft"><span>Yêu cầu chưa được duyệt. Bạn có thể gửi lại thông tin.</span></div>
-      <% end %>
-      <p class="text-sm">Bạn là nhân viên? Nhờ chủ homestay thêm bạn ở mục Thành viên, không cần đăng ký.</p>
+      <% editing = @registration.persisted? %>
+      <h1 class="card-title"><%= editing ? "Sửa thông tin đăng ký" : "Đăng ký làm chủ homestay" %></h1>
 
-      <%= form_with model: @registration, url: registration_path, class: "flex flex-col gap-3" do |form| %>
-        <% if @registration.errors.any? %>
-          <div role="alert" class="alert alert-error alert-soft">
-            <ul><% @registration.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul>
-          </div>
+      <% if editing %>
+        <p>Sửa lại cho đúng rồi bấm Lưu. hueni sẽ gọi theo thông tin mới.</p>
+      <% elsif @latest&.rejected? %>
+        <div role="alert" class="alert alert-warning alert-soft">
+          <span>Yêu cầu trước chưa được duyệt. Kiểm tra lại thông tin rồi gửi lại, hoặc gọi hueni:
+            <%= link_to phone(help), "tel:#{help}", class: "link font-semibold whitespace-nowrap" %>.</span>
+        </div>
+      <% else %>
+        <p>Zalo này chưa có tài khoản hueni. Đăng ký miễn phí: hueni gọi điện xác nhận, rồi bạn quản lý phòng và lịch đặt phòng ngay trên điện thoại.</p>
+      <% end %>
+
+      <%= form_with model: @registration, url: registration_path, class: "flex flex-col gap-4" do |form| %>
+        <% if @registration.errors[:base].any? %>
+          <div role="alert" class="alert alert-error alert-soft"><span><%= @registration.errors[:base].to_sentence %></span></div>
         <% end %>
         <div>
-          <%= form.label :name, "Tên của bạn", class: "label mb-1" %>
-          <%= form.text_field :name, required: true, maxlength: 100, autocomplete: "name", class: "input w-full" %>
+          <%= form.label :name, "Tên của bạn", class: "block mb-1 font-medium" %>
+          <%= form.text_field :name, required: true, maxlength: 100, autocomplete: "name",
+                class: class_names("input input-lg w-full", "input-error": @registration.errors.include?(:name)),
+                aria: field_aria(@registration, :name) %>
+          <%= field_error @registration, :name %>
         </div>
         <div>
-          <%= form.label :phone_number, "Số điện thoại", class: "label mb-1" %>
-          <%= form.telephone_field :phone_number, required: true, autocomplete: "tel", class: "input w-full" %>
-          <p class="text-xs opacity-70 mt-1">hueni sẽ gọi số này để xác nhận.</p>
+          <%= form.label :phone_number, "Số điện thoại", class: "block mb-1 font-medium" %>
+          <%= form.telephone_field :phone_number, required: true, autocomplete: "tel", maxlength: 20,
+                pattern: "[0-9 .+\\-]{10,20}", title: "Nhập đủ 10 số, ví dụ 0912 345 678",
+                class: class_names("input input-lg w-full", "input-error": @registration.errors.include?(:phone_number)),
+                aria: field_aria(@registration, :phone_number, hint: "phone_hint") %>
+          <p id="phone_hint" class="text-sm opacity-70 mt-1">10 số, ví dụ 0912 345 678. Chỉ dùng để hueni gọi xác nhận.</p>
+          <%= field_error @registration, :phone_number %>
         </div>
         <div>
-          <%= form.label :place_name, "Tên homestay", class: "label mb-1" %>
-          <%= form.text_field :place_name, required: true, maxlength: 100, list: "places", autocomplete: "off", class: "input w-full" %>
+          <%= form.label :place_name, "Tên homestay", class: "block mb-1 font-medium" %>
+          <%= form.text_field :place_name, required: true, maxlength: 100, list: "places", autocomplete: "off",
+                class: class_names("input input-lg w-full", "input-error": @registration.errors.include?(:place_name)),
+                aria: field_aria(@registration, :place_name, hint: "place_hint") %>
           <datalist id="places">
             <% Place.order(:name).each do |place| %><option value="<%= place.name %>"><%= place.address %></option><% end %>
           </datalist>
-          <p class="text-xs opacity-70 mt-1">Gõ tên. Không thấy trong danh sách thì cứ gõ đầy đủ.</p>
+          <p id="place_hint" class="text-sm opacity-70 mt-1">Gõ vài chữ để chọn trong danh sách. Không thấy thì gõ đầy đủ tên.</p>
+          <%= field_error @registration, :place_name %>
         </div>
         <div>
-          <%= form.label :maps_url, "Link Google Maps (nếu có)", class: "label mb-1" %>
-          <%= form.url_field :maps_url, maxlength: 500, placeholder: "https://maps.app.goo.gl/…", class: "input w-full" %>
+          <%= form.label :maps_url, "Link Google Maps (không bắt buộc)", class: "block mb-1 font-medium" %>
+          <%= form.text_field :maps_url, maxlength: 500, inputmode: "url", autocapitalize: "off", spellcheck: false,
+                class: class_names("input input-lg w-full", "input-error": @registration.errors.include?(:maps_url)),
+                aria: field_aria(@registration, :maps_url, hint: "maps_hint") %>
+          <p id="maps_hint" class="text-sm opacity-70 mt-1">Trong Google Maps: bấm Chia sẻ → Sao chép đường liên kết, rồi dán vào đây.</p>
+          <%= field_error @registration, :maps_url %>
         </div>
-        <%= form.submit "Gửi đăng ký", class: "btn btn-primary btn-block mt-2" %>
+        <%= form.submit editing ? "Lưu" : "Gửi đăng ký", class: "btn btn-primary btn-lg btn-block mt-1" %>
+        <% if editing %><%= link_to "Huỷ", registration_path, class: "btn btn-ghost btn-block" %><% end %>
+      <% end %>
+
+      <% unless editing %>
+        <p class="text-sm opacity-70">Bạn là nhân viên? Nhờ chủ homestay thêm bạn ở mục Thành viên, không cần đăng ký.</p>
       <% end %>
     <% end %>
 
-    <p class="text-sm opacity-70">Cần giúp? Gọi / nhắn Zalo cho hueni:
-      <%= link_to phone(RegistrationsController::HELP_PHONE), "tel:#{RegistrationsController::HELP_PHONE}", class: "link" %></p>
-    <%= button_to "Thoát", registration_path, method: :delete, class: "btn btn-ghost btn-sm" %>
+    <div class="border-t border-base-300 pt-4">
+      <p class="mb-2">Cần giúp? Liên hệ hueni:</p>
+      <div class="grid grid-cols-2 gap-2">
+        <%= link_to "Gọi #{phone(help)}", "tel:#{help}", class: "btn" %>
+        <%= link_to "Nhắn Zalo", "https://zalo.me/#{help}", class: "btn", target: "_blank", rel: "noopener" %>
+      </div>
+    </div>
+    <%= button_to "Thoát", registration_path, method: :delete, class: "btn btn-ghost btn-block", form_class: "mt-2" %>
   </div>
 </div>
