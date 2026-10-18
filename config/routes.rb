@@ -37,7 +37,7 @@ Rails.application.routes.draw do
         post :setup_link, on: :member
       end
     end
-    resources :rooms, only: %i[edit update] do
+    resources :rooms, only: %i[index edit update] do
       post :clean, on: :member
       resources :calendar_feeds, only: :create
     end

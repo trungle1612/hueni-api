@@ -1,9 +1,10 @@
-<% content_for :title, "Sửa phòng · hueni admin" %>
-<%= render "admin/rooms/header", back: admin_place_path(@place.slug), back_label: @place.name, title: "Sửa phòng" %>
+<% title = room_title(@room.name_was) %>
+<% content_for :title, "#{title} · hueni admin" %>
+<%= render "admin/rooms/header", back: admin_rooms_path(anchor: @place.slug), back_label: "Phòng · #{@place.name}", title: %>
 <%= render "admin/rooms/form", room: @room, place: @place %>
 <%= render "admin/calendar_feeds/section", room: @room, calendar_feed: @calendar_feed || CalendarFeed.new(provider: "airbnb") %>
 <section id="history" class="mt-6">
   <h2 class="font-semibold">Lịch sử</h2>
-  <%= render "admin/activities/list", versions: PaperTrail::Version.where(room_id: @room.id).order(id: :desc).limit(20).to_a, show_room: false %>
-  <%= link_to "Xem tất cả hoạt động ›", admin_place_activity_path(@place.slug), class: "link link-hover text-sm opacity-70 block mt-2" %>
+  <%= render "admin/activities/list", versions: PaperTrail::Version.where(room_id: @room.id).order(id: :desc).limit(5).to_a, show_room: false %>
+  <%= link_to "Xem tất cả hoạt động ›", admin_place_activity_path(@place.slug), class: "link link-hover inline-block py-3" %>
 </section>

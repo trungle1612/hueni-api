@@ -18,7 +18,7 @@ class Admin::CalendarFeedsController < Admin::BaseController
       if @calendar_feed.sync(trigger: "added")
         redirect_to edit_admin_room_path(@room), notice: "Đã thêm và đồng bộ."
       else
-        redirect_to edit_admin_room_path(@room), alert: "Đã thêm, nhưng đồng bộ lỗi: #{@calendar_feed.last_error}"
+        redirect_to edit_admin_room_path(@room), alert: "Đã thêm, nhưng đồng bộ lỗi. #{helpers.sync_error_message(@calendar_feed.last_error)}"
       end
     else
       render "admin/rooms/edit", status: :unprocessable_entity
@@ -31,7 +31,7 @@ class Admin::CalendarFeedsController < Admin::BaseController
     elsif @feed.sync
       redirect_back_or_to admin_calendar_feeds_path, notice: "Đã đồng bộ."
     else
-      redirect_back_or_to admin_calendar_feeds_path, alert: "Đồng bộ lỗi: #{@feed.last_error}"
+      redirect_back_or_to admin_calendar_feeds_path, alert: "Đồng bộ lỗi. #{helpers.sync_error_message(@feed.last_error)}"
     end
   end
 

@@ -8,6 +8,7 @@ module ApplicationHelper
       { label: "Kênh OTA", icon: "refresh", path: admin_calendar_feeds_path, active: controller_name == "calendar_feeds" }
     ]
     if Current.user&.place_memberships&.exists?(role: "owner")
+      items << { label: "Phòng", icon: "bed", path: admin_rooms_path, active: controller_name == "rooms" }
       items << { label: "Báo cáo", icon: "chart", path: admin_report_path, active: controller_name == "reports" }
     end
     if Current.user&.admin?

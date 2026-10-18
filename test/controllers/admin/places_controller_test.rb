@@ -4,23 +4,22 @@ require "test_helper"
 class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
   setup { travel_to Time.zone.local(2026, 10, 1, 12) }
 
-  test "owner sees their homestay with rooms, prices and today's status" do
+  test "owner sees their homestay with today's status; room setup is on Phòng" do
     rooms(:limdim).update!(price: 450_000)
     log_in users(:owner)
     get admin_place_path("tomo-homestay")
 
     assert_response :success
     assert_select "h1", "tomo homestay"
-    assert_select "#room_#{rooms(:limdim).id}", text: /4 khách · 450\.000 ₫\/đêm/
     assert_select "#room_#{rooms(:limdim).id} .bg-primary\\/15 [data-state]", "Chờ khách"
-    assert_select "#room_#{rooms(:garden).id}", text: /chưa có giá/
     assert_select "#room_#{rooms(:garden).id} [data-state]", "Trống"
-    assert_select "a[href='#{new_admin_place_room_path("tomo-homestay")}']", text: /Thêm phòng/
+    assert_select "a[href='#{admin_rooms_path(anchor: "tomo-homestay")}']", text: "Phòng"
     assert_select "main .badge", text: "Còn 1/2 phòng hôm nay"
-    assert_select "#room_#{rooms(:limdim).id} a[href='#{edit_admin_room_path(rooms(:limdim))}'][aria-label='Sửa phòng Limdim']"
+    assert_select "body", text: /450\.000/, count: 0
+    assert_select "[id^=room_] input[name='room[active]'], [id^=room_] a[href='#{edit_admin_room_path(rooms(:limdim))}']", 0
   end
 
-  test "hold shows Giữ chỗ, confirmed wins over hold, switched-off shows Đã tắt" do
+  test "hold shows Giữ chỗ, confirmed wins over hold, paused shows Tạm ngưng" do
     Booking.create!(room: rooms(:garden), start_date: "2026-10-01", end_date: "2026-10-02", status: "hold")
     # Overlaps limdim_confirmed: manual overlaps are rejected, so this only happens alongside an iCal booking.
     Booking.new(room: rooms(:limdim), start_date: "2026-10-01", end_date: "2026-10-02", status: "hold").save!(validate: false)
@@ -31,7 +30,7 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
 
     rooms(:limdim).update!(active: false)
     get admin_place_path("tomo-homestay")
-    assert_select "#room_#{rooms(:limdim).id} [data-state]", "Đã tắt"
+    assert_select "#room_#{rooms(:limdim).id} [data-state]", "Tạm ngưng"
     assert_equal [ "room_#{rooms(:garden).id}", "room_#{rooms(:limdim).id}" ], css_select(".card[id^=room_]").map { it["id"] } # switched-off last
   end
 
@@ -67,12 +66,6 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
-  test "each room has an on/off switch that submits to the room" do
-    log_in users(:owner)
-    get admin_place_path("tomo-homestay")
-    assert_select "#room_#{rooms(:garden).id} form[action='#{admin_room_path(rooms(:garden))}'][data-controller=autosubmit] input[type=checkbox][name='room[active]'][data-action='change->autosubmit#submit']"
-  end
-
   test "staff see rooms without prices or owner controls, and a Nhân viên badge" do
     rooms(:garden).update!(price: 300_000)
     staff = User.create!(name: "Em Hằng", phone_number: "0987111222", password: "password123")
@@ -83,17 +76,14 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".badge", text: "Nhân viên"
     assert_select "body", text: /300\.000/, count: 0
-    assert_select "a", text: /Thêm phòng/, count: 0
-    assert_select "[id^=room_] a[aria-label^='Sửa']", count: 0
-    assert_select "input[type=checkbox][name='room[active]']", 0
-    assert_select "#room_#{rooms(:garden).id}", text: /Đang mở/
+    assert_select "a[href^='#{admin_rooms_path}']", count: 0
   end
 
   test "owners see a Chủ badge and the owner controls" do
     log_in users(:owner)
     get admin_place_path("tomo-homestay")
     assert_select ".badge", text: "Chủ"
-    assert_select "a", text: /Thêm phòng/
+    assert_select "a", text: "Phòng"
   end
 
   test "room cards show the guest, the next booking and the right action" do

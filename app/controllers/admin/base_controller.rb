@@ -25,6 +25,11 @@ class Admin::BaseController < ApplicationController
       raise ActiveRecord::RecordNotFound unless Current.user.admin?
     end
 
+    # Homestays where you are owner (owner-only menu entries).
+    def owned_places
+      Current.user.accessible_places.where(id: Current.user.place_memberships.where(role: "owner").select(:place_id)).order(:name)
+    end
+
     # A YYYY-MM-DD query param, or nil when missing or malformed.
     def date_param(key)
       Date.iso8601(params[key].to_s)

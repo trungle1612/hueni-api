@@ -15,10 +15,16 @@ class Room < ApplicationRecord
   validates :price, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validate :photo_urls_are_http_urls
 
-  # Owners type prices like "450.000" or "450 000 ₫": drop thousands separators and the currency mark so "."
-  # isn't read as a decimal point. Anything else (e.g. "450k") is left for validation to reject.
+  PRICE_UNITS = { "k" => 1_000, "nghìn" => 1_000, "ngàn" => 1_000, "tr" => 1_000_000, "triệu" => 1_000_000 }.freeze
+
+  # Owners type prices like "450.000", "450 000 ₫", "450k" or "1,2tr": drop thousands separators and the
+  # currency mark so "." isn't read as a decimal point; a unit multiplies. Anything else is left for validation to reject.
   def price=(value)
-    super(value.is_a?(String) ? value.gsub(/vn[dđ]|[.,\s₫đ]/i, "").presence : value)
+    if value.is_a?(String)
+      amount, unit = value.downcase.delete(" ").match(/\A(\d+(?:[.,]\d+)?)(#{PRICE_UNITS.keys.join("|")})\z/)&.captures
+      value = unit ? (BigDecimal(amount.tr(",", ".")) * PRICE_UNITS[unit]).to_i : value.gsub(/vn[dđ]|[.,\s₫đ]/i, "").presence
+    end
+    super(value)
   end
 
   private

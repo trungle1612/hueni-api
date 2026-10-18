@@ -1,4 +1,9 @@
-<h2 class="font-semibold mt-6 mb-2">Kênh OTA</h2>
+<h2 id="kenh-ota" class="font-semibold mt-6 mb-2 scroll-mt-4">Kênh OTA</h2>
+<% if flash[:room_added] %>
+  <div role="status" class="alert alert-success alert-soft mb-3">
+    <span>Đã thêm <%= room_title(room.name) %>. Phòng này có trên Airbnb / Booking.com? Dán link lịch bên dưới để hueni tự cập nhật phòng trống.</span>
+  </div>
+<% end %>
 <div class="flex flex-col gap-3">
   <% room.calendar_feeds.order(:created_at).each do |feed| %>
     <div id="<%= dom_id(feed) %>" class="card bg-base-100 shadow-sm">
@@ -9,14 +14,15 @@
         </div>
         <div class="text-xs opacity-60 truncate"><%= feed.url_host %>/…</div>
         <% if feed.last_error %>
-          <div class="text-xs text-error break-words"><%= feed.last_error %></div>
+          <div class="text-sm text-error"><%= sync_error_message(feed.last_error) %></div>
+          <% if Current.user.admin? %><div class="text-xs opacity-60 font-mono break-words"><%= feed.last_error %></div><% end %>
           <% if feed.last_synced_at %>
             <div class="text-xs opacity-60">Lần thành công cuối: <%= l(feed.last_synced_at, format: "%d/%m %H:%M") %></div>
           <% end %>
         <% end %>
         <div class="flex justify-between items-center mt-2">
-          <%= button_to "↻ Đồng bộ ngay", sync_admin_calendar_feed_path(feed), class: "btn btn-sm", data: { turbo_submits_with: "Đang đồng bộ…" } %>
-          <%= button_to "Xoá", admin_calendar_feed_path(feed), method: :delete, class: "btn btn-ghost btn-sm text-error",
+          <%= button_to "↻ Đồng bộ ngay", sync_admin_calendar_feed_path(feed), class: "btn min-h-11", data: { turbo_submits_with: "Đang đồng bộ…" } %>
+          <%= button_to "Xoá", admin_calendar_feed_path(feed), method: :delete, class: "btn btn-ghost min-h-11 text-error",
                 form: { data: { turbo_confirm: "Xoá kênh #{feed.provider_label}? Các đặt phòng lấy từ kênh này cũng bị xoá." } } %>
         </div>
       </div>
@@ -32,15 +38,15 @@
         </div>
       <% end %>
       <div>
-        <%= form.label :provider, "Kênh", class: "label text-sm mb-1" %>
-        <%= form.select :provider, CalendarFeed::PROVIDER_LABELS.invert, {}, class: "select w-full" %>
+        <%= form.label :provider, "Kênh", class: "block mb-1 font-medium" %>
+        <%= form.select :provider, CalendarFeed::PROVIDER_LABELS.invert, {}, class: "select select-lg w-full" %>
       </div>
       <div>
-        <%= form.label :url, "Link iCal", class: "label text-sm mb-1" %>
-        <%= form.url_field :url, required: true, placeholder: "https://…ics", class: "input w-full" %>
-        <div class="text-xs opacity-60 mt-1">Dán link xuất lịch (iCal, đuôi .ics) lấy trong phần đồng bộ lịch của Airbnb / Booking.com. Link là bí mật, đừng chia sẻ.</div>
+        <%= form.label :url, "Link iCal", class: "block mb-1 font-medium" %>
+        <%= form.url_field :url, required: true, class: "input input-lg w-full" %>
+        <div class="text-sm opacity-70 mt-1">Dán link xuất lịch (iCal, đuôi .ics) lấy trong phần đồng bộ lịch của Airbnb / Booking.com. Link là bí mật, đừng chia sẻ.</div>
       </div>
-      <%= form.submit "Thêm và đồng bộ", class: "btn btn-primary btn-block", data: { turbo_submits_with: "Đang đồng bộ…" } %>
+      <%= form.submit "Thêm và đồng bộ", class: "btn btn-primary btn-lg btn-block", data: { turbo_submits_with: "Đang đồng bộ…" } %>
     </div>
   <% end %>
 </div>

@@ -30,7 +30,7 @@ class Admin::CalendarFeedsControllerTest < ActionDispatch::IntegrationTest
     stub_request(:get, URL).to_return(status: 404)
     post admin_room_calendar_feeds_path(rooms(:garden)), params: { calendar_feed: { provider: "airbnb", url: URL } }
     follow_redirect!
-    assert_select "[role=alert]", text: /đồng bộ lỗi: .*HTTP 404/
+    assert_select "[role=alert]", text: "Đã thêm, nhưng đồng bộ lỗi. Link iCal không còn dùng được. Lấy link mới trên Airbnb / Booking.com rồi thêm lại kênh."
     assert_match "HTTP 404", rooms(:garden).calendar_feeds.last.last_error
   end
 
@@ -67,7 +67,7 @@ class Admin::CalendarFeedsControllerTest < ActionDispatch::IntegrationTest
     feed = @feed
     stub_request(:get, feed.url).to_return(status: 500)
     post sync_admin_calendar_feed_path(feed)
-    assert_match "HTTP 500", flash[:alert]
+    assert_equal "Đồng bộ lỗi. Không tải được lịch lúc này. hueni tự thử lại mỗi giờ.", flash[:alert]
   end
 
   test "deleting a feed removes its bookings" do
@@ -91,11 +91,18 @@ class Admin::CalendarFeedsControllerTest < ActionDispatch::IntegrationTest
     assert_not_requested :get, @other_feed.url
   end
 
-  test "room page lists feeds without leaking the token" do
+  test "room page lists feeds without leaking the token; owners get the error in words, admins also raw" do
     calendar_feeds(:limdim_airbnb).update_columns(last_error: "RuntimeError: HTTP 404", last_error_at: 2.hours.ago)
     get edit_admin_room_path(rooms(:limdim))
-    assert_select "#calendar_feed_#{calendar_feeds(:limdim_airbnb).id}", text: /Airbnb.*www\.airbnb\.com.*HTTP 404/m
+    assert_select "#calendar_feed_#{calendar_feeds(:limdim_airbnb).id}", text: /Airbnb.*www\.airbnb\.com.*Link iCal không còn dùng được/m
+    assert_no_match "HTTP 404", response.body
     assert_no_match "secret-token", response.body
+
+    users(:admin).place_memberships.create!(place: places(:tomo), role: "owner")
+    delete session_path
+    log_in users(:admin)
+    get edit_admin_room_path(rooms(:limdim))
+    assert_select "#calendar_feed_#{calendar_feeds(:limdim_airbnb).id} .font-mono", "RuntimeError: HTTP 404"
   end
 
   test "overview lists own rooms by homestay, rooms with errors first" do
