@@ -37,6 +37,9 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     get new_admin_place_room_path("tomo-homestay")
     assert_response :success
     assert_select "h1", "Thêm phòng"
+    assert_select "form[novalidate] input[name='room[max_guests]'][value='2']"
+    assert_select "input[name='room[active]']", 0
+    assert_select "input[type=submit][value='Thêm phòng']"
   end
 
   test "creates a room in the URL's homestay, ignoring place_id, and parses the price" do
@@ -47,9 +50,10 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     room = Room.find_by!(name: "Mây")
     assert_equal places(:tomo), room.place
     assert_equal 300_000, room.price
-    assert_redirected_to admin_rooms_path(anchor: "tomo-homestay")
+    assert room.active?
+    assert_redirected_to edit_admin_room_path(room, anchor: "kenh-ota")
     follow_redirect!
-    assert_select "[role=alert]", text: "Đã lưu phòng Mây."
+    assert_select "h2#kenh-ota + [role=status]", text: /Đã thêm Phòng Mây\. Phòng này có trên Airbnb/
   end
 
   test "invalid room re-renders with Vietnamese errors" do
@@ -57,7 +61,15 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
       post admin_place_rooms_path("tomo-homestay"), params: { room: { name: "", max_guests: 0 } }
     end
     assert_response :unprocessable_entity
-    assert_select "[role=alert]", text: /Tên phòng không thể để trống/
+    assert_select "input[name='room[name]'][aria-invalid=true][autofocus][aria-describedby='name_hint name_error']"
+    assert_select "#name_error", "Tên phòng không thể để trống"
+    assert_select "#max_guests_error", text: /Số khách tối đa/
+  end
+
+  test "a mistyped price comes back as typed, not half-parsed" do
+    post admin_place_rooms_path("tomo-homestay"), params: { room: { name: "Mây", max_guests: 2, price: "450kk" } }
+    assert_select "input[name='room[price]'][value='450kk'][aria-invalid=true]"
+    assert_select "#price_error"
   end
 
   test "cannot add rooms to another owner's homestay" do

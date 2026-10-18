@@ -1,37 +1,54 @@
-<%= form_with model: room, url: (room.new_record? ? admin_place_rooms_path(place.slug) : admin_room_path(room)), class: "card bg-base-100 shadow-sm" do |form| %>
+<% first_error = room.errors.attribute_names.first %>
+<%# A new room redirects to its #kenh-ota; Turbo drops a redirect's anchor, a plain submit keeps it. %>
+<%= form_with model: room, url: (room.new_record? ? admin_place_rooms_path(place.slug) : admin_room_path(room)), html: { novalidate: true }, data: { turbo: room.persisted? }, class: "card bg-base-100 shadow-sm" do |form| %>
   <div class="card-body p-4 gap-4">
     <% if room.persisted? %><h2 class="font-semibold">Thông tin phòng</h2><% end %>
-    <% if room.errors.any? %>
-      <div role="alert" class="alert alert-error alert-soft">
-        <ul><% room.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul>
-      </div>
-    <% end %>
     <div>
       <%= form.label :name, "Tên phòng", class: "block mb-1 font-medium" %>
-      <%= form.text_field :name, required: true, class: "input input-lg w-full" %>
+      <%= form.text_field :name, required: true, autocomplete: "off", autofocus: first_error == :name,
+            class: class_names("input input-lg w-full", "input-error": room.errors.include?(:name)),
+            aria: field_aria(room, :name, hint: "name_hint") %>
+      <p id="name_hint" class="text-sm opacity-70 mt-1">Ví dụ: 101, Sen, Gia đình. Không cần ghi chữ "Phòng".</p>
+      <%= field_error room, :name %>
     </div>
     <div>
       <%= form.label :max_guests, "Số khách tối đa", class: "block mb-1 font-medium" %>
-      <%= form.number_field :max_guests, min: 1, required: true, class: "input input-lg w-full" %>
+      <%= form.number_field :max_guests, min: 1, required: true, autofocus: first_error == :max_guests,
+            class: class_names("input input-lg w-full", "input-error": room.errors.include?(:max_guests)),
+            aria: field_aria(room, :max_guests, hint: "max_guests_hint") %>
+      <p id="max_guests_hint" class="text-sm opacity-70 mt-1">Tính cả trẻ em.</p>
+      <%= field_error room, :max_guests %>
     </div>
     <div>
-      <%= form.label :price, "Giá mỗi đêm (₫)", class: "block mb-1 font-medium" %>
-      <%= form.text_field :price, value: (number_with_delimiter(room.price, delimiter: ".") if room.price), inputmode: "numeric", class: "input input-lg w-full", aria: { describedby: "price_hint" } %>
-      <p id="price_hint" class="text-sm opacity-70 mt-1">Chỉ hiển thị trong trang quản trị.</p>
+      <%= form.label :price, "Giá mỗi đêm (₫, không bắt buộc)", class: "block mb-1 font-medium" %>
+      <%# On error show what the owner typed, not the half-parsed number. %>
+      <%= form.text_field :price, inputmode: "numeric", autofocus: first_error == :price,
+            value: (room.errors.include?(:price) ? room.price_before_type_cast : (number_with_delimiter(room.price, delimiter: ".") if room.price)),
+            class: class_names("input input-lg w-full", "input-error": room.errors.include?(:price)),
+            aria: field_aria(room, :price, hint: "price_hint") %>
+      <p id="price_hint" class="text-sm opacity-70 mt-1">Ví dụ 450.000 hoặc 450k. Chỉ hiển thị trong trang quản trị.</p>
+      <%= field_error room, :price %>
     </div>
-    <fieldset class="flex flex-col gap-2">
-      <legend class="mb-1 font-medium">Trên hueni.me</legend>
-      <label class="flex items-start gap-3 rounded-box border border-base-300 p-3 cursor-pointer has-checked:border-success has-checked:bg-success/5">
-        <%= form.radio_button :active, true, class: "radio radio-success mt-0.5" %>
-        <span><span class="block font-medium">Nhận khách</span>
-          <span class="text-sm opacity-70">Hiện là phòng trống trên hueni.me khi chưa có khách.</span></span>
-      </label>
-      <label class="flex items-start gap-3 rounded-box border border-base-300 p-3 cursor-pointer has-checked:border-warning has-checked:bg-warning/5">
-        <%= form.radio_button :active, false, class: "radio radio-warning mt-0.5" %>
-        <span><span class="block font-medium">Tạm ngưng</span>
-          <span class="text-sm opacity-70">Không hiện trên hueni.me và lịch phòng, ví dụ khi đang sửa chữa. Lịch sử vẫn giữ.</span></span>
-      </label>
-    </fieldset>
-    <%= form.submit "Lưu", class: "btn btn-primary btn-lg btn-block" %>
+    <% if room.persisted? %>
+      <fieldset class="flex flex-col gap-2">
+        <legend class="mb-1 font-medium">Trạng thái trên hueni.me</legend>
+        <label class="flex items-start gap-3 rounded-box border border-base-300 p-3 cursor-pointer has-checked:border-success has-checked:bg-success/5">
+          <%= form.radio_button :active, true, class: "radio radio-success mt-0.5" %>
+          <span><span class="block font-medium">Nhận khách</span>
+            <span class="text-sm opacity-70">Hiện là phòng trống trên hueni.me khi chưa có khách.</span></span>
+        </label>
+        <label class="flex items-start gap-3 rounded-box border border-base-300 p-3 cursor-pointer has-checked:border-warning has-checked:bg-warning/5">
+          <%= form.radio_button :active, false, class: "radio radio-warning mt-0.5" %>
+          <span><span class="block font-medium">Tạm ngưng</span>
+            <span class="text-sm opacity-70">Không hiện trên hueni.me và lịch phòng, ví dụ khi đang sửa chữa. Lịch sử vẫn giữ.</span></span>
+        </label>
+      </fieldset>
+    <% else %>
+      <p class="text-sm">Phòng hiện trên hueni.me ngay sau khi lưu, là phòng trống khi chưa có khách.</p>
+    <% end %>
+    <div class="flex flex-col gap-2">
+      <%= form.submit room.persisted? ? "Lưu" : "Thêm phòng", class: "btn btn-primary btn-lg btn-block" %>
+      <%= link_to "Huỷ", admin_rooms_path(anchor: place.slug), class: "btn btn-ghost btn-block min-h-11" %>
+    </div>
   </div>
 <% end %>

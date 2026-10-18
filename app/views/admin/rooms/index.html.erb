@@ -18,7 +18,7 @@
             <li id="<%= dom_id(room) %>" class="list-row items-center">
               <div class="list-col-grow min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
-                  <span class="text-lg font-semibold">Phòng <%= room.name %></span>
+                  <span class="text-lg font-semibold"><%= room_title(room.name) %></span>
                   <% if room.active? %>
                     <span class="badge badge-soft badge-success badge-sm">Nhận khách</span>
                   <% else %>

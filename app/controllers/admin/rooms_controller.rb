@@ -11,13 +11,15 @@ class Admin::RoomsController < Admin::BaseController
   end
 
   def new
-    @room = @place.rooms.build(active: true)
+    @room = @place.rooms.build(max_guests: 2)
   end
 
   def create
     @room = @place.rooms.build(room_params)
     if @room.save
-      redirect_to admin_rooms_path(anchor: @place.slug), notice: "Đã lưu phòng #{@room.name}."
+      # Straight to Kênh OTA: linking the Airbnb / Booking.com calendar is the usual next step.
+      flash[:room_added] = true
+      redirect_to edit_admin_room_path(@room, anchor: "kenh-ota")
     else
       render :new, status: :unprocessable_entity
     end

@@ -1,5 +1,6 @@
-<% content_for :title, "Phòng #{@room.name_was} · hueni admin" %>
-<%= render "admin/rooms/header", back: admin_rooms_path(anchor: @place.slug), back_label: "Phòng · #{@place.name}", title: "Phòng #{@room.name_was}" %>
+<% title = room_title(@room.name_was) %>
+<% content_for :title, "#{title} · hueni admin" %>
+<%= render "admin/rooms/header", back: admin_rooms_path(anchor: @place.slug), back_label: "Phòng · #{@place.name}", title: %>
 <%= render "admin/rooms/form", room: @room, place: @place %>
 <%= render "admin/calendar_feeds/section", room: @room, calendar_feed: @calendar_feed || CalendarFeed.new(provider: "airbnb") %>
 <section id="history" class="mt-6">

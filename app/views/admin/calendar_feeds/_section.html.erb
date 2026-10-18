@@ -1,4 +1,9 @@
-<h2 class="font-semibold mt-6 mb-2">Kênh OTA</h2>
+<h2 id="kenh-ota" class="font-semibold mt-6 mb-2 scroll-mt-4">Kênh OTA</h2>
+<% if flash[:room_added] %>
+  <div role="status" class="alert alert-success alert-soft mb-3">
+    <span>Đã thêm <%= room_title(room.name) %>. Phòng này có trên Airbnb / Booking.com? Dán link lịch bên dưới để hueni tự cập nhật phòng trống.</span>
+  </div>
+<% end %>
 <div class="flex flex-col gap-3">
   <% room.calendar_feeds.order(:created_at).each do |feed| %>
     <div id="<%= dom_id(feed) %>" class="card bg-base-100 shadow-sm">

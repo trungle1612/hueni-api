@@ -55,7 +55,8 @@ class RoomTest < ActiveSupport::TestCase
   end
 
   test "price accepts Vietnamese-formatted input" do
-    { "450.000" => 450_000, "450,000" => 450_000, "450 000 ₫" => 450_000, "450000" => 450_000, "" => nil, 450_000 => 450_000 }.each do |input, expected|
+    { "450.000" => 450_000, "450,000" => 450_000, "450 000 ₫" => 450_000, "450000" => 450_000, "" => nil, 450_000 => 450_000,
+      "450k" => 450_000, "450 K" => 450_000, "450 nghìn" => 450_000, "1,2tr" => 1_200_000, "1.5 triệu" => 1_500_000 }.each do |input, expected|
       price = Room.new(price: input).price
       expected.nil? ? assert_nil(price, "input #{input.inspect}") : assert_equal(expected, price, "input #{input.inspect}")
     end
@@ -69,7 +70,7 @@ class RoomTest < ActiveSupport::TestCase
   end
 
   test "price typos are rejected instead of silently saving a wrong number" do
-    [ "450k", "-100", "abc", "1e6" ].each do |input|
+    [ "450kk", "-100", "abc", "1e6", "k" ].each do |input|
       room = rooms(:garden)
       room.price = input
       assert_not room.valid?, "input #{input.inspect} should be invalid"
