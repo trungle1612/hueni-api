@@ -41,6 +41,7 @@ class RegistrationRequestTest < ActiveSupport::TestCase
   end
 
   test "approve creates a Zalo-linked account, owner of an ownerless homestay" do
+    places(:hiuhill).update!(phone: "0912000111")
     registration = request_for(place: places(:hiuhill))
     assert registration.approve!(by: users(:admin))
     user = registration.user
@@ -53,9 +54,21 @@ class RegistrationRequestTest < ActiveSupport::TestCase
   end
 
   test "approve without a homestay creates only the account" do
-    registration = request_for
+    registration = request_for(admin_note: "Gặp trực tiếp")
     assert registration.approve!(by: users(:admin))
     assert_empty registration.user.place_memberships
+  end
+
+  test "with no hueni phone to call (unlisted, or listed without one), approve needs a note saying how it was verified" do
+    [ request_for, request_for(zalo_id: "zalo-2", phone_number: "0905000222", place: places(:hiuhill)) ].each do |registration|
+      assert_not registration.verifiable?
+      assert_no_difference "User.count" do
+        assert_not registration.approve!(by: users(:admin))
+      end
+      assert_equal [ "Không có SĐT trên hueni để gọi: ghi cách đã xác minh vào Ghi chú." ], registration.errors[:base]
+    end
+    places(:hiuhill).update!(phone: "0912000111")
+    assert RegistrationRequest.find_by!(zalo_id: "zalo-2").verifiable?
   end
 
   test "approve never makes anyone owner of a homestay that has one, and saves nothing" do

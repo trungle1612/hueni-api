@@ -15,3 +15,8 @@
 .badge-soft {
   color: color-mix(in oklab, var(--badge-color, var(--color-base-content)) 60%, black);
 }
+
+/* Same for soft alerts: warning text on its tint was 2.6:1. */
+.alert-soft {
+  color: color-mix(in oklab, var(--alert-color, var(--color-base-content)) 60%, black);
+}
