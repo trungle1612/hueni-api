@@ -103,7 +103,7 @@ class BookingTest < ActiveSupport::TestCase
     [ 0, 3 ].each do |guests|
       booking = build(guests:)
       assert_not booking.valid?
-      assert_includes booking.errors[:base], "Số khách phải từ 1 đến 2"
+      assert_equal [ "Số khách phải từ 1 đến 2" ], booking.errors.full_messages_for(:guests)
     end
   end
 

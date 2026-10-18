@@ -32,7 +32,9 @@ Rails.application.routes.draw do
       resource :activity, only: :show
       resource :report, only: :show
       resources :rooms, only: %i[new create]
-      resources :bookings, only: %i[new create]
+      resources :bookings, only: %i[new create] do
+        get :availability, on: :collection
+      end
       resources :members, only: %i[new create edit update destroy] do
         post :setup_link, on: :member
       end
