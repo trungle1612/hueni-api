@@ -38,7 +38,7 @@ class Booking < ApplicationRecord
   validate :guests_fit_room, if: -> { guests && room }
   validates :guest_name, length: { maximum: 100 }
   # Kept as typed (foreign guests: "+82 10 1234 5678"), but it must be dialable for the Gọi button.
-  validate -> { errors.add(:guest_phone, "không hợp lệ") unless guest_phone.match?(/\A\+?[\d\s.\-()]+\z/) && guest_phone.count("0-9").between?(8, 15) },
+  validate -> { errors.add(:guest_phone, "không hợp lệ: cần 8–15 chữ số") unless guest_phone.match?(/\A\+?[\d\s.\-()]+\z/) && guest_phone.count("0-9").between?(8, 15) },
     if: :guest_phone
   validate :not_cancelled_after_check_in, if: -> { cancelled? && checked_in_at }
 
