@@ -8,9 +8,14 @@ class RegistrationsController < ApplicationController
   rate_limit to: 10, within: 3.minutes, only: :create, with: -> { redirect_to registration_path, alert: "Thử lại sau ít phút." }
   before_action :require_zalo_login, except: :destroy
 
+  # Pending: the status page, or the form to correct it (?sua=1). Rejected: the form, prefilled with what was sent.
   def new
     @latest = latest_request
-    @registration = RegistrationRequest.new(name: @zalo["zalo_name"]) unless @latest&.pending?
+    @registration =
+      if @latest&.pending? then (@latest if params[:sua])
+      elsif @latest&.rejected? then RegistrationRequest.new(@latest.slice(:name, :phone_number, :place_name, :maps_url))
+      else RegistrationRequest.new(name: @zalo["zalo_name"])
+      end
   end
 
   def create
@@ -25,6 +30,20 @@ class RegistrationsController < ApplicationController
     end
   rescue ActiveRecord::RecordNotUnique # already one pending for this Zalo (double submit)
     redirect_to registration_path
+  end
+
+  # Corrects the pending request in place: the admin's link keeps working and shows the new details.
+  def update
+    @latest = @registration = latest_request
+    return redirect_to registration_path unless @registration&.pending?
+
+    @registration.assign_attributes(registration_params)
+    @registration.place = matching_place(@registration.place_name)
+    if @registration.save
+      redirect_to registration_path, notice: "Đã cập nhật thông tin."
+    else
+      render :new, status: :unprocessable_entity
+    end
   end
 
   def destroy

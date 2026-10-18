@@ -31,6 +31,17 @@ module ApplicationHelper
     end
   end
 
+  # Error shown under its field. The field points at it (and at its hint) with field_aria.
+  def field_error(model, attribute)
+    return unless model.errors.include?(attribute)
+    tag.p model.errors.full_messages_for(attribute).to_sentence, id: "#{attribute}_error", class: "text-sm text-error mt-1"
+  end
+
+  def field_aria(model, attribute, hint: nil)
+    invalid = model.errors.include?(attribute)
+    { invalid: (true if invalid), describedby: [ hint, ("#{attribute}_error" if invalid) ].compact.join(" ").presence }
+  end
+
   # "0912345678" → "0912 345 678"
   def phone(number)
     number.to_s.sub(/\A(\d{4})(\d{3})(\d{3})\z/, '\1 \2 \3')

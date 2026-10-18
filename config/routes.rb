@@ -8,6 +8,7 @@ Rails.application.routes.draw do
   # Owner self-registration, after a Zalo login that matched no account.
   get "dang-ky", to: "registrations#new", as: :registration
   post "dang-ky", to: "registrations#create"
+  patch "dang-ky", to: "registrations#update"
   delete "dang-ky", to: "registrations#destroy"
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
