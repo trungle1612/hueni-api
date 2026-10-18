@@ -21,7 +21,7 @@
   <%= link_to admin_place_calendar_path(@place.slug), class: "btn btn-sm" do %><%= render "shared/icon", name: "calendar" %>Lịch<% end %>
   <% if manage %>
     <%= link_to "Hoạt động", admin_place_activity_path(@place.slug), class: "btn btn-sm" %>
-    <%= link_to new_admin_place_room_path(@place.slug), class: "btn btn-primary btn-sm ml-auto" do %>+ Thêm phòng<% end %>
+    <%= link_to admin_rooms_path(anchor: @place.slug), class: "btn btn-sm ml-auto" do %><%= render "shared/icon", name: "bed" %>Phòng<% end %>
   <% end %>
 </div>
 
@@ -62,20 +62,6 @@
             <% end %>
           </div>
         <% end %>
-        <div class="flex items-center gap-3 px-4 py-2 border-t border-base-200 text-xs">
-          <span class="opacity-60 mr-auto"><%= room.max_guests %> khách<% if manage %> · <%= room.price ? "#{vnd(room.price)}/đêm" : "chưa có giá" %><% end %></span>
-          <% if manage %>
-            <%= form_with model: room, url: admin_room_path(room), method: :patch, data: { controller: "autosubmit" } do |form| %>
-              <label class="flex items-center gap-2">
-                <%= form.check_box :active, class: "toggle toggle-xs toggle-success", data: { action: "change->autosubmit#submit" } %>
-                <%= room.active? ? "Đang mở" : "Đã tắt" %>
-              </label>
-            <% end %>
-            <%= link_to render("shared/icon", name: "pencil"), edit_admin_room_path(room), class: "btn btn-ghost btn-square btn-xs", aria: { label: "Sửa phòng #{room.name}" } %>
-          <% else %>
-            <span class="opacity-70"><%= room.active? ? "Đang mở" : "Đã tắt" %></span>
-          <% end %>
-        </div>
       </div>
     <% end %>
   </div>
@@ -83,7 +69,7 @@
   <div class="card bg-base-100 border border-dashed border-base-300">
     <div class="card-body items-center text-center py-10">
       <div class="font-semibold">Chưa có phòng nào</div>
-      <% if manage %><%= link_to "Thêm phòng", new_admin_place_room_path(@place.slug), class: "btn btn-primary btn-sm mt-2" %><% end %>
+      <% if manage %><%= link_to "+ Thêm phòng", new_admin_place_room_path(@place.slug), class: "btn btn-primary min-h-11 mt-2" %><% end %>
     </div>
   </div>
 <% end %>

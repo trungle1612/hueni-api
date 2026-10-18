@@ -1,0 +1,47 @@
+<% content_for :title, "Phòng · hueni admin" %>
+
+<h1 class="text-xl font-semibold">Phòng</h1>
+<p class="text-sm opacity-70 mb-4">Phòng đang nhận khách hiện là phòng trống trên hueni.me khi chưa có khách.</p>
+
+<div class="flex flex-col gap-6">
+  <% @places.each do |place| %>
+    <section id="<%= place.slug %>" class="scroll-mt-4">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <h2 class="text-lg font-semibold"><%= place.name %></h2>
+        <%= link_to "+ Thêm phòng", new_admin_place_room_path(place.slug), class: "btn btn-primary min-h-11" %>
+      </div>
+      <% rooms = place.rooms.sort_by { [ it.active? ? 0 : 1, it.name ] } %>
+      <% if rooms.any? %>
+        <ul class="list bg-base-100 rounded-box shadow-sm">
+          <% rooms.each do |room| %>
+            <% feeds = room.calendar_feeds %>
+            <li id="<%= dom_id(room) %>" class="list-row items-center">
+              <div class="list-col-grow min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-lg font-semibold">Phòng <%= room.name %></span>
+                  <% if room.active? %>
+                    <span class="badge badge-soft badge-success badge-sm">Nhận khách</span>
+                  <% else %>
+                    <span class="badge badge-soft badge-warning badge-sm">Tạm ngưng</span>
+                  <% end %>
+                </div>
+                <div class="text-sm opacity-70">
+                  <%= room.max_guests %> khách · <%= room.price ? "#{vnd(room.price)}/đêm" : "chưa có giá" %> ·
+                  <%= feeds.any? ? "#{feeds.size} kênh OTA" : "chưa có kênh OTA" %>
+                </div>
+                <% if feeds.any?(&:last_error) %><span class="badge badge-soft badge-error badge-sm mt-1">Lỗi đồng bộ</span><% end %>
+              </div>
+              <%= link_to "Sửa", edit_admin_room_path(room), class: "btn min-h-11 px-5", aria: { label: "Sửa phòng #{room.name}" } %>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <div class="card bg-base-100 border border-dashed border-base-300">
+          <div class="card-body items-center text-center py-8">Chưa có phòng nào. Thêm phòng để hiện trên hueni.me.</div>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+</div>
+
+<p class="text-sm opacity-70 mt-6">Phòng không xoá được, để giữ lịch sử đặt phòng. Không cho thuê nữa thì chọn Tạm ngưng.</p>

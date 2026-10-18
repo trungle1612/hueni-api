@@ -1,7 +1,7 @@
 require "test_helper"
 
 class Admin::ActivityHelperTest < ActionView::TestCase
-  include Admin::RoomsHelper
+  include Admin::RoomsHelper, Admin::CalendarFeedsHelper
 
   setup { travel_to Time.zone.local(2026, 10, 5, 12) }
 
@@ -61,9 +61,9 @@ class Admin::ActivityHelperTest < ActionView::TestCase
     room.update!(name: "Mây Trắng", price: 350_000, max_guests: 3)
     assert_equal [ :room, "Sửa phòng", "đổi tên Mây → Mây Trắng, giá chưa có → 350.000 ₫, tối đa 2 → 3 khách" ], entry
     room.update!(active: false)
-    assert_equal [ :room, "Tắt phòng", nil ], entry
+    assert_equal [ :room, "Tạm ngưng phòng", nil ], entry
     room.update!(active: true)
-    assert_equal [ :room, "Bật phòng", nil ], entry
+    assert_equal [ :room, "Nhận khách lại", nil ], entry
     room.dirty!
     room.clean!
     assert_equal [ :clean, "Dọn xong", nil ], entry
@@ -73,7 +73,7 @@ class Admin::ActivityHelperTest < ActionView::TestCase
     feed = rooms(:garden).calendar_feeds.create!(url: "https://1.1.1.1/x.ics", provider: "booking")
     assert_equal [ :feed, "Thêm kênh", "Booking.com" ], entry
     feed.update!(last_error: "RuntimeError: HTTP 404")
-    assert_equal [ :error, "Đồng bộ lỗi", "RuntimeError: HTTP 404" ], entry
+    assert_equal [ :error, "Đồng bộ lỗi", sync_error_message("RuntimeError: HTTP 404") ], entry
     feed.update!(last_error: nil)
     assert_equal [ :ok, "Đồng bộ lại được", nil ], entry
     feed.destroy!

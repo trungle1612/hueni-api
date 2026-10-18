@@ -7,4 +7,13 @@ module Admin::CalendarFeedsHelper
       end
     tag.span(label, class: "badge badge-soft badge-sm #{color}")
   end
+
+  # What the owner should do, instead of the raw error (admins also see that in Đồng bộ).
+  def sync_error_message(error)
+    case error.to_s
+    when /HTTP (401|403|404|410)\b/ then "Link iCal không còn dùng được. Lấy link mới trên Airbnb / Booking.com rồi thêm lại kênh."
+    when /not an iCalendar|larger than|public host|redirects/ then "Link này không đọc được thành lịch iCal (.ics). Kiểm tra lại link."
+    else "Không tải được lịch lúc này. hueni tự thử lại mỗi giờ."
+    end
+  end
 end

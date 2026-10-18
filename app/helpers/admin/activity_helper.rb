@@ -46,7 +46,7 @@ module Admin::ActivityHelper
       in [ "Room", "update" ] then activity_room_update(changes)
       in [ "CalendarFeed", "create" | "destroy" ]
         [ :feed, version.event == "create" ? "Thêm kênh" : "Xoá kênh", CalendarFeed::PROVIDER_LABELS.fetch(after["provider"], "iCal") ]
-      in [ "CalendarFeed", "update" ] then after["last_error"].present? ? [ :error, "Đồng bộ lỗi", after["last_error"] ] : [ :ok, "Đồng bộ lại được" ]
+      in [ "CalendarFeed", "update" ] then after["last_error"].present? ? [ :error, "Đồng bộ lỗi", sync_error_message(after["last_error"]) ] : [ :ok, "Đồng bộ lại được" ]
       else [ :edit, "Thay đổi" ]
       end
     { kind:, action:, detail: detail.presence }
@@ -103,7 +103,7 @@ module Admin::ActivityHelper
 
     def activity_room_update(changes)
       return [ :clean, "Dọn xong" ] if changes.keys == [ "housekeeping" ]
-      return [ :room, changes["active"][1] ? "Bật phòng" : "Tắt phòng" ] if changes.keys == [ "active" ]
+      return [ :room, changes["active"][1] ? "Nhận khách lại" : "Tạm ngưng phòng" ] if changes.keys == [ "active" ]
       parts = []
       parts << "đổi tên #{changes["name"][0]} → #{changes["name"][1]}" if changes.key?("name")
       parts << "giá #{vnd(changes["price"][0]) || "chưa có"} → #{vnd(changes["price"][1]) || "chưa có"}" if changes.key?("price")

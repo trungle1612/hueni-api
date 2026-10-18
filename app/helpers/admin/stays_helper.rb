@@ -1,7 +1,7 @@
 module Admin::StaysHelper
   # state => [label, tile / band fill]. Full class names so Tailwind picks them up.
   ROOM_STATES = {
-    off: [ "Đã tắt", "bg-base-200" ],
+    off: [ "Tạm ngưng", "bg-base-200" ],
     leaving: [ "Trả hôm nay", "bg-accent/15" ],
     occupied: [ "Đang có khách", "bg-info/15" ],
     arriving: [ "Chờ khách", "bg-primary/15" ],

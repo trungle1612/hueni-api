@@ -15,10 +15,6 @@ class Admin::ReportsController < Admin::BaseController
   end
 
   private
-    def owned_places
-      Current.user.accessible_places.where(id: Current.user.place_memberships.where(role: "owner").select(:place_id)).order(:name)
-    end
-
     # A YYYY-MM query param, or nil when missing or malformed.
     def month_param
       Date.strptime(params[:month].to_s, "%Y-%m") if params[:month].is_a?(String)

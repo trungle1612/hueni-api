@@ -75,7 +75,7 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     log_in users(:owner)
     get admin_place_activity_path("tomo-homestay")
     rows = css_select("[id^=version_]").map { it.text.squish }
-    assert_equal [ "Phòng Garden Đồng bộ lỗi · RuntimeError: HTTP 404 Booking.com 14:05",
+    assert_equal [ "Phòng Garden Đồng bộ lỗi · Link iCal không còn dùng được. Lấy link mới trên Airbnb / Booking.com rồi thêm lại kênh. Booking.com 14:05",
       "Phòng Garden Thêm kênh · Booking.com Hệ thống 14:05" ], rows
     assert_no_match "secret-token", response.body
   end
@@ -105,7 +105,7 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#history", 0
   end
 
-  test "room edit shows the last 20 changes of the room, its bookings and feeds" do
+  test "room edit shows the last 5 changes of the room, its bookings and feeds" do
     PaperTrail.request(whodunnit: users(:owner).id.to_s) do
       rooms(:garden).update!(price: 350_000)
       rooms(:garden).bookings.create!(start_date: "2026-10-06", end_date: "2026-10-07", guest_name: "Chị Mai")
@@ -120,8 +120,8 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#history", text: /Phòng Garden/, count: 0
     assert_select "#history a[href=?]", admin_place_activity_path("tomo-homestay"), text: /Xem tất cả hoạt động/
 
-    21.times { |i| rooms(:garden).update!(max_guests: i + 3) }
+    6.times { |i| rooms(:garden).update!(max_guests: i + 3) }
     get edit_admin_room_path(rooms(:garden))
-    assert_select "#history [id^=version_]", 20
+    assert_select "#history [id^=version_]", 5
   end
 end
