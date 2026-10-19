@@ -78,7 +78,7 @@ module Admin::StaysHelper
 
   def call_link(booking)
     return if booking.guest_phone.blank?
-    link_to render("shared/icon", name: "phone"), "tel:#{booking.guest_phone.delete(" ")}",
+    link_to render("shared/icon", name: "phone"), "tel:#{booking.guest_phone_dial}",
       class: "btn btn-ghost btn-square", aria: { label: "Gọi #{booking.guest_phone}" }
   end
 

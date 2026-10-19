@@ -24,7 +24,7 @@ class MembersTest < ApplicationSystemTestCase
     visit admin_place_calendar_path("tomo-homestay")
     find("a[aria-label='Đặt Garden ngày 05/10']").click
     fill_in "Tên khách", with: "Khách của Hằng"
-    click_button "Lưu"
+    click_button "Đặt phòng"
     assert_text "Đã lưu đặt phòng."
 
     visit edit_admin_room_path(rooms(:garden))

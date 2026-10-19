@@ -16,11 +16,12 @@ class CalendarTest < ApplicationSystemTestCase
 
     click_on "Lịch phòng", match: :first
     find("a[aria-label='Đặt Garden ngày 01/10']").click
-    assert_select "Phòng", selected: "Garden"
+    assert_select "Phòng", selected: "Garden · tối đa 2 khách"
+    assert_text "✓ Garden còn trống · 1 đêm (01/10–02/10)"
     choose "Giữ chỗ"
     fill_in "Tên khách", with: "Chị Mai"
     fill_in "Số điện thoại", with: "0905 123 456"
-    click_button "Lưu"
+    click_button "Đặt phòng"
 
     assert_text "Đã lưu đặt phòng."
     assert_selector "[data-room='#{rooms(:garden).id}'] a", text: "Chị Mai"
@@ -39,10 +40,13 @@ class CalendarTest < ApplicationSystemTestCase
   test "overlapping booking on the same room is rejected" do
     visit admin_place_calendar_path("tomo-homestay")
     click_on "+ Đặt phòng"
-    select "Limdim", from: "Phòng"
+    select "Limdim · tối đa 4 khách", from: "Phòng"
     fill_in "Nhận phòng", with: Date.new(2026, 10, 2)
     fill_in "Trả phòng", with: Date.new(2026, 10, 4)
-    click_button "Lưu"
+    within("#availability") { assert_text "Trùng lịch đêm 02/10 với Anh Minh" } # before saving
+    assert_text "Phòng khác còn trống: Garden"
+    assert_field "Số khách (tối đa 4)"
+    click_button "Đặt phòng"
 
     assert_text "Trùng lịch đêm 02/10 với Anh Minh (01/10–03/10). Đổi ngày hoặc huỷ đặt phòng bị trùng."
     assert_equal 1, rooms(:limdim).bookings.count

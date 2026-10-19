@@ -20,6 +20,9 @@ vi:
       booking:
         start_date: Ngày nhận phòng
         end_date: Ngày trả phòng
+        guests: Số khách
+        guest_name: Tên khách
+        guest_phone: Số điện thoại
         status: Trạng thái
       calendar_feed:
         url: Link iCal

@@ -15,6 +15,59 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='booking[end_date]'][value='2026-10-06']"
   end
 
+  test "+ Đặt phòng picks the first room free that night and says so; buttons fit a new booking" do
+    rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-06", guest_name: "Chị Mai")
+    get new_admin_place_booking_path("tomo-homestay", start_date: "2026-10-05")
+    assert_select "select[name='booking[room_id]'] option[selected][value=?]", rooms(:limdim).id.to_s, text: "Limdim · tối đa 4 khách"
+    assert_select "#availability", text: /✓ Limdim còn trống · 1 đêm \(05\/10–06\/10\)/
+    assert_select "label[for=booking_guests]", "Số khách (tối đa 4)"
+    assert_select "option[value=?][data-max-guests='2']", rooms(:garden).id.to_s
+    assert_select "input[type=submit][value='Đặt phòng']"
+    assert_select "a[href=?]", admin_place_calendar_path("tomo-homestay"), text: "Huỷ"
+  end
+
+  test "a homestay with one open room shows its name instead of a select" do
+    rooms(:garden).update!(active: false)
+    get new_admin_place_booking_path("tomo-homestay", start_date: "2026-10-05")
+    assert_select "select[name='booking[room_id]']", 0
+    assert_select "input[type=hidden][name='booking[room_id]'][value=?]", rooms(:limdim).id.to_s
+  end
+
+  test "availability: free, taken with the other free rooms, end before start, and only your own homestay" do
+    path = availability_admin_place_bookings_path("tomo-homestay")
+    get path, params: { room_id: rooms(:garden).id, start_date: "2026-10-01", end_date: "2026-10-04" }
+    assert_select "turbo-frame#availability", text: /✓ Garden còn trống · 3 đêm \(01\/10–04\/10\)/
+
+    get path, params: { room_id: rooms(:limdim).id, start_date: "2026-10-02", end_date: "2026-10-04" }
+    assert_select "#dates_error", text: /Trùng lịch đêm 02\/10 với Anh Minh.*Phòng khác còn trống: Garden/m
+
+    get path, params: { room_id: rooms(:limdim).id, start_date: "2026-10-01", end_date: "2026-10-04", booking_id: bookings(:limdim_confirmed).id }
+    assert_select "#availability", text: /✓ Không trùng lịch · 3 đêm/ # editing a booking doesn't clash with itself
+
+    get path, params: { room_id: rooms(:garden).id, start_date: "2026-10-04", end_date: "2026-10-04" }
+    assert_select "#dates_error", text: "Ngày trả phòng phải sau ngày nhận phòng (ít nhất 1 đêm)"
+
+    get path, params: { room_id: @other_room.id, start_date: "2026-10-01", end_date: "2026-10-02" }
+    assert_response :not_found
+    get availability_admin_place_bookings_path("hiuhill-homestay"), params: { room_id: @other_room.id, start_date: "2026-10-01", end_date: "2026-10-02" }
+    assert_response :not_found
+  end
+
+  test "a mistyped phone is shown under the phone field" do
+    post admin_place_bookings_path("tomo-homestay"), params: { booking: { room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06", guest_phone: "09o5" } }
+    assert_response :unprocessable_entity
+    assert_select "#guest_phone_error", "Số điện thoại không hợp lệ: cần 8–15 chữ số"
+    assert_select ".field_with_errors", 0 # would shrink the phone input inside its flex row
+    assert_select "input[name='booking[guest_phone]'][value='09o5'][autofocus][aria-invalid=true]"
+  end
+
+  test "too many guests is shown under the guest field" do
+    post admin_place_bookings_path("tomo-homestay"), params: { booking: { room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06", guests: 5 } }
+    assert_response :unprocessable_entity
+    assert_select "#guests_error", "Số khách phải từ 1 đến 2"
+    assert_select "input[name='booking[guests]'][autofocus][aria-invalid=true]"
+  end
+
   test "creates a manual hold on the picked room, ignoring source" do
     assert_difference -> { rooms(:garden).bookings.count }, 1 do
       post admin_place_bookings_path("tomo-homestay"), params: { booking: {
@@ -32,7 +85,8 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
         room_id: rooms(:limdim).id, start_date: "2026-10-02", end_date: "2026-10-04", status: "hold" } }
     end
     assert_response :unprocessable_entity
-    assert_select "[role=alert]", text: /Trùng lịch đêm 02\/10 với Anh Minh/
+    assert_select "#availability #dates_error", text: /Trùng lịch đêm 02\/10 với Anh Minh.*Phòng khác còn trống: Garden/m
+    assert_select "input[name='booking[start_date]'][autofocus][aria-invalid=true][aria-describedby=dates_error]"
   end
 
   test "cannot book another owner's room or homestay" do

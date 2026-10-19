@@ -34,6 +34,8 @@ module HueniApi
     # in config/environments, which are processed later.
     #
     config.time_zone = "Asia/Ho_Chi_Minh"
+    # Forms mark their own errors (input-error + field_error); Rails' wrapper div breaks flex rows.
+    config.action_view.field_error_proc = ->(html_tag, _instance) { html_tag }
     config.i18n.available_locales = %i[vi en]
     config.i18n.default_locale = :vi
     # config.eager_load_paths << Rails.root.join("extras")

@@ -1,14 +1,24 @@
 class Admin::BookingsController < Admin::BaseController
-  before_action :set_place, only: %i[new create]
+  before_action :set_place, only: %i[new create availability]
   before_action :set_booking, only: %i[edit update]
   before_action :set_any_booking, only: %i[check_in check_out no_show undo_check_in undo_check_out move declare]
   before_action -> { authorize!(:operate, @booking.room.place) }, only: %i[check_in check_out no_show move declare]
   before_action -> { authorize!(:manage, @booking.room.place) }, only: %i[undo_check_in undo_check_out]
 
+  # From a calendar cell the room and day are given; "+ Đặt phòng" picks the first room free that night.
   def new
     start_date = date_param(:start_date) || Date.current
-    room = @place.rooms.find(params[:room_id]) if params[:room_id]
+    rooms = @place.rooms.where(active: true).order(:name)
+    room = params[:room_id] ? @place.rooms.find(params[:room_id]) :
+      rooms.find { Booking.new(room: it, start_date:, end_date: start_date.next_day).date_problems.empty? } || rooms.first
     @booking = Booking.new(room:, start_date:, end_date: start_date.next_day)
+  end
+
+  # The form's live "còn trống / trùng lịch" line (turbo-frame #availability).
+  def availability
+    room = @place.rooms.find(params[:room_id])
+    booking = Booking.new(room:, start_date: date_param(:start_date), end_date: date_param(:end_date), id: params[:booking_id].presence)
+    render partial: "availability", locals: { booking:, place: @place }
   end
 
   def create

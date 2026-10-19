@@ -1,0 +1,25 @@
+<%# Live check of the room and dates; the same validations as saving (Booking#date_problems). %>
+<turbo-frame id="availability" data-availability-target="frame">
+  <div role="status" aria-live="polite">
+    <% if booking.room && booking.start_date && booking.end_date %>
+      <% problems = booking.date_problems %>
+      <% if problems.empty? %>
+        <div class="alert alert-success alert-soft">
+          <span>✓ <% if booking.id %>Không trùng lịch<% else %><b><%= booking.room.name %></b> còn trống<% end %> · <%= (booking.end_date - booking.start_date).to_i %> đêm
+            (<%= booking.start_date.strftime("%d/%m") %>–<%= booking.end_date.strftime("%d/%m") %>)</span>
+        </div>
+      <% else %>
+        <% free = place.rooms.where(active: true).where.not(id: booking.room.id).order(:name)
+                       .select { Booking.new(room: it, start_date: booking.start_date, end_date: booking.end_date).date_problems.empty? } %>
+        <div id="dates_error" class="alert alert-error alert-soft">
+          <div>
+            <% problems.each do |problem| %><div><%= problem %></div><% end %>
+            <% if free.any? && booking.end_date > booking.start_date %>
+              <div class="mt-1 font-medium">Phòng khác còn trống: <%= free.map(&:name).join(", ") %></div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</turbo-frame>
