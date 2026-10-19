@@ -15,7 +15,8 @@ class ReportTest < ActiveSupport::TestCase
     calendar_feeds(:limdim_airbnb).bookings.create!(room: @limdim, uid:, start_date: from, end_date: to, source: "ical")
   end
 
-  def report(month = Date.new(2026, 10, 1)) = Report.new(@place, month)
+  # The whole month, also for October (in progress on 10-20); the partial month has its own test.
+  def report(month = Date.new(2026, 10, 1)) = Report.new(@place, month, last: month.end_of_month)
 
   test "clips nights at month edges; holds and cancellations don't sell" do
     book(@limdim, "2026-09-29", "2026-10-01")                     # September only
@@ -43,7 +44,7 @@ class ReportTest < ActiveSupport::TestCase
     assert_equal 2 + 5, rows["Limdim"] # fixture + 16..20
   end
 
-  test "revenue, ADR and RevPAR use priced rooms only" do
+  test "revenue and ADR use priced rooms only" do
     book(@garden, "2026-10-05", "2026-10-07")
     airbnb("2026-10-10", "2026-10-13")
 
@@ -51,7 +52,6 @@ class ReportTest < ActiveSupport::TestCase
     assert_equal [ 2_000_000, nil ], r.rooms.map(&:revenue).values_at(1, 0) # Limdim (2 + 3) × 400k, Garden unpriced
     assert_equal 2_000_000, r.revenue          # (2 + 3) × 400k
     assert_in_delta 400_000.0, r.adr
-    assert_in_delta 2_000_000 / 31.0, r.revpar
     assert r.unpriced_rooms?
     assert_equal({ nights: 2 + 2, bookings: 2, revenue: 800_000 }, r.channels["manual"])
     assert_equal({ nights: 3, bookings: 1, revenue: 1_200_000 }, r.channels["airbnb"])
@@ -98,8 +98,30 @@ class ReportTest < ActiveSupport::TestCase
     assert_equal [ 0, 0, 0 ], [ r.sold, r.available, r.booking_count ]
     assert_nil r.occupancy
     assert_nil r.adr
-    assert_nil r.revpar
     assert_nil r.alos
     assert_nil r.cancellation_rate
+    assert r.empty?
+    assert_not report.empty?
+  end
+
+  test "the current month counts through today; confirmed nights after today are booked ahead" do
+    book(@limdim, "2026-10-19", "2026-10-23")                     # 19, 20 so far; 21, 22 ahead
+    book(@garden, "2026-10-25", "2026-10-26", status: "hold")     # after today: not held yet
+    book(@limdim, "2026-09-05", "2026-09-07")                     # inside 1–20/9
+    book(@limdim, "2026-09-25", "2026-09-27")                     # after 20/9
+
+    r = Report.new(@place, Date.current)
+    assert r.current? && r.partial?
+    assert_equal [ Date.new(2026, 10, 20), 20, 40 ], [ r.last, r.days, r.available ]
+    assert_equal [ 2 + 2, 0, 2 ], [ r.sold, r.held, r.booking_count ] # fixture 10-01..03 + 19, 20
+    assert_equal [ 2, 800_000 ], [ r.ahead, r.ahead_revenue ]
+    assert_equal [ Date.new(2026, 9, 20), 2 ], [ r.previous.last, r.previous.sold ]
+
+    september = Report.new(@place, Date.new(2026, 9, 1))
+    assert_not september.partial?
+    assert_equal [ Date.new(2026, 8, 31), 4 ], [ september.previous.last, september.sold ]
+    november = Report.new(@place, Date.new(2026, 11, 1))
+    assert november.future?
+    assert_equal [ Date.new(2026, 11, 30), 0 ], [ november.last, november.ahead ]
   end
 end

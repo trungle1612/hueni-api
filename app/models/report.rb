@@ -1,6 +1,7 @@
 # One homestay, one calendar month: occupancy, estimated revenue and booking activity for owners (#77).
 # A night is a date slept (end_date exclusive). Nights sold follow Booking#occupied_until, like vacancy.
-# Revenue is an estimate: nights × the room's current price; unpriced rooms are left out of revenue, ADR and RevPAR.
+# Revenue is an estimate: nights × the room's current price; unpriced rooms are left out of revenue and ADR.
+# The current month counts the 1st through today (`last`); confirmed nights after today are `ahead` (#117).
 class Report
   CHANNEL_LABELS = { "manual" => "Trực tiếp" }.merge(CalendarFeed::PROVIDER_LABELS).freeze
 
@@ -8,21 +9,30 @@ class Report
     def revenue = room.price && sold * room.price
   end
 
-  attr_reader :place, :month
+  attr_reader :place, :month, :last
 
-  def initialize(place, month)
+  def initialize(place, month, last: nil)
     @place = place
     @month = month.beginning_of_month
+    @last = last || (current? ? Date.current : @month.end_of_month)
   end
 
-  def days = month.end_of_month.day
-  def previous = Report.new(place, month.prev_month)
+  def current? = month == Date.current.beginning_of_month
+  def future? = month > Date.current
+  def partial? = last < month.end_of_month
+  def days = (last - month).to_i + 1
+
+  # A month in progress compares with the same days of the month before.
+  def previous
+    prev = month.prev_month
+    Report.new(place, prev, last: ([ prev + days - 1, prev.end_of_month ].min if partial?))
+  end
 
   # Active rooms, plus inactive ones that sold nights this month.
   def rooms
     @rooms ||= place.rooms.order(:name).map { |room|
-      sold = sold_nights.fetch(room.id, {})
-      held = stays.select { it.hold? && it.room_id == room.id }.flat_map { dates(it) }.uniq - sold.keys
+      sold = sold_nights.fetch(room.id, {}).select { |date, _| date <= last }
+      held = stays.select { it.hold? && it.room_id == room.id }.flat_map { dates(it) }.uniq.select { it <= last } - sold.keys
       RoomRow.new(room:, sold: sold.size, held: held.size)
     }.select { it.room.active? || it.sold.positive? }
   end
@@ -34,13 +44,18 @@ class Report
 
   def revenue = priced.sum(&:revenue)
   def adr = ratio(revenue, priced.sum(&:sold))
-  def revpar = ratio(revenue, priced.size * days)
   def unpriced_rooms? = priced.size < rooms.size
+
+  # Confirmed nights after today in the current month, and their estimated revenue.
+  def ahead = ahead_nights.size
+  def ahead_revenue = ahead_nights.sum { it.room.price || 0 }
+
+  def empty? = sold.zero? && held.zero? && booking_count.zero? && ota_cancelled.zero?
 
   # { "manual" => { nights:, bookings:, revenue: }, "airbnb" => ... }: channels with any night or booking.
   def channels
     @channels ||= begin
-      sold_by = sold_nights.values.flat_map(&:values).group_by { channel(it) }
+      sold_by = sold_nights.values.flat_map { it.filter_map { |date, booking| booking if date <= last } }.group_by { channel(it) }
       arrivals_by = arrivals.group_by { channel(it) }
       CHANNEL_LABELS.keys.filter_map do |key|
         next unless sold_by[key] || arrivals_by[key]
@@ -58,20 +73,20 @@ class Report
   def ota_cancelled
     @ota_cancelled ||= PaperTrail::Version.where(place_id: place.id, item_type: "Booking", event: "destroy")
       .where("json_extract(object, '$.source') = 'ical'")
-      .where("json_extract(object, '$.start_date') BETWEEN ? AND ?", month.iso8601, month.end_of_month.iso8601).count
+      .where("json_extract(object, '$.start_date') BETWEEN ? AND ?", month.iso8601, last.iso8601).count
   end
 
   def cancellation_rate = ratio(outcomes["cancelled"] + ota_cancelled, booking_count + ota_cancelled)
 
   private
-    def range = month..month.end_of_month
+    def range = month..last
 
     def stays
       @stays ||= Booking.where(room_id: place.rooms.select(:id)).occupying(month, month.next_month)
         .includes(:room, :calendar_feed).to_a
     end
 
-    # { room_id => { date => the confirmed booking that sold that night } }. A night shared by an iCal and a manual
+    # { room_id => { date => the confirmed booking that sold that night } } for the whole month. A night shared by an iCal and a manual
     # booking (a calendar conflict) is sold once, to the OTA.
     def sold_nights
       @sold_nights ||= stays.select(&:confirmed?).sort_by { it.ical? ? 0 : 1 }.each_with_object({}) do |booking, by_room|
@@ -85,6 +100,8 @@ class Report
     end
 
     def priced = rooms.select { it.room.price }
+
+    def ahead_nights = sold_nights.values.flat_map { it.filter_map { |date, booking| booking if date > last } }
 
     # The booking's nights inside the month.
     def dates(booking) = ([ booking.start_date, month ].max...[ booking.occupied_until, month.next_month ].min).to_a
