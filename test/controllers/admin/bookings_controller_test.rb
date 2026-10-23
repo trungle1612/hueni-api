@@ -79,6 +79,26 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to admin_place_calendar_path("tomo-homestay")
   end
 
+  test "owners quote a price on the booking; staff can't set one and never see the fields" do
+    rooms(:garden).update!(price: 400_000)
+    get new_admin_place_booking_path("tomo-homestay", room_id: rooms(:garden).id)
+    assert_select "#quote input[name='booking[price]'][placeholder='Giá phòng']"
+
+    post admin_place_bookings_path("tomo-homestay"), params: { booking: { room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-07", price: "350.000" } }
+    assert_equal [ 350_000, nil ], Booking.last.then { [ it.price, it.weekend_price ] }
+    get edit_admin_booking_path(Booking.last)
+    assert_select "#quote input[name='booking[price]'][value='350.000']"
+
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    delete session_path
+    log_in staff
+    post admin_place_bookings_path("tomo-homestay"), params: { booking: { room_id: rooms(:garden).id, start_date: "2026-10-08", end_date: "2026-10-09", price: "1" } }
+    assert_equal 400_000, Booking.last.price # the room's price, not the staff's
+    get edit_admin_booking_path(Booking.last)
+    assert_select "#quote", 0
+  end
+
   test "overlapping booking is rejected" do
     assert_no_difference -> { Booking.count } do
       post admin_place_bookings_path("tomo-homestay"), params: { booking: {

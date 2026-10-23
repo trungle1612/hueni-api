@@ -146,6 +146,26 @@ class BookingTest < ActiveSupport::TestCase
     assert_equal [ "confirmed", nil ], booking.reload.values_at(:status, :note)
   end
 
+  test "keeps the room's prices quoted at booking time; Friday and Saturday nights use the weekend price" do
+    rooms(:garden).update!(price: 400_000, weekend_price: 500_000)
+    booking = build(start_date: "2026-10-22", end_date: "2026-10-26").tap(&:save!) # Thu, Fri, Sat, Sun nights
+    rooms(:garden).update!(price: 450_000, weekend_price: nil)
+
+    assert_equal [ 400_000, 500_000 ], [ booking.reload.price, booking.weekend_price ]
+    assert_equal [ 400_000, 500_000, 500_000, 400_000 ], (booking.start_date...booking.end_date).map { booking.price_on(it) }
+    assert_equal 450_000, build(start_date: "2026-10-30", end_date: "2026-10-31").tap(&:save!).price_on(Date.new(2026, 10, 30)) # Fri, no weekend price
+  end
+
+  test "an owner's quote wins; an unquoted booking follows the room's current price" do
+    rooms(:garden).update!(price: 400_000)
+    assert_equal [ 350_000, nil ], build(price: "350k").tap(&:save!).then { [ it.price, it.weekend_price ] }
+
+    unquoted = Booking.new(room: rooms(:limdim), start_date: "2026-11-01", end_date: "2026-11-02").tap(&:save!)
+    assert_nil unquoted.price_on(Date.new(2026, 11, 1))
+    rooms(:limdim).update!(price: 300_000)
+    assert_equal 300_000, unquoted.reload.price_on(Date.new(2026, 11, 1))
+  end
+
   test "db rejects check-out without check-in" do
     booking = build.tap(&:save!)
     assert_raises(ActiveRecord::StatementInvalid) { booking.update_column(:checked_out_at, Time.current) }

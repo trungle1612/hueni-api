@@ -1,13 +1,12 @@
 # One homestay, one calendar month: occupancy, estimated revenue and booking activity for owners (#77).
 # A night is a date slept (end_date exclusive). Nights sold follow Booking#occupied_until, like vacancy.
-# Revenue is an estimate: nights × the room's current price; unpriced rooms are left out of revenue and ADR.
+# Revenue is an estimate: each night at its booking's quoted price (Booking#price_on); unpriced nights are left out of revenue and ADR.
 # The current month counts the 1st through today (`last`); confirmed nights after today are `ahead` (#117).
 class Report
   CHANNEL_LABELS = { "manual" => "Trực tiếp" }.merge(CalendarFeed::PROVIDER_LABELS).freeze
 
-  RoomRow = Data.define(:room, :sold, :held) do
-    def revenue = room.price && sold * room.price
-  end
+  # revenue: nil for a room without a price and no priced night. unpriced: nights sold without a price.
+  RoomRow = Data.define(:room, :sold, :held, :revenue, :unpriced)
 
   attr_reader :place, :month, :last
 
@@ -33,7 +32,9 @@ class Report
     @rooms ||= place.rooms.order(:name).map { |room|
       sold = sold_nights.fetch(room.id, {}).select { |date, _| date <= last }
       held = stays.select { it.hold? && it.room_id == room.id }.flat_map { dates(it) }.uniq.select { it <= last } - sold.keys
-      RoomRow.new(room:, sold: sold.size, held: held.size)
+      prices = sold.map { |date, booking| booking.price_on(date) }
+      revenue = prices.compact.sum
+      RoomRow.new(room:, sold: sold.size, held: held.size, revenue: (revenue unless room.price.nil? && revenue.zero?), unpriced: prices.count(nil))
     }.select { it.room.active? || it.sold.positive? }
   end
 
@@ -42,25 +43,25 @@ class Report
   def available = rooms.size * days
   def occupancy = ratio(sold, available)
 
-  def revenue = priced.sum(&:revenue)
-  def adr = ratio(revenue, priced.sum(&:sold))
-  def unpriced_rooms? = priced.size < rooms.size
+  def revenue = rooms.sum { it.revenue || 0 }
+  def adr = ratio(revenue, sold - rooms.sum(&:unpriced))
+  def unpriced? = rooms.any? { it.unpriced.positive? }
 
   # Confirmed nights after today in the current month, and their estimated revenue.
   def ahead = ahead_nights.size
-  def ahead_revenue = ahead_nights.sum { it.room.price || 0 }
+  def ahead_revenue = ahead_nights.sum { |date, booking| booking.price_on(date) || 0 }
 
   def empty? = sold.zero? && held.zero? && booking_count.zero? && ota_cancelled.zero?
 
   # { "manual" => { nights:, bookings:, revenue: }, "airbnb" => ... }: channels with any night or booking.
   def channels
     @channels ||= begin
-      sold_by = sold_nights.values.flat_map { it.filter_map { |date, booking| booking if date <= last } }.group_by { channel(it) }
+      sold_by = sold_nights.values.flat_map { it.select { |date, _| date <= last }.to_a }.group_by { |_, booking| channel(booking) }
       arrivals_by = arrivals.group_by { channel(it) }
       CHANNEL_LABELS.keys.filter_map do |key|
         next unless sold_by[key] || arrivals_by[key]
-        nights = sold_by.fetch(key, []) # one booking per night it sold
-        [ key, { nights: nights.size, bookings: arrivals_by.fetch(key, []).size, revenue: nights.sum { it.room.price || 0 } } ]
+        nights = sold_by.fetch(key, []) # [date, booking] per night sold
+        [ key, { nights: nights.size, bookings: arrivals_by.fetch(key, []).size, revenue: nights.sum { |date, booking| booking.price_on(date) || 0 } } ]
       end.to_h
     end
   end
@@ -99,9 +100,7 @@ class Report
       @arrivals ||= Booking.where(room_id: place.rooms.select(:id), start_date: range).includes(:calendar_feed).to_a
     end
 
-    def priced = rooms.select { it.room.price }
-
-    def ahead_nights = sold_nights.values.flat_map { it.filter_map { |date, booking| booking if date > last } }
+    def ahead_nights = sold_nights.values.flat_map { it.select { |date, _| date > last }.to_a }
 
     # The booking's nights inside the month.
     def dates(booking) = ([ booking.start_date, month ].max...[ booking.occupied_until, month.next_month ].min).to_a

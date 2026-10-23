@@ -97,6 +97,9 @@ module Admin::ActivityHelper
         parts << "#{label}: #{activity_value(changes[attr][0])} → #{activity_value(changes[attr][1])}" if changes.key?(attr)
       end
       parts << "sửa ghi chú" if changes.key?("note")
+      { "price" => "giá", "weekend_price" => "giá T6–T7" }.each do |attr, label|
+        parts << "#{label} #{vnd(changes[attr][0]) || "giá phòng"} → #{vnd(changes[attr][1]) || "giá phòng"}" if changes.key?(attr)
+      end
       guest = after["guest_name"].presence unless changes.key?("guest_name")
       [ guest, parts.join(", ") ].compact.join(": ")
     end
@@ -107,6 +110,7 @@ module Admin::ActivityHelper
       parts = []
       parts << "đổi tên #{changes["name"][0]} → #{changes["name"][1]}" if changes.key?("name")
       parts << "giá #{vnd(changes["price"][0]) || "chưa có"} → #{vnd(changes["price"][1]) || "chưa có"}" if changes.key?("price")
+      parts << "giá T6–T7 #{vnd(changes["weekend_price"][0]) || "như thường"} → #{vnd(changes["weekend_price"][1]) || "như thường"}" if changes.key?("weekend_price")
       parts << "tối đa #{changes["max_guests"][0]} → #{changes["max_guests"][1]} khách" if changes.key?("max_guests")
       parts << (changes["active"][1] ? "bật phòng" : "tắt phòng") if changes.key?("active")
       parts << "dọn xong" if changes.key?("housekeeping")
