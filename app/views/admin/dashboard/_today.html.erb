@@ -35,12 +35,5 @@
         <div class="divide-y divide-base-200"><%= stays.(:in_house, @in_house) %></div>
       </div>
     <% end %>
-    <% if @holds.any? %>
-      <details id="holds">
-        <summary class="flex items-center gap-2 font-semibold cursor-pointer"><%= heading.(:hold, "Đang giữ chỗ", @holds.size) %></summary>
-        <div class="divide-y divide-base-200"><%= stays.(:holds, @holds) %></div>
-        <div class="text-sm opacity-80 mt-1">Giữ chỗ trong <%= Admin::DashboardController::HOLDS_DAYS %> ngày tới · <%= link_to "Xem lịch", admin_calendar_path, class: "link" %></div>
-      </details>
-    <% end %>
   </div>
 </section>

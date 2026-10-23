@@ -10,7 +10,7 @@ module Admin::CalendarsHelper
   end
 
   def booking_bar_label(booking)
-    "#{"✓ " if booking.checked_out_at}#{"⚠ " if booking.removed_from_feed_at}#{booking_label(booking)}#{" · quá hạn" if booking.overdue?}"
+    "#{"✓ " if booking.checked_out_at}#{"⚠ " if booking.removed_from_feed_at}#{"! " if booking.awaiting_deposit?}#{booking_label(booking)}#{" · quá hạn" if booking.overdue?}"
   end
 
   # A checked-out bar keeps its booked dates; an overdue one grows through today.
@@ -22,7 +22,7 @@ module Admin::CalendarsHelper
     if booking.overdue? then "bg-error/15 text-error border border-error"
     elsif booking.checked_out_at then "bg-primary/15 text-primary/80"
     elsif booking.ical? then "bg-base-300 text-base-content border border-base-content/20"
-    elsif booking.hold? then "bg-warning/25 text-warning-content border border-dashed border-warning"
+    elsif booking.awaiting_deposit? then "bg-warning/25 text-warning-content border border-warning"
     else "bg-primary text-primary-content"
     end
   end

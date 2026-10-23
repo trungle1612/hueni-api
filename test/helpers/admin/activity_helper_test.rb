@@ -8,11 +8,12 @@ class Admin::ActivityHelperTest < ActionView::TestCase
   def entry = activity_entry(PaperTrail::Version.last).values_at(:kind, :action, :detail)
 
   test "booking rows" do
-    booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", status: "hold", guest_name: "Chị Mai")
-    assert_equal [ :booking, "Giữ chỗ", "Chị Mai 05/10–07/10" ], entry
+    booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Chị Mai")
+    assert_equal [ :booking, "Đặt phòng", "Chị Mai 05/10–07/10" ], entry
 
+    booking.update!(status: "cancelled")
     booking.update!(status: "confirmed")
-    assert_equal [ :booking, "Xác nhận", "Chị Mai 05/10–07/10" ], entry
+    assert_equal [ :booking, "Khôi phục", "Chị Mai 05/10–07/10" ], entry
 
     booking.update!(start_date: "2026-10-06", end_date: "2026-10-08", guests: 2, guest_phone: "0905000111")
     assert_equal [ :edit, "Sửa đặt phòng", "Chị Mai: đổi ngày 05/10–07/10 → 06/10–08/10, SĐT: — → 0905000111, số khách: — → 2" ], entry

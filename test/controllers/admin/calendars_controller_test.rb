@@ -30,7 +30,7 @@ class Admin::CalendarsControllerTest < ActionDispatch::IntegrationTest
     get admin_place_calendar_path("tomo-homestay")
     assert_response :success
     assert_select "[data-room]", 1
-    assert_select "a#booking_#{bookings(:limdim_confirmed).id}[href=?]", edit_admin_booking_path(bookings(:limdim_confirmed)), text: "Anh Minh"
+    assert_select "a#booking_#{bookings(:limdim_confirmed).id}[href=?]", edit_admin_booking_path(bookings(:limdim_confirmed)), text: "! Anh Minh" # no deposit yet
     assert_select "div#booking_#{ical.id}", text: "Airbnb"
     assert_select "a#booking_#{ical.id}", 0
     assert_select "#booking_#{cancelled.id}", 0

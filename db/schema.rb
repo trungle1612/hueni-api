@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_23_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_100000) do
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -37,7 +37,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_000000) do
     t.check_constraint "checked_out_at IS NULL OR checked_in_at IS NOT NULL", name: "bookings_checkout_after_checkin"
     t.check_constraint "end_date > start_date", name: "bookings_dates_order"
     t.check_constraint "source IN ('manual', 'ical')", name: "bookings_source_values"
-    t.check_constraint "status IN ('hold', 'confirmed', 'cancelled')", name: "bookings_status_values"
+    t.check_constraint "status IN ('confirmed', 'cancelled')", name: "bookings_status_values"
   end
 
   create_table "calendar_feeds", force: :cascade do |t|

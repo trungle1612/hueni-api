@@ -36,7 +36,7 @@ class V1::VacancyControllerTest < ActionDispatch::IntegrationTest
     get "/v1/vacancy"
     assert_equal 1, response.parsed_body.dig("places", "tomo-homestay", "left")
 
-    Booking.create!(room: rooms(:garden), start_date: "2026-10-01", end_date: "2026-10-02", status: "hold")
+    Booking.create!(room: rooms(:garden), start_date: "2026-10-01", end_date: "2026-10-02")
     get "/v1/vacancy"
     assert_equal 0, response.parsed_body.dig("places", "tomo-homestay", "left")
   ensure

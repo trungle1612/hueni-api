@@ -1,20 +1,18 @@
 <% badges = stay_badges(booking) %>
 <% dirty = group == :arrivals && booking.room.dirty? %>
-<% hold = group == :arrivals && booking.hold? %>
 <%# Phones: who/where on top at full width, buttons below — side by side the buttons squeezed the name to nothing. %>
 <div id="<%= dom_id(booking, :today) %>" class="flex flex-col gap-2 py-3 sm:flex-row sm:justify-between sm:items-center sm:gap-3">
   <%= link_to booking.manual? ? edit_admin_booking_path(booking) : admin_place_calendar_path(booking.room.place.slug), class: "min-w-0" do %>
     <div class="font-semibold sm:truncate"><%= booking_label(booking) %><%= " · #{booking.guests} khách" if booking.guests %></div>
     <div class="text-sm opacity-80 sm:truncate">Phòng <%= booking.room.name %><%= " · #{booking.room.place.name}" if many_places %> · <%= stay_dates(booking) %></div>
-    <% if badges.present? || dirty || hold %>
+    <% if badges.present? || dirty %>
       <div class="flex flex-wrap gap-1 mt-1">
-        <% if hold %><span class="badge badge-soft badge-warning badge-sm">Giữ chỗ · chưa xác nhận</span><% end %>
         <%= badges %>
         <% if dirty %><span class="badge badge-soft badge-warning badge-sm">Phòng chưa dọn</span><% end %>
       </div>
     <% end %>
   <% end %>
-  <% unless group == :holds || (group == :in_house && !booking.needs_declaration?) %>
+  <% unless (group == :in_house && !booking.needs_declaration?) %>
     <div class="flex items-center justify-end gap-2 sm:shrink-0">
       <% if group == :arrivals %>
         <%# Không đến cancels: kept apart from call / Nhận phòng so a thumb doesn't land on it. %>

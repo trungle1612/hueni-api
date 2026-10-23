@@ -5,7 +5,6 @@ module Admin::StaysHelper
     leaving: [ "Trả hôm nay", "bg-accent/15" ],
     occupied: [ "Đang có khách", "bg-info/15" ],
     arriving: [ "Chờ khách", "bg-primary/15" ],
-    held: [ "Giữ chỗ", "bg-warning/15" ],
     free: [ "Trống", "bg-success/15" ]
   }.freeze
 
@@ -35,10 +34,8 @@ module Admin::StaysHelper
       else
         [ "Nhận phòng", "#{booking_label(booking)} nhận phòng #{booking.room.name}?" ]
       end
-    confirm = "Đang giữ chỗ, chưa xác nhận. #{confirm}" if booking.hold?
     confirm += "\n⚠ #{booking.errors.full_messages.join(". ")}" if !booking.changed? && booking.errors.empty? && booking.invalid?
-    # A hold isn't a sure arrival: its button doesn't shout like a confirmed one.
-    button_class = [ "btn", booking.hold? ? "btn-outline btn-primary" : "btn-primary", size ].compact.join(" ")
+    button_class = [ "btn", "btn-primary", size ].compact.join(" ")
     return button_to(label, check_in_admin_booking_path(booking), class: button_class,
       form: { data: { turbo_confirm: confirm } }) if booking.guests
 

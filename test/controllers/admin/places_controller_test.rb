@@ -19,13 +19,10 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_select "[id^=room_] input[name='room[active]'], [id^=room_] a[href='#{edit_admin_room_path(rooms(:limdim))}']", 0
   end
 
-  test "hold shows Giữ chỗ, confirmed wins over hold, paused shows Tạm ngưng" do
-    Booking.create!(room: rooms(:garden), start_date: "2026-10-01", end_date: "2026-10-02", status: "hold")
-    # Overlaps limdim_confirmed: manual overlaps are rejected, so this only happens alongside an iCal booking.
-    Booking.new(room: rooms(:limdim), start_date: "2026-10-01", end_date: "2026-10-02", status: "hold").save!(validate: false)
+  test "an arrival shows Chờ khách, paused shows Tạm ngưng" do
     log_in users(:owner)
     get admin_place_path("tomo-homestay")
-    assert_select "#room_#{rooms(:garden).id} [data-state]", "Giữ chỗ"
+    assert_select "#room_#{rooms(:garden).id} [data-state]", "Trống"
     assert_select "#room_#{rooms(:limdim).id} [data-state]", "Chờ khách"
 
     rooms(:limdim).update!(active: false)
@@ -142,7 +139,7 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
 
   test "early check-in is offered only on a free room, for its next booking" do
     rooms(:limdim).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Sau Anh Minh")
-    held = rooms(:garden).bookings.create!(start_date: "2026-10-02", end_date: "2026-10-03", status: "hold", guest_name: "Giữ")
+    held = rooms(:garden).bookings.create!(start_date: "2026-10-02", end_date: "2026-10-03", guest_name: "Giữ")
     later = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Chị Hoa")
     log_in users(:owner)
     get admin_place_path("tomo-homestay")

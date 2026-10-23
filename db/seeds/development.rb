@@ -34,15 +34,15 @@ places.each_with_index do |place, place_index|
   end
   Booking.where(room: rooms).delete_all # also removes old iCal rows; feeds below re-add theirs
 
-  # Manual bookings: a past stay, today's guests, holds, a cancellation, something next week.
+  # Manual bookings: a past stay, today's guests (some with a deposit), a cancellation, something next week.
   rooms.each_with_index do |room, i|
     offset = i * 2 + place_index
     guest = GUESTS[(i + place_index) % GUESTS.size]
     room.bookings.create!(start_date: today - 6 + i, end_date: today - 3 + i, status: "confirmed", guest_name: "Khách cũ #{i + 1}")
-    room.bookings.create!(start_date: today + offset - 1, end_date: today + offset + 1, status: i.odd? ? "hold" : "confirmed",
+    room.bookings.create!(start_date: today + offset - 1, end_date: today + offset + 1, status: "confirmed", deposit: (200_000 if i.even?),
       guest_name: guest, guest_phone: "0905 #{100 + i}#{place_index} #{456 + offset}", note: ("Đến muộn" if i == 1))
     room.bookings.create!(start_date: today + offset + 3, end_date: today + offset + 4, status: "cancelled", guest_name: "Khách huỷ", note: "Đổi kế hoạch")
-    room.bookings.create!(start_date: today + 8 + i, end_date: today + 10 + i, status: "hold", note: "Giữ cho đoàn")
+    room.bookings.create!(start_date: today + 8 + i, end_date: today + 10 + i, status: "confirmed", note: "Đoàn")
   end
 
   # OTA feeds: one healthy, one failing. URLs are fake, so validation (DNS) is skipped and "Đồng bộ ngay" will just record an error.

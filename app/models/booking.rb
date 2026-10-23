@@ -21,28 +21,24 @@ class Booking < ApplicationRecord
   # like a hotel's night audit: they can be checked in and stay in Hôm nay.
   LATE_ARRIVAL_UNTIL = 6
 
-  enum :status, { hold: "hold", confirmed: "confirmed", cancelled: "cancelled" }, validate: true
+  # No Giữ chỗ (#127): a booking is confirmed or cancelled; Đã cọc (deposit) says whether money came in.
+  enum :status, { confirmed: "confirmed", cancelled: "cancelled" }, validate: true
   enum :source, { manual: "manual", ical: "ical" }, validate: true
   # Status changes go through these events, so side effects (notifications, tracking) hang off them.
   # The iCal sync writes status directly: its bookings are created confirmed and never change status.
   include AASM
   aasm column: :status, enum: true, whiny_transitions: false, whiny_persistence: false do
     state :confirmed, initial: true
-    state :hold, :cancelled
+    state :cancelled
 
-    event(:confirm) { transitions from: :hold, to: :confirmed }
-    event(:put_on_hold) { transitions from: :confirmed, to: :hold }
-    event(:cancel) { transitions from: %i[hold confirmed], to: :cancelled }
-    event :reopen do
-      transitions from: :cancelled, to: :hold
-      transitions from: :cancelled, to: :confirmed
-    end
+    event(:cancel) { transitions from: :confirmed, to: :cancelled }
+    event(:reopen) { transitions from: :cancelled, to: :confirmed }
   end
 
   validates :start_date, presence: true
   validates :end_date, presence: true, comparison: { greater_than: :start_date, message: "phải sau ngày nhận phòng (ít nhất 1 đêm)" }, if: :start_date
   # iCal bookings skip this: the OTA already sold those nights, so an overlap is shown as a conflict instead.
-  validate :room_is_free, if: -> { manual? && (hold? || confirmed?) && room && start_date && end_date }
+  validate :room_is_free, if: -> { manual? && confirmed? && room && start_date && end_date }
   validate :guests_fit_room, if: -> { guests && room }
   validates :guest_name, length: { maximum: 100 }
   # Kept as typed (foreign guests: "+82 10 1234 5678"), but it must be dialable for the Gọi button.
@@ -50,11 +46,11 @@ class Booking < ApplicationRecord
     if: :guest_phone
   validate :not_cancelled_after_check_in, if: -> { cancelled? && checked_in_at }
 
-  # Holds and confirmed stays occupy the room from start_date up to, not including, end_date —
+  # Confirmed stays occupy the room from start_date up to, not including, end_date —
   # or, once checked out, up to the check-out day: the remaining nights are free to sell.
   # A guest still in the room after the departure day (Quá hạn, not checked out) keeps occupying it through today;
   # on the departure day itself the room stays sellable for tonight.
-  scope :blocking, -> { where(status: [ :hold, :confirmed ]) }
+  scope :blocking, -> { confirmed }
   scope :blocking_on, ->(date) { occupying(date, date.next_day) }
   # Bookings whose dates touch any night in from...to (to exclusive), checked out or not.
   scope :overlapping, ->(from, to) { where(start_date: ...to, end_date: from.next_day..) }
@@ -84,6 +80,8 @@ class Booking < ApplicationRecord
     weekday, weekend = price ? [ price, weekend_price ] : [ room.price, room.weekend_price ]
     (weekend if date.friday? || date.saturday?) || weekday
   end
+  # Chưa cọc: a direct booking not yet checked in with no deposit noted (the calendar's amber bar, like the Zalo app).
+  def awaiting_deposit? = manual? && !checked_in_at && !deposit&.positive?
   def early_check_in? = !checked_in_at && start_date > Date.current
 
   # What the booking form's availability line shows: the date and overlap messages this stay would get in its
@@ -114,7 +112,7 @@ class Booking < ApplicationRecord
     event ? aasm.fire!(event.name, to) : refuse("Không chuyển được sang trạng thái này")
   end
 
-  # The guest arrived: a hold becomes confirmed. Returns false with the reason in errors[:base].
+  # The guest arrived. Returns false with the reason in errors[:base].
   # Records a fact, so it skips validations: a guest at the desk is checked in even if the booking conflicts
   # with an OTA booking or exceeds a lowered max_guests (the calendar shows the conflict).
   # Arriving before start_date (Nhận phòng sớm) moves start_date to today, so the extra nights are booked;
@@ -129,7 +127,6 @@ class Booking < ApplicationRecord
       end
       early = early_check_in?
       self.checked_in_at = Time.current
-      confirm if hold?
       if early
         self.start_date = Date.current
         save
