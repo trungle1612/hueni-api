@@ -5,6 +5,7 @@ module Admin::StaysHelper
     leaving: [ "Trả hôm nay", "bg-accent/15" ],
     occupied: [ "Đang có khách", "bg-info/15" ],
     arriving: [ "Chờ khách", "bg-primary/15" ],
+    maintenance: [ "Bảo trì", "bg-base-300" ],
     free: [ "Trống", "bg-success/15" ]
   }.freeze
 
@@ -71,6 +72,11 @@ module Admin::StaysHelper
 
   def clean_button(room, size: nil)
     button_to "Dọn xong", clean_admin_room_path(room), class: [ "btn btn-outline", size ].compact.join(" ")
+  end
+
+  def end_maintenance_button(room, size: nil)
+    button_to "Xong bảo trì", clean_admin_room_path(room), class: [ "btn btn-outline", size ].compact.join(" "),
+      form: { data: { turbo_confirm: "#{room.name} đã sửa xong, sẵn sàng đón khách?" } }
   end
 
   def call_link(booking)

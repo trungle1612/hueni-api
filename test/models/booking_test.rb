@@ -166,6 +166,26 @@ class BookingTest < ActiveSupport::TestCase
     assert_equal 300_000, unquoted.reload.price_on(Date.new(2026, 11, 1))
   end
 
+  test "Bảo trì blocks new bookings, check-in and moves into the room; a booking made before it can still be edited" do
+    travel_to Time.zone.local(2026, 10, 1, 12)
+    before = build(start_date: "2026-10-02", end_date: "2026-10-03").tap(&:save!) # garden
+    rooms(:garden).update!(housekeeping: "maintenance", maintenance_reason: "Hỏng máy lạnh", maintenance_until: "2026-10-03")
+
+    assert_equal [ "Phòng bảo trì đến 03/10 (Hỏng máy lạnh). Chọn ngày từ 04/10 hoặc phòng khác." ],
+      build(start_date: "2026-10-03", end_date: "2026-10-05").date_problems
+    assert_empty build(start_date: "2026-10-04", end_date: "2026-10-05").date_problems
+    assert before.in_maintenance?
+    assert before.update(note: "Gọi khách đổi phòng")
+    assert_not before.update(end_date: "2026-10-04")
+
+    travel_to Time.zone.local(2026, 10, 2, 14) do
+      assert_not before.reload.check_in(guests: 1)
+      assert_includes before.errors[:base], "Phòng đang bảo trì"
+      bookings(:limdim_confirmed).check_in(guests: 1)
+      assert_not bookings(:limdim_confirmed).can_move_to?(rooms(:garden))
+    end
+  end
+
   test "db rejects check-out without check-in" do
     booking = build.tap(&:save!)
     assert_raises(ActiveRecord::StatementInvalid) { booking.update_column(:checked_out_at, Time.current) }

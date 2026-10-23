@@ -17,6 +17,9 @@ vi:
         name: Tên phòng
         max_guests: Số khách tối đa
         price: Giá mỗi đêm
+        weekend_price: Giá thứ 6, thứ 7
+        maintenance_reason: Lý do bảo trì
+        maintenance_until: Ngày dự kiến xong
       booking:
         start_date: Ngày nhận phòng
         end_date: Ngày trả phòng
@@ -24,6 +27,9 @@ vi:
         guest_name: Tên khách
         guest_phone: Số điện thoại
         status: Trạng thái
+        price: Giá mỗi đêm
+        weekend_price: Giá thứ 6, thứ 7
+        deposit: Đã cọc
       calendar_feed:
         url: Link iCal
         provider: Kênh

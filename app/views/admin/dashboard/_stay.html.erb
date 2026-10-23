@@ -21,7 +21,7 @@
         <% if booking.can_check_in? %>
           <%= check_in_button(booking) %>
         <% else %>
-          <span class="badge badge-soft badge-error">Phòng còn khách</span>
+          <span class="badge badge-soft badge-error"><%= booking.room.maintenance_on?(Date.current) ? "Phòng đang bảo trì" : "Phòng còn khách" %></span>
         <% end %>
       <% elsif group == :departures %>
         <%= check_out_button(booking) %>

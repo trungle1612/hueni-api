@@ -174,6 +174,37 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     assert rooms(:garden).reload.clean?
   end
 
+  test "staff set Bảo trì from the homestay page and end it with Xong bảo trì; another owner's room is not found" do
+    travel_to Time.zone.local(2026, 10, 5, 12)
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    delete session_path
+    log_in staff
+
+    get admin_place_path("tomo-homestay")
+    assert_select "#maintenance_room_#{rooms(:garden).id} form[action='#{maintenance_admin_room_path(rooms(:garden))}']"
+    patch maintenance_admin_room_path(rooms(:garden)), params: { room: { maintenance_reason: "Hỏng máy lạnh", maintenance_until: "2026-10-07", housekeeping: "clean", price: "1" } }
+    assert_redirected_to admin_place_path("tomo-homestay", anchor: "room_#{rooms(:garden).id}")
+    assert_equal "Garden bảo trì đến 07/10.", flash[:notice]
+    assert_equal [ "maintenance", nil ], rooms(:garden).reload.values_at(:housekeeping, :price)
+
+    get admin_place_path("tomo-homestay")
+    assert_select "#room_#{rooms(:garden).id} [data-state]", "Bảo trì"
+    assert_select "#room_#{rooms(:garden).id} [data-maintenance]", text: /Bảo trì đến 07\/10 · Hỏng máy lạnh/
+    assert_select "#maintenance_room_#{rooms(:garden).id}", 0
+
+    patch maintenance_admin_room_path(rooms(:garden)), params: { room: { maintenance_reason: "", maintenance_until: "2026-10-01" } }
+    assert_match "Lý do bảo trì không thể để trống", flash[:alert]
+
+    post clean_admin_room_path(rooms(:garden))
+    assert_equal "Xong bảo trì Garden, phòng sẵn sàng.", flash[:notice]
+    assert rooms(:garden).reload.clean?
+
+    other = Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 2)
+    patch maintenance_admin_room_path(other), params: { room: { maintenance_reason: "x", maintenance_until: "2026-10-07" } }
+    assert_response :not_found
+  end
+
   test "admins who aren't members can't mark a room clean" do
     rooms(:garden).dirty!
     delete session_path

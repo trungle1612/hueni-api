@@ -14,7 +14,7 @@ module Vacancy
 
   def self.on(date = Date.current)
     busy = Booking.blocking_on(date).pluck(:room_id).to_set
-    Room.where(active: true).joins(:place).pluck("places.slug", :id, :max_guests)
+    Room.where(active: true).where("housekeeping != 'maintenance' OR maintenance_until < ?", date).joins(:place).pluck("places.slug", :id, :max_guests)
       .group_by(&:first)
       .transform_values do |rooms|
         free = rooms.reject { |_, id, _| busy.include?(id) }

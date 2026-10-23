@@ -25,6 +25,7 @@ class RoomDay
     @state =
       if !room.active? then :off
       elsif staying then staying.end_date <= date ? :leaving : :occupied
+      elsif room.maintenance_on?(date) then :maintenance
       elsif arriving then :arriving
       else :free
       end
