@@ -81,6 +81,17 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "a price change says how many upcoming bookings keep their quote, and warns on a cheaper weekend" do
+    travel_to Time.zone.local(2026, 10, 1, 12)
+    rooms(:garden).update!(price: 400_000)
+    rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07")
+
+    patch admin_room_path(rooms(:garden)), params: { room: { price: "450k", weekend_price: "420k" } }
+    assert_equal [ 450_000, 420_000 ], [ rooms(:garden).reload.price, rooms(:garden).weekend_price ]
+    assert_equal "Đã lưu phòng Garden. 1 đặt phòng sắp tới giữ giá cũ. Giá thứ 6, thứ 7 đang thấp hơn ngày thường, kiểm tra lại nếu không cố ý.", flash[:notice]
+    assert_equal 400_000, rooms(:garden).bookings.last.price
+  end
+
   test "edits own room, price with separators, place_id ignored" do
     get edit_admin_room_path(rooms(:garden))
     assert_select "h1", "Phòng Garden"

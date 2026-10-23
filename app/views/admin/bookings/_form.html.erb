@@ -1,7 +1,7 @@
 <% rooms = place.rooms.where(active: true).order(:name) if booking.new_record? %>
 <% shown = booking.date_problems if booking.errors.any? %>
 <% other_errors = booking.errors[:base] - shown.to_a %>
-<% first_error = shown.present? ? :dates : (%i[guest_name guest_phone guests] & booking.errors.attribute_names).first %>
+<% first_error = shown.present? ? :dates : (%i[guest_name guest_phone guests price weekend_price deposit] & booking.errors.attribute_names).first %>
 <%= form_with model: booking, url: (booking.new_record? ? admin_place_bookings_path(place.slug) : admin_booking_path(booking)),
       html: { novalidate: true }, class: "card bg-base-100 shadow-sm",
       data: { controller: "availability", availability_url_value: availability_admin_place_bookings_path(place.slug, room_id: booking.room_id, booking_id: booking.id) } do |form| %>
@@ -59,6 +59,31 @@
       <%= form.number_field :guests, min: 1, max: booking.room&.max_guests, inputmode: "numeric", data: { availability_target: "guests" }, autofocus: first_error == :guests,
             class: class_names("input input-lg w-full", "input-error": booking.errors.include?(:guests)), aria: field_aria(booking, :guests) %>
       <%= field_error booking, :guests %>
+    </div>
+    <%# Owners quote the price (weekend price only when editing: a new booking takes the room's); anyone at the desk notes the deposit. %>
+    <div class="grid grid-cols-2 gap-3">
+      <% if allowed_to?(:manage, place) %>
+        <div id="quote">
+          <%= form.label :price, "Giá mỗi đêm (₫)", class: "block mb-1 font-medium" %>
+          <%= price_field form, :price, hint: "quote_hint", placeholder: "Giá phòng", autofocus: first_error == :price %>
+          <%= field_error booking, :price %>
+        </div>
+        <% if booking.persisted? %>
+          <div>
+            <%= form.label :weekend_price, "Thứ 6, thứ 7 (₫)", class: "block mb-1 font-medium" %>
+            <%= price_field form, :weekend_price, hint: "quote_hint", placeholder: "Như thường", autofocus: first_error == :weekend_price %>
+            <%= field_error booking, :weekend_price %>
+          </div>
+        <% end %>
+      <% end %>
+      <div>
+        <%= form.label :deposit, "Đã cọc (₫)", class: "block mb-1 font-medium" %>
+        <%= price_field form, :deposit, placeholder: "Chưa cọc", autofocus: first_error == :deposit %>
+        <%= field_error booking, :deposit %>
+      </div>
+      <% if allowed_to?(:manage, place) %>
+        <p id="quote_hint" class="col-span-2 text-sm opacity-70"><%= booking.new_record? ? "Để trống: lấy giá phòng lúc lưu." : "Giá đã chốt cho đặt phòng này. Đổi giá phòng không làm đổi giá này." %></p>
+      <% end %>
     </div>
     <fieldset>
       <legend class="mb-1 font-medium">Trạng thái</legend>

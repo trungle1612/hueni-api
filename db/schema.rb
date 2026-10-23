@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_17_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_000000) do
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -29,6 +29,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_100000) do
     t.integer "guests"
     t.datetime "removed_from_feed_at"
     t.datetime "declared_at"
+    t.integer "price"
+    t.integer "weekend_price"
+    t.integer "deposit"
     t.index ["calendar_feed_id", "uid"], name: "index_bookings_on_calendar_feed_id_and_uid", unique: true
     t.index ["room_id", "start_date", "end_date"], name: "index_bookings_on_room_id_and_start_date_and_end_date"
     t.check_constraint "checked_out_at IS NULL OR checked_in_at IS NOT NULL", name: "bookings_checkout_after_checkin"
@@ -109,6 +112,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_100000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "housekeeping", default: "clean", null: false
+    t.integer "weekend_price"
     t.index ["place_id", "name"], name: "index_rooms_on_place_id_and_name", unique: true
     t.check_constraint "housekeeping IN ('clean', 'dirty')", name: "rooms_housekeeping_values"
   end

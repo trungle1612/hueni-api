@@ -1,10 +1,18 @@
 class Booking < ApplicationRecord
+  include VndPrice
+
   belongs_to :room
   belongs_to :calendar_feed, optional: true
-  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note checked_in_at checked_out_at removed_from_feed_at declared_at],
+  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note price weekend_price deposit checked_in_at checked_out_at removed_from_feed_at declared_at],
     meta: { place_id: ->(booking) { booking.room.place_id }, room_id: :room_id }
 
   after_commit { Vacancy.bust }
+
+  # The quote: the room's prices when the booking was made. A later room price change (or a room move) keeps it.
+  vnd_price :price, :weekend_price
+  # What the guest paid ahead (Đã cọc), noted at the desk until payments exist (#119 B).
+  vnd_price :deposit
+  before_create { self.price, self.weekend_price = room.price, room.weekend_price if price.nil? && room }
 
   # Blank form fields stay nil, so saving the form unchanged logs no "— → —" change.
   normalizes :guest_name, :guest_phone, :note, with: ->(value) { value.strip.presence }
@@ -70,6 +78,12 @@ class Booking < ApplicationRecord
   def guest_phone_dial = guest_phone&.gsub(/[^\d+]/, "")
   def label = guest_name.presence || note.presence || (ical? ? calendar_feed&.provider_label || "iCal" : "Khách")
   def overlaps?(other) = start_date < other.occupied_until && other.start_date < occupied_until
+  # One night's price: Friday and Saturday nights use the weekend price. Unquoted bookings (the room had no price
+  # then) use the room's current prices; nil = unpriced.
+  def price_on(date)
+    weekday, weekend = price ? [ price, weekend_price ] : [ room.price, room.weekend_price ]
+    (weekend if date.friday? || date.saturday?) || weekday
+  end
   def early_check_in? = !checked_in_at && start_date > Date.current
 
   # What the booking form's availability line shows: the date and overlap messages this stay would get in its

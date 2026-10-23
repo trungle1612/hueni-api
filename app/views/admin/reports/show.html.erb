@@ -60,7 +60,7 @@
       </p>
       <p class="text-sm opacity-70">
         Số đêm × giá phòng hiện tại, chưa trừ hoa hồng Airbnb / Booking.com.
-        <% if r.unpriced_rooms? %>Phòng chưa có giá không được tính.<% end %>
+        <% if r.unpriced? %>Đêm chưa có giá không được tính.<% end %>
       </p>
       <%= ahead unless r.future? %>
     </div>

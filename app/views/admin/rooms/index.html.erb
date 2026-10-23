@@ -26,7 +26,7 @@
                   <% end %>
                 </div>
                 <div class="text-sm opacity-70">
-                  <%= room.max_guests %> khách · <%= room.price ? "#{vnd(room.price)}/đêm" : "chưa có giá" %> ·
+                  <%= room.max_guests %> khách · <%= room.price ? "#{vnd(room.price)}/đêm#{" · T6–T7 #{vnd(room.weekend_price)}" if room.weekend_price}" : "chưa có giá" %> ·
                   <%= feeds.any? ? "#{feeds.size} kênh OTA" : "chưa có kênh OTA" %>
                 </div>
                 <% if feeds.any?(&:last_error) %><span class="badge badge-soft badge-error badge-sm mt-1">Lỗi đồng bộ</span><% end %>

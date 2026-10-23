@@ -10,11 +10,11 @@ class RoomsTest < ApplicationSystemTestCase
     click_on "+ Thêm phòng"
     fill_in "Tên phòng", with: "Mây"
     fill_in "Số khách tối đa", with: "2"
-    fill_in "Giá mỗi đêm (₫, không bắt buộc)", with: "300k"
+    fill_in "Giá mỗi đêm (₫)", with: "300k"
     click_button "Thêm phòng"
 
     assert_text "Đã thêm Phòng Mây."
-    assert_field "Giá mỗi đêm (₫, không bắt buộc)", with: "300.000"
+    assert_field "Giá mỗi đêm (₫)", with: "300.000"
   end
 
   test "owner pauses a room" do

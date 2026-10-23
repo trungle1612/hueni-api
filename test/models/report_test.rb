@@ -52,10 +52,20 @@ class ReportTest < ActiveSupport::TestCase
     assert_equal [ 2_000_000, nil ], r.rooms.map(&:revenue).values_at(1, 0) # Limdim (2 + 3) × 400k, Garden unpriced
     assert_equal 2_000_000, r.revenue          # (2 + 3) × 400k
     assert_in_delta 400_000.0, r.adr
-    assert r.unpriced_rooms?
+    assert r.unpriced?
     assert_equal({ nights: 2 + 2, bookings: 2, revenue: 800_000 }, r.channels["manual"])
     assert_equal({ nights: 3, bookings: 1, revenue: 1_200_000 }, r.channels["airbnb"])
     assert_equal %w[manual airbnb], r.channels.keys
+  end
+
+  test "revenue uses each booking's quoted price and weekend price, not the room's current price" do
+    book(@garden, "2026-10-23", "2026-10-25", price: 300_000, weekend_price: 350_000) # Fri + Sat nights
+    @limdim.update!(price: 999_000) # limdim_confirmed fixture has no quote → current price
+
+    rows = report.rooms.to_h { [ it.room.name, it.revenue ] }
+    assert_equal 700_000, rows["Garden"]
+    assert_equal 2 * 999_000, rows["Limdim"]
+    assert_not report.unpriced?
   end
 
   test "booking activity, ALOS, OTA cancellations and cancellation rate" do

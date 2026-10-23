@@ -124,7 +124,8 @@ class Admin::BookingsController < Admin::BaseController
     def stay_label = "#{helpers.booking_label(@booking)} · #{@booking.room.name}"
 
     def booking_params
-      params.expect(booking: [ :start_date, :end_date, :status, :guests, :guest_name, :guest_phone, :note ])
+      quote = %i[price weekend_price] if Current.user.allowed_to?(:manage, @place) # staff never see prices
+      params.expect(booking: [ :start_date, :end_date, :status, :guests, :guest_name, :guest_phone, :note, :deposit, *quote ])
     end
 
     # Back to the timeline, scrolled to the booking when it's outside the default range.

@@ -30,7 +30,7 @@ class Admin::RoomsController < Admin::BaseController
 
   def update
     if @room.update(room_params)
-      redirect_to admin_rooms_path(anchor: @place.slug), notice: "Đã lưu phòng #{@room.name}."
+      redirect_to admin_rooms_path(anchor: @place.slug), notice: [ "Đã lưu phòng #{@room.name}.", *price_notes ].join(" ")
     else
       render :edit, status: :unprocessable_entity
     end
@@ -53,6 +53,13 @@ class Admin::RoomsController < Admin::BaseController
     end
 
     def room_params
-      params.expect(room: [ :name, :max_guests, :price, :active ])
+      params.expect(room: [ :name, :max_guests, :price, :weekend_price, :active ])
+    end
+
+    def price_notes
+      return [] unless @room.saved_change_to_price? || @room.saved_change_to_weekend_price?
+      kept = @room.quoted_bookings.count
+      [ ("#{kept} đặt phòng sắp tới giữ giá cũ." if kept.positive?),
+        ("Giá thứ 6, thứ 7 đang thấp hơn ngày thường, kiểm tra lại nếu không cố ý." if @room.weekend_price_below_price?) ].compact
     end
 end
