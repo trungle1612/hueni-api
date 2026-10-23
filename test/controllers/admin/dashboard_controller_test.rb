@@ -88,7 +88,7 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
 
   test "fully booked homestay shows Hết phòng hôm nay" do
     travel_to Time.zone.local(2026, 10, 1, 12)
-    Booking.create!(room: rooms(:garden), start_date: "2026-10-01", end_date: "2026-10-02", status: "hold")
+    Booking.create!(room: rooms(:garden), start_date: "2026-10-01", end_date: "2026-10-02")
     log_in users(:owner)
     get admin_root_path
     assert_select "main .badge", text: "Hết phòng hôm nay"
@@ -139,7 +139,7 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select ".badge", text: "Chủ", count: 0
   end
 
-  test "Hôm nay groups follow the day: departures, cleaning, arrivals, in-house, holds" do
+  test "Hôm nay groups follow the day: departures, cleaning, arrivals, in-house" do
     travel_to Time.zone.local(2026, 10, 2, 9)
     # limdim_confirmed (1/10–3/10, Anh Minh) is not checked in: a late arrival.
     bookings(:limdim_confirmed).update!(guest_phone: "0905 123 456")
@@ -149,14 +149,13 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     staying = rooms(:garden).bookings.create!(start_date: "2026-10-02", end_date: "2026-10-04", guest_name: "Cô Ba", guests: 2)
     overdue.update_columns(checked_in_at: 4.days.ago) # setup only: an overdue guest now blocks the room
     staying.update_columns(checked_in_at: 1.hour.ago)
-    rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-06", status: "hold", guest_name: "Chị Hoa")
-    rooms(:garden).bookings.create!(start_date: "2026-10-10", end_date: "2026-10-12", status: "hold", guest_name: "Đoàn sau")
+    rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-06", guest_name: "Chị Hoa") # later: not on Hôm nay
     rooms(:limdim).dirty!
 
     log_in users(:owner)
     get admin_root_path
 
-    assert_equal %w[departures dirty_rooms arrivals in_house holds], css_select("#today .card-body > [id]").map { it["id"] }
+    assert_equal %w[departures dirty_rooms arrivals in_house], css_select("#today .card-body > [id]").map { it["id"] }
     assert_select "#departures", text: /Anh Tú.*Quá hạn 2 ngày/m
     assert_select "#today_booking_#{leaving.id} .badge", count: 0
     assert_select "#departures form[action='#{check_out_admin_booking_path(leaving)}'][data-turbo-confirm='Chị Mai trả phòng Garden?']"
@@ -170,25 +169,11 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "#in_house form", count: 1
     assert_select "#in_house form[action='#{declare_admin_booking_path(staying)}']", text: "Đã khai báo"
     assert_select "#today_booking_#{staying.id} .badge", text: "Chưa khai báo lưu trú"
-    assert_select "#holds summary", text: /Đang giữ chỗ\s*1/
-    assert_select "#holds", text: /Chị Hoa/
-    assert_select "#holds", text: /Đoàn sau/, count: 0 # starts in more than 3 days
-    assert_select "#holds a[href='#{admin_calendar_path}']", text: "Xem lịch"
+    assert_select "#today", text: /Chị Hoa/, count: 0
     assert_select "#stat_arrivals", text: /1\s*Sắp đến/
     assert_select "#stat_in_house", text: /1\s*Đang ở/
     assert_select "#stat_departures", text: /2\s*Trả phòng/
     assert_select "#stat_dirty_rooms", text: /1\s*Cần dọn/
-  end
-
-  test "a hold due today is an arrival marked as unconfirmed, not listed again under Đang giữ chỗ" do
-    travel_to Time.zone.local(2026, 10, 5, 9)
-    hold = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-06", status: "hold", guest_name: "Chị Hoa", guests: 2)
-    log_in users(:owner)
-    get admin_root_path
-
-    assert_select "#today_booking_#{hold.id} .badge", text: "Giữ chỗ · chưa xác nhận"
-    assert_select "#arrivals form[action='#{check_in_admin_booking_path(hold)}'][data-turbo-confirm^='Đang giữ chỗ, chưa xác nhận.'] button.btn-outline", text: "Nhận phòng"
-    assert_select "#holds", count: 0
   end
 
   test "homestay name shows in rows only for users with several homestays" do

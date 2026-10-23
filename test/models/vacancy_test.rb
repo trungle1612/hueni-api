@@ -14,8 +14,8 @@ class VacancyTest < ActiveSupport::TestCase
     assert_equal({ left: 2, max_guests: 4 }, Vacancy.on(Date.new(2026, 10, 3))["tomo-homestay"])
   end
 
-  test "hold makes the room booked" do
-    book(:garden, "2026-10-01", "2026-10-02", status: "hold")
+  test "a booking makes the room booked" do
+    book(:garden, "2026-10-01", "2026-10-02")
     assert_equal({ left: 0, max_guests: 0 }, Vacancy.on(Date.new(2026, 10, 1))["tomo-homestay"])
   end
 

@@ -52,19 +52,19 @@ class BookingTest < ActiveSupport::TestCase
     end
   end
 
-  test "blocking_on includes holds and confirmed covering the date, end date exclusive" do
-    hold = build(status: "hold").tap(&:save!)
+  test "blocking_on includes confirmed bookings covering the date, end date exclusive" do
+    other = build(room: rooms(:garden)).tap(&:save!)
     build(status: "cancelled").save!
     confirmed = bookings(:limdim_confirmed) # 2026-10-01..2026-10-03
 
-    assert_equal [ confirmed, hold ].sort_by(&:id), Booking.blocking_on(Date.new(2026, 10, 1)).order(:id).to_a
+    assert_equal [ confirmed, other ].sort_by(&:id), Booking.blocking_on(Date.new(2026, 10, 1)).order(:id).to_a
     assert_equal 2, Booking.blocking_on(Date.new(2026, 10, 2)).count
     assert_empty Booking.blocking_on(Date.new(2026, 10, 3)) # checkout day is free
     assert_empty Booking.blocking_on(Date.new(2026, 9, 30))
   end
 
   test "manual booking cannot overlap a blocking booking on the same room" do
-    booking = build(room: rooms(:limdim), start_date: "2026-10-02", end_date: "2026-10-04", status: "hold") # limdim_confirmed: 10-01..10-03
+    booking = build(room: rooms(:limdim), start_date: "2026-10-02", end_date: "2026-10-04") # limdim_confirmed: 10-01..10-03
     assert_not booking.valid?
     assert_includes booking.errors[:base], "Trùng lịch đêm 02/10 với Anh Minh (01/10–03/10). Đổi ngày hoặc huỷ đặt phòng bị trùng."
   end
@@ -129,8 +129,8 @@ class BookingTest < ActiveSupport::TestCase
   end
 
   test "update_with_status moves through every allowed status event" do
-    booking = build(status: "hold").tap(&:save!)
-    { "confirmed" => :confirmed, "hold" => :hold, "cancelled" => :cancelled }.each do |to, expected|
+    booking = build().tap(&:save!)
+    { "cancelled" => :cancelled, "confirmed" => :confirmed }.each do |to, expected|
       assert booking.update_with_status(status: to)
       assert_equal expected, booking.reload.aasm.current_state
     end
@@ -219,14 +219,13 @@ class BookingTest < ActiveSupport::TestCase
   end
 
   test "check-in is allowed from start_date until the day before end_date" do
-    booking = saved(status: "hold")
+    booking = saved()
     travel_to Time.zone.local(2026, 10, 2, 23, 30) do
       assert booking.can_check_in?
       assert booking.check_in
     end
     booking.reload
     assert_equal Time.zone.local(2026, 10, 2, 23, 30), booking.checked_in_at
-    assert booking.confirmed?, "a hold becomes confirmed when the guest arrives"
   end
 
   test "a late guest can still check in on end_date until LATE_ARRIVAL_UNTIL (Huế time)" do
@@ -253,7 +252,7 @@ class BookingTest < ActiveSupport::TestCase
   end
 
   test "check-in records the arrival even when the booking no longer validates" do
-    booking = saved(guests: 2, status: "hold")
+    booking = saved(guests: 2)
     rooms(:garden).update!(max_guests: 1)
     travel_to Time.zone.local(2026, 10, 1, 12) do
       assert booking.check_in, booking.errors.full_messages.to_sentence
@@ -348,7 +347,7 @@ class BookingTest < ActiveSupport::TestCase
   end
 
   test "early check-in moves start_date to today and is logged" do
-    booking = saved(start_date: "2026-10-05", end_date: "2026-10-07", status: "hold")
+    booking = saved(start_date: "2026-10-05", end_date: "2026-10-07")
     travel_to Time.zone.local(2026, 10, 3, 21) do
       assert booking.early_check_in?
       assert booking.can_check_in?

@@ -40,7 +40,10 @@
   <% end %>
 <% end %>
 <%= render "form", booking: @booking, place: @place %>
-<% unless @booking.checked_in_at %>
+<% if @booking.cancelled? %>
+  <%= button_to "Khôi phục đặt phòng", admin_booking_path(@booking), method: :patch, params: { booking: { status: "confirmed" } },
+        class: "btn btn-outline btn-primary btn-block mt-3" %>
+<% elsif !@booking.checked_in_at %>
   <%= button_to "Huỷ đặt phòng", admin_booking_path(@booking), method: :patch, params: { booking: { status: "cancelled" } },
         class: "btn btn-ghost btn-block text-error mt-3", form: { data: { turbo_confirm: "Huỷ đặt phòng này? Phòng sẽ trống lại." } } %>
 <% end %>

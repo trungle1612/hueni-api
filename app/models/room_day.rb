@@ -17,7 +17,7 @@ class RoomDay
     bookings.each { it.association(:room).target = room }
     staying = bookings.find { it.checked_in_at && !it.checked_out_at }
     waiting = bookings.select { !it.checked_in_at && it.start_date <= date && arrival_date < it.end_date }
-    arriving = waiting.find(&:confirmed?) || waiting.first
+    arriving = waiting.first
 
     @room = room
     @booking = staying || arriving
@@ -25,7 +25,7 @@ class RoomDay
     @state =
       if !room.active? then :off
       elsif staying then staying.end_date <= date ? :leaving : :occupied
-      elsif arriving then arriving.confirmed? ? :arriving : :held
+      elsif arriving then :arriving
       else :free
       end
   end

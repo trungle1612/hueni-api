@@ -11,7 +11,7 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
 
   test "owner sees the homestay's activity, newest first, two lines per change" do
     PaperTrail.request(whodunnit: staff.id.to_s) do
-      rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", status: "hold", guest_name: "Chị Mai")
+      rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Chị Mai")
     end
     PaperTrail.request(whodunnit: "airbnb") do
       calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:limdim), uid: "a", start_date: "2026-10-12", end_date: "2026-10-14", source: "ical")
@@ -27,7 +27,7 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     rows = css_select("[id^=version_]")
     assert_equal 2, rows.size
     assert_equal "Phòng Limdim Đặt phòng · 12/10–14/10 Airbnb 14:05", rows[0].text.squish
-    assert_equal "Phòng Garden Giữ chỗ · Chị Mai 05/10–07/10 Em Hằng 14:05", rows[1].text.squish
+    assert_equal "Phòng Garden Đặt phòng · Chị Mai 05/10–07/10 Em Hằng 14:05", rows[1].text.squish
     assert_no_match "Không phải của tôi", response.body
     assert_select "a", text: "Xem cũ hơn", count: 0
   end

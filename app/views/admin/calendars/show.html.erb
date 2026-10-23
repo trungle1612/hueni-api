@@ -74,8 +74,8 @@
   </div>
 
   <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs mt-3 opacity-80">
-    <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new) %>"></i>Đã xác nhận</span>
-    <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(status: "hold")) %>"></i>Giữ chỗ</span>
+    <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(deposit: 1)) %>"></i>Đã cọc</span>
+    <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new) %>"></i>! Chưa cọc</span>
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(source: "ical")) %>"></i>Airbnb / Booking (chỉ xem)</span>
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(checked_out_at: Time.current)) %>"></i>✓ Đã trả phòng</span>
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm bg-error/15 border border-error"></i>Quá hạn chưa trả phòng</span>

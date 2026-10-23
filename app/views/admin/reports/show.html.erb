@@ -103,7 +103,6 @@
         <tr class="font-semibold"><td class="ps-0">Tổng</td><td class="text-right"><%= r.sold %> / <%= r.available %></td><td class="text-right pe-0"><%= vnd(r.revenue) %></td></tr>
       </tbody>
     </table>
-    <% if r.held.positive? %><p class="text-sm opacity-70 mt-2">Thêm <%= r.held %> đêm giữ chỗ chưa xác nhận, không tính ở trên.</p><% end %>
   </section>
 
   <% if r.channels.any? { |_, numbers| numbers[:nights].positive? } %>
@@ -131,7 +130,7 @@
     </section>
   <% end %>
 
-  <% outcomes = { "Đã xác nhận" => r.outcomes["confirmed"], "Giữ chỗ" => r.outcomes["hold"], "Đã huỷ (gồm không đến)" => r.outcomes["cancelled"], "Airbnb / Booking.com đã huỷ" => r.ota_cancelled }.select { |_, count| count.positive? } %>
+  <% outcomes = { "Đã xác nhận" => r.outcomes["confirmed"], "Đã huỷ (gồm không đến)" => r.outcomes["cancelled"], "Airbnb / Booking.com đã huỷ" => r.ota_cancelled }.select { |_, count| count.positive? } %>
   <% if outcomes.any? %>
     <section id="bookings" class="<%= card %> p-4 mb-3">
       <h2 class="font-semibold mb-1">Lượt khách đến <%= report_period(r) %></h2>

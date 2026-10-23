@@ -11,14 +11,13 @@ class CalendarTest < ApplicationSystemTestCase
     JSON.parse(Net::HTTP.get(URI("#{Capybara.current_session.server.base_url}/v1/vacancy"))).dig("places", "tomo-homestay", "left")
   end
 
-  test "owner holds a room, vacancy shows it booked; cancelling frees it again" do
+  test "owner books a room, vacancy shows it booked; cancelling frees it again" do
     assert_equal 1, tomo_rooms_left
 
     click_on "Lịch phòng", match: :first
     find("a[aria-label='Đặt Garden ngày 01/10']").click
     assert_select "Phòng", selected: "Garden · tối đa 2 khách"
     assert_text "✓ Garden còn trống · 1 đêm (01/10–02/10)"
-    choose "Giữ chỗ"
     fill_in "Tên khách", with: "Chị Mai"
     fill_in "Số điện thoại", with: "0905 123 456"
     click_button "Đặt phòng"

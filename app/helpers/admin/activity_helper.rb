@@ -84,6 +84,8 @@ module Admin::ActivityHelper
       elsif changes.key?("checked_out_at")
         after["checked_out_at"] ? [ :check_out, "Trả phòng", activity_guest(after) ] : [ :cancel, "Hoàn tác trả phòng", activity_guest(after) ]
       elsif changes["status"]&.last == "cancelled" then [ :cancel, "Huỷ", activity_stay(after) ]
+      elsif changes["status"]&.first == "cancelled" then [ :booking, "Khôi phục", activity_stay(after) ]
+      # "hold" only appears in history from before Giữ chỗ was removed (#127).
       elsif changes.key?("status") then [ :booking, after["status"] == "hold" ? "Giữ chỗ" : "Xác nhận", activity_stay(after) ]
       elsif activity_ota?(version) then [ :sync, "Đổi ngày", "#{activity_dates(before)} → #{activity_dates(after)}" ]
       else [ :edit, "Sửa đặt phòng", activity_booking_changes(changes, before, after) ]

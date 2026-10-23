@@ -37,7 +37,7 @@ class ActivityLogTest < ActiveSupport::TestCase
   test "booking create, edit and cancel are versioned; bookkeeping columns are not" do
     booking = nil
     assert_difference(-> { PaperTrail::Version.count }, 1) do
-      as_owner { booking = rooms(:garden).bookings.create!(start_date: "2026-10-06", end_date: "2026-10-08", status: "hold", guest_name: "Chị Mai") }
+      as_owner { booking = rooms(:garden).bookings.create!(start_date: "2026-10-06", end_date: "2026-10-08", guest_name: "Chị Mai") }
     end
     version = PaperTrail::Version.last
     assert_equal [ "create", places(:tomo).id, rooms(:garden).id, users(:owner).id.to_s ],
@@ -49,17 +49,16 @@ class ActivityLogTest < ActiveSupport::TestCase
     assert_equal({ "note" => [ nil, "Đến muộn" ], "end_date" => [ "2026-10-08", "2026-10-09" ] }, version.object_changes)
 
     version = assert_one_version(booking, "update") { booking.update!(status: "cancelled") }
-    assert_equal [ "hold", "cancelled" ], version.object_changes["status"]
+    assert_equal [ "confirmed", "cancelled" ], version.object_changes["status"]
 
     assert_no_difference(-> { PaperTrail::Version.count }) { booking.touch }
   end
 
   test "check-in and check-out each log one version; the room turning dirty logs none" do
-    booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", status: "hold", guest_name: "Chị Mai")
+    booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Chị Mai")
 
     version = assert_one_version(booking, "update") { assert booking.check_in }
-    assert_equal [ "hold", "confirmed" ], version.object_changes["status"]
-    assert version.object_changes["checked_in_at"]
+    assert_equal [ "checked_in_at" ], version.object_changes.keys - %w[updated_at]
 
     version = assert_one_version(booking, "update") { assert booking.check_out }
     assert_equal [ "checked_out_at" ], version.object_changes.keys

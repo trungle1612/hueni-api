@@ -6,7 +6,7 @@ class Report
   CHANNEL_LABELS = { "manual" => "Trực tiếp" }.merge(CalendarFeed::PROVIDER_LABELS).freeze
 
   # revenue: nil for a room without a price and no priced night. unpriced: nights sold without a price.
-  RoomRow = Data.define(:room, :sold, :held, :revenue, :unpriced)
+  RoomRow = Data.define(:room, :sold, :revenue, :unpriced)
 
   attr_reader :place, :month, :last
 
@@ -31,15 +31,13 @@ class Report
   def rooms
     @rooms ||= place.rooms.order(:name).map { |room|
       sold = sold_nights.fetch(room.id, {}).select { |date, _| date <= last }
-      held = stays.select { it.hold? && it.room_id == room.id }.flat_map { dates(it) }.uniq.select { it <= last } - sold.keys
       prices = sold.map { |date, booking| booking.price_on(date) }
       revenue = prices.compact.sum
-      RoomRow.new(room:, sold: sold.size, held: held.size, revenue: (revenue unless room.price.nil? && revenue.zero?), unpriced: prices.count(nil))
+      RoomRow.new(room:, sold: sold.size, revenue: (revenue unless room.price.nil? && revenue.zero?), unpriced: prices.count(nil))
     }.select { it.room.active? || it.sold.positive? }
   end
 
   def sold = rooms.sum(&:sold)
-  def held = rooms.sum(&:held)
   def available = rooms.size * days
   def occupancy = ratio(sold, available)
 
@@ -51,7 +49,7 @@ class Report
   def ahead = ahead_nights.size
   def ahead_revenue = ahead_nights.sum { |date, booking| booking.price_on(date) || 0 }
 
-  def empty? = sold.zero? && held.zero? && booking_count.zero? && ota_cancelled.zero?
+  def empty? = sold.zero? && booking_count.zero? && ota_cancelled.zero?
 
   # { "manual" => { nights:, bookings:, revenue: }, "airbnb" => ... }: channels with any night or booking.
   def channels
@@ -67,7 +65,7 @@ class Report
   end
 
   def booking_count = arrivals.size
-  def outcomes = %w[confirmed hold cancelled].index_with { |status| arrivals.count { it.status == status } }
+  def outcomes = %w[confirmed cancelled].index_with { |status| arrivals.count { it.status == status } }
   def alos = ratio(arrivals.select(&:confirmed?).sum { (it.end_date - it.start_date).to_i }, outcomes["confirmed"])
 
   # iCal bookings the sync deleted (the OTA cancelled them), by their start_date in the activity log.

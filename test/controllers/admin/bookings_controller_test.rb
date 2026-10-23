@@ -68,15 +68,17 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='booking[guests]'][autofocus][aria-invalid=true]"
   end
 
-  test "creates a manual hold on the picked room, ignoring source" do
+  test "creates a confirmed manual booking on the picked room, ignoring source" do
     assert_difference -> { rooms(:garden).bookings.count }, 1 do
       post admin_place_bookings_path("tomo-homestay"), params: { booking: {
-        room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-07", status: "hold",
+        room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-07",
         guest_name: "Chị Mai", guest_phone: "0905 123 456", note: "Đến muộn", source: "ical" } }
     end
     booking = Booking.last
-    assert_equal [ "hold", "manual", "Chị Mai" ], [ booking.status, booking.source, booking.guest_name ]
+    assert_equal [ "confirmed", "manual", "Chị Mai" ], [ booking.status, booking.source, booking.guest_name ]
     assert_redirected_to admin_place_calendar_path("tomo-homestay")
+    get new_admin_place_booking_path("tomo-homestay")
+    assert_select "input[name='booking[status]']", 0 # no Giữ chỗ / Đã xác nhận choice
   end
 
   test "owners quote a price on the booking; staff can't set one and never see the fields" do
@@ -105,7 +107,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
   test "overlapping booking is rejected" do
     assert_no_difference -> { Booking.count } do
       post admin_place_bookings_path("tomo-homestay"), params: { booking: {
-        room_id: rooms(:limdim).id, start_date: "2026-10-02", end_date: "2026-10-04", status: "hold" } }
+        room_id: rooms(:limdim).id, start_date: "2026-10-02", end_date: "2026-10-04" } }
     end
     assert_response :unprocessable_entity
     assert_select "#availability #dates_error", text: /Trùng lịch đêm 02\/10 với Anh Minh.*Phòng khác còn trống: Garden/m
@@ -123,18 +125,20 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  test "edits a manual booking: confirm a hold, then cancel it" do
-    booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-06", status: "hold", guest_phone: "0905123456")
+  test "edits a manual booking: cancel it, then Khôi phục" do
+    booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-06", guest_phone: "0905123456")
     get edit_admin_booking_path(booking)
     assert_response :success
     assert_select "a[href='tel:0905123456']"
 
-    patch admin_booking_path(booking), params: { booking: { status: "confirmed" } }
-    assert booking.reload.confirmed?
-    assert_redirected_to admin_place_calendar_path("tomo-homestay")
-
     patch admin_booking_path(booking), params: { booking: { status: "cancelled" } }
     assert booking.reload.cancelled?
+    assert_redirected_to admin_place_calendar_path("tomo-homestay")
+    get edit_admin_booking_path(booking)
+    assert_select "form[action='#{admin_booking_path(booking)}'] button", text: "Khôi phục đặt phòng"
+
+    patch admin_booking_path(booking), params: { booking: { status: "confirmed" } }
+    assert booking.reload.confirmed?
   end
 
   test "iCal and other owners' bookings cannot be edited" do

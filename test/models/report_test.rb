@@ -18,18 +18,18 @@ class ReportTest < ActiveSupport::TestCase
   # The whole month, also for October (in progress on 10-20); the partial month has its own test.
   def report(month = Date.new(2026, 10, 1)) = Report.new(@place, month, last: month.end_of_month)
 
-  test "clips nights at month edges; holds and cancellations don't sell" do
+  test "clips nights at month edges; cancellations don't sell" do
     book(@limdim, "2026-09-29", "2026-10-01")                     # September only
     book(@limdim, "2026-10-30", "2026-11-02")                     # 2 nights in October
-    book(@garden, "2026-10-05", "2026-10-07", status: "hold")     # 2 held
+    book(@garden, "2026-10-05", "2026-10-07")                     # 2 nights
     book(@garden, "2026-10-20", "2026-10-21", status: "cancelled")
 
     r = report(Date.new(2026, 10, 15))
     assert_equal Date.new(2026, 10, 1), r.month
     assert_equal 31, r.days
-    assert_equal [ [ "Garden", 0, 2 ], [ "Limdim", 4, 0 ] ], r.rooms.map { [ it.room.name, it.sold, it.held ] }
-    assert_equal [ 4, 2, 62 ], [ r.sold, r.held, r.available ]
-    assert_in_delta 4 / 62.0, r.occupancy
+    assert_equal [ [ "Garden", 2 ], [ "Limdim", 4 ] ], r.rooms.map { [ it.room.name, it.sold ] }
+    assert_equal [ 6, 62 ], [ r.sold, r.available ]
+    assert_in_delta 6 / 62.0, r.occupancy
     assert_equal 2, r.previous.sold
   end
 
@@ -69,7 +69,7 @@ class ReportTest < ActiveSupport::TestCase
   end
 
   test "booking activity, ALOS, OTA cancellations and cancellation rate" do
-    book(@garden, "2026-10-05", "2026-10-07", status: "hold")
+    book(@garden, "2026-10-05", "2026-10-07")
     book(@garden, "2026-10-20", "2026-10-21", status: "cancelled")
     airbnb("2026-10-10", "2026-10-14")
     PaperTrail.request(whodunnit: "airbnb") { airbnb("2026-10-25", "2026-10-26", uid: "gone").destroy! }
@@ -77,18 +77,17 @@ class ReportTest < ActiveSupport::TestCase
 
     r = report
     assert_equal 4, r.booking_count
-    assert_equal({ "confirmed" => 2, "hold" => 1, "cancelled" => 1 }, r.outcomes)
-    assert_in_delta (2 + 4) / 2.0, r.alos
+    assert_equal({ "confirmed" => 3, "cancelled" => 1 }, r.outcomes)
+    assert_in_delta (2 + 2 + 4) / 3.0, r.alos
     assert_equal 1, r.ota_cancelled
     assert_in_delta 2 / 5.0, r.cancellation_rate
   end
 
   test "a night shared by an iCal and a manual booking (calendar conflict) sells once, to the OTA" do
     airbnb("2026-10-02", "2026-10-04")                         # overlaps limdim_confirmed 10-01..10-03 on 10-02
-    @limdim.bookings.new(start_date: "2026-10-02", end_date: "2026-10-03", status: "hold").save!(validate: false) # held night already sold
 
     r = report
-    assert_equal [ 3, 0 ], [ r.sold, r.held ]
+    assert_equal 3, r.sold
     assert_equal 1_200_000, r.revenue
     assert_equal 1, r.channels["manual"][:nights]
     assert_equal 2, r.channels["airbnb"][:nights]
@@ -116,15 +115,15 @@ class ReportTest < ActiveSupport::TestCase
 
   test "the current month counts through today; confirmed nights after today are booked ahead" do
     book(@limdim, "2026-10-19", "2026-10-23")                     # 19, 20 so far; 21, 22 ahead
-    book(@garden, "2026-10-25", "2026-10-26", status: "hold")     # after today: not held yet
+    book(@garden, "2026-10-25", "2026-10-26")                     # after today: ahead
     book(@limdim, "2026-09-05", "2026-09-07")                     # inside 1–20/9
     book(@limdim, "2026-09-25", "2026-09-27")                     # after 20/9
 
     r = Report.new(@place, Date.current)
     assert r.current? && r.partial?
     assert_equal [ Date.new(2026, 10, 20), 20, 40 ], [ r.last, r.days, r.available ]
-    assert_equal [ 2 + 2, 0, 2 ], [ r.sold, r.held, r.booking_count ] # fixture 10-01..03 + 19, 20
-    assert_equal [ 2, 800_000 ], [ r.ahead, r.ahead_revenue ]
+    assert_equal [ 2 + 2, 2 ], [ r.sold, r.booking_count ] # fixture 10-01..03 + 19, 20
+    assert_equal [ 3, 800_000 ], [ r.ahead, r.ahead_revenue ] # garden is unpriced
     assert_equal [ Date.new(2026, 9, 20), 2 ], [ r.previous.last, r.previous.sold ]
 
     september = Report.new(@place, Date.new(2026, 9, 1))
