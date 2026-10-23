@@ -31,6 +31,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_000000) do
     t.datetime "declared_at"
     t.integer "price"
     t.integer "weekend_price"
+    t.integer "deposit"
     t.index ["calendar_feed_id", "uid"], name: "index_bookings_on_calendar_feed_id_and_uid", unique: true
     t.index ["room_id", "start_date", "end_date"], name: "index_bookings_on_room_id_and_start_date_and_end_date"
     t.check_constraint "checked_out_at IS NULL OR checked_in_at IS NOT NULL", name: "bookings_checkout_after_checkin"

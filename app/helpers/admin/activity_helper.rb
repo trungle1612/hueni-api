@@ -97,6 +97,7 @@ module Admin::ActivityHelper
         parts << "#{label}: #{activity_value(changes[attr][0])} → #{activity_value(changes[attr][1])}" if changes.key?(attr)
       end
       parts << "sửa ghi chú" if changes.key?("note")
+      parts << "đã cọc #{vnd(changes["deposit"][0]) || "—"} → #{vnd(changes["deposit"][1]) || "—"}" if changes.key?("deposit")
       { "price" => "giá", "weekend_price" => "giá T6–T7" }.each do |attr, label|
         parts << "#{label} #{vnd(changes[attr][0]) || "giá phòng"} → #{vnd(changes[attr][1]) || "giá phòng"}" if changes.key?(attr)
       end

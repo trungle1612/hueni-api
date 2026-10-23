@@ -3,13 +3,15 @@ class Booking < ApplicationRecord
 
   belongs_to :room
   belongs_to :calendar_feed, optional: true
-  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note price weekend_price checked_in_at checked_out_at removed_from_feed_at declared_at],
+  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note price weekend_price deposit checked_in_at checked_out_at removed_from_feed_at declared_at],
     meta: { place_id: ->(booking) { booking.room.place_id }, room_id: :room_id }
 
   after_commit { Vacancy.bust }
 
   # The quote: the room's prices when the booking was made. A later room price change (or a room move) keeps it.
   vnd_price :price, :weekend_price
+  # What the guest paid ahead (Đã cọc), noted at the desk until payments exist (#119 B).
+  vnd_price :deposit
   before_create { self.price, self.weekend_price = room.price, room.weekend_price if price.nil? && room }
 
   # Blank form fields stay nil, so saving the form unchanged logs no "— → —" change.
