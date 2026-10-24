@@ -36,8 +36,8 @@ class Admin::BookingsController < Admin::BaseController
   def update
     if @booking.checked_out_at
       redirect_to edit_admin_booking_path(@booking), alert: "Khách đã trả phòng, không sửa được đặt phòng."
-    elsif @booking.update_with_status(booking_params)
-      redirect_to back_to_calendar, notice: @booking.cancelled? ? "Đã huỷ đặt phòng." : "Đã lưu đặt phòng."
+    elsif update_and_refund
+      redirect_to back_to_calendar, notice: @booking.cancelled? ? "Đã huỷ đặt phòng.#{" Đã hoàn #{helpers.vnd(@refund.amount)}." if @refund}" : "Đã lưu đặt phòng."
     else
       render :edit, status: :unprocessable_entity
     end
@@ -48,16 +48,16 @@ class Admin::BookingsController < Admin::BaseController
     guests = params[:guests].presence&.to_i
     if guests.nil? && @booking.guests.nil?
       redirect_back_or_to admin_root_path, alert: "Nhập số khách khi nhận phòng"
-    elsif @booking.check_in(guests:)
-      redirect_back_or_to admin_root_path, notice: "Đã nhận phòng: #{stay_label}"
+    elsif collecting_due { @booking.check_in(guests:) }
+      redirect_back_or_to admin_root_path, notice: "Đã nhận phòng: #{stay_label}#{money_note}"
     else
       redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
     end
   end
 
   def check_out
-    if @booking.check_out
-      redirect_back_or_to admin_root_path, notice: "Đã trả phòng: #{stay_label}. Phòng chuyển sang chưa dọn."
+    if collecting_due { @booking.check_out }
+      redirect_back_or_to admin_root_path, notice: "Đã trả phòng: #{stay_label}#{money_note}. Phòng chuyển sang chưa dọn."
     else
       redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
     end
@@ -121,11 +121,40 @@ class Admin::BookingsController < Admin::BaseController
       @booking = Current.user.accessible_bookings.find(params[:id])
     end
 
+    # Cancelling with money paid asks what happens to it (#139): kept, or refunded in full (owners only).
+    def update_and_refund
+      refund_method = params[:refund_method].presence_in(Payment::METHODS.keys) if allowed_to?(:manage, @place)
+      Booking.transaction do
+        next false unless @booking.update_with_status(booking_params)
+        if refund_method && @booking.cancelled? && @booking.paid.positive?
+          @refund = @booking.payments.create!(kind: "refund", amount: @booking.paid, payment_method: refund_method, note: "Hoàn cọc", user: Current.user)
+        end
+        true
+      end
+    end
+
+    # "Đã thu X, nhận phòng" (collect=1) records what is due in cash with the check-in / check-out; else it stays owed.
+    def collecting_due
+      due = @booking.due
+      @collected = due if params[:collect] && due&.positive?
+      @owed = due if !@collected && due&.positive?
+      Booking.transaction do
+        @booking.payments.create!(amount: @collected, payment_method: "cash", user: Current.user) if @collected
+        yield || raise(ActiveRecord::Rollback)
+      end
+    end
+
+    def money_note
+      if @collected then " · đã thu #{helpers.vnd(@collected)}"
+      elsif @owed then " · còn nợ #{helpers.vnd(@owed)}"
+      end
+    end
+
     def stay_label = "#{helpers.booking_label(@booking)} · #{@booking.room.name}"
 
     def booking_params
       quote = %i[price weekend_price] if Current.user.allowed_to?(:manage, @place) # staff never see prices
-      params.expect(booking: [ :start_date, :end_date, :status, :guests, :guest_name, :guest_phone, :note, :deposit, :cancel_reason, :cancel_reason_other, *quote ])
+      params.expect(booking: [ :start_date, :end_date, :status, :guests, :guest_name, :guest_phone, :note, :deposit, :deposit_method, :cancel_reason, :cancel_reason_other, *quote ])
     end
 
     # Back to the timeline, scrolled to the booking when it's outside the default range.

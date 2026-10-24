@@ -47,6 +47,7 @@ module Admin::ActivityHelper
       in [ "Room", "update" ] then activity_room_update(changes)
       in [ "CalendarFeed", "create" | "destroy" ]
         [ :feed, version.event == "create" ? "Thêm kênh" : "Xoá kênh", CalendarFeed::PROVIDER_LABELS.fetch(after["provider"], "iCal") ]
+      in [ "Payment", "create" | "destroy" ] then activity_payment(version, after)
       in [ "CalendarFeed", "update" ] then after["last_error"].present? ? [ :error, "Đồng bộ lỗi", sync_error_message(after["last_error"]) ] : [ :ok, "Đồng bộ lại được" ]
       else [ :edit, "Thay đổi" ]
       end
@@ -71,6 +72,14 @@ module Admin::ActivityHelper
     def activity_ota?(version) = CalendarFeed::PROVIDER_LABELS.key?(version.whodunnit)
     # The guest's name, or the stay's dates when there is none, so a check-in says which stay it was.
     def activity_guest(attrs) = attrs["guest_name"].presence || "Khách #{activity_dates(attrs)}"
+
+    # Thu / Hoàn tiền (#139), and a wrong entry deleted.
+    def activity_payment(version, after)
+      refund = after["kind"] == "refund"
+      action = version.event == "destroy" ? "Xoá khoản #{refund ? "hoàn" : "thu"}" : (refund ? "Hoàn tiền" : "Thu tiền")
+      code = Booking.where(id: after["booking_id"]).pick(:number)&.then { format("DP-%04d", it) }
+      [ version.event == "destroy" || refund ? :cancel : :ok, action, [ vnd(after["amount"]), Payment::METHODS[after["payment_method"]], code ].compact.join(" · ") ]
+    end
 
     def activity_booking_update(version, changes, after)
       before = version.object.to_h

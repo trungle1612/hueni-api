@@ -19,7 +19,7 @@ class Admin::CalendarsController < Admin::BaseController
     @rooms = @rooms.where(room_type: @room_type) if @room_type
     # In-house guests too: an overdue one still holds the room, one due out today is listed by the room name.
     bookings = Booking.blocking.where(room: @rooms).merge(Booking.overlapping(@days.begin, @days.end).or(Booking.in_house))
-      .includes(:calendar_feed, :room).order(:start_date).to_a
+      .includes(:calendar_feed, :room, :payments).order(:start_date).to_a
     @bookings = bookings.group_by(&:room_id)
     # The OTA already sold an iCal booking's nights, so an overlap with a manual one is for the owner to resolve.
     @conflicts = bookings.select(&:ical?).flat_map do |ical|

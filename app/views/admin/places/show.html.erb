@@ -120,3 +120,29 @@
     </div>
   </section>
 <% end %>
+
+<% if manage %>
+  <%# Tài khoản chuyển khoản (#139): shown in Ghi nhận thanh toán when the guest pays by Chuyển khoản. %>
+  <details id="chuyen-khoan" class="card bg-base-100 shadow-sm mt-6 scroll-mt-4">
+    <summary class="card-body p-4 flex-row justify-between items-center cursor-pointer">
+      <span class="font-semibold">Tài khoản chuyển khoản</span>
+      <span class="text-sm opacity-70 truncate"><%= @place.bank? ? "#{@place.bank_name} · #{@place.bank_account}" : "Chưa có" %></span>
+    </summary>
+    <%= form_with model: @place, url: bank_admin_place_path(@place.slug), method: :patch, class: "px-4 pb-4 flex flex-col gap-3" do |form| %>
+      <div>
+        <%= form.label :bank_name, "Ngân hàng", class: "block mb-1 font-medium" %>
+        <%= form.text_field :bank_name, maxlength: 100, placeholder: "Ví dụ: Vietcombank", class: "input w-full" %>
+      </div>
+      <div>
+        <%= form.label :bank_account, "Số tài khoản", class: "block mb-1 font-medium" %>
+        <%= form.text_field :bank_account, maxlength: 30, inputmode: "numeric", class: "input w-full" %>
+      </div>
+      <div>
+        <%= form.label :bank_holder, "Chủ tài khoản", class: "block mb-1 font-medium" %>
+        <%= form.text_field :bank_holder, maxlength: 100, placeholder: "Ví dụ: NGUYEN THI LAN", class: "input w-full" %>
+      </div>
+      <p class="text-sm opacity-70">Hiện cho lễ tân khi khách chuyển khoản, nội dung là mã đặt phòng (ví dụ DP0142).</p>
+      <%= form.submit "Lưu tài khoản", class: "btn btn-primary btn-block" %>
+    <% end %>
+  </details>
+<% end %>

@@ -13,6 +13,10 @@ vi:
         phone_number: Số điện thoại
         place_name: Tên homestay
         maps_url: Link Google Maps
+      place:
+        bank_name: Ngân hàng
+        bank_account: Số tài khoản
+        bank_holder: Chủ tài khoản
       room:
         name: Tên phòng
         max_guests: Số khách tối đa
@@ -34,6 +38,12 @@ vi:
         weekend_price: Giá thứ 6, thứ 7
         deposit: Đã cọc
         cancel_reason: Lý do huỷ
+        deposit_method: Hình thức cọc
+      payment:
+        amount: Số tiền
+        kind: Loại
+        payment_method: Hình thức
+        note: Ghi chú
       calendar_feed:
         url: Link iCal
         provider: Kênh

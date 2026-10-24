@@ -12,6 +12,9 @@ module VndPrice
     unit ? (BigDecimal(amount.tr(",", ".")) * UNITS[unit]).to_i : value.gsub(/vn[dđ]|[.,\s₫đ]/i, "").presence
   end
 
+  # 450000 → "450.000 ₫", for messages built in models (views use the vnd helper).
+  def self.format(amount) = ActiveSupport::NumberHelper.number_to_currency(amount, unit: "₫", format: "%n %u", precision: 0, delimiter: ".")
+
   class_methods do
     def vnd_price(*names)
       names.each do |name|

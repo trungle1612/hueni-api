@@ -1,0 +1,95 @@
+<%# Thanh toán (#139). Staff take money at the desk, so they see what is due; the nightly quote stays owner-only. %>
+<% manage = allowed_to?(:manage, place) %>
+<% total, due, paid = booking.room_total, booking.due, booking.paid %>
+<section id="thanh-toan" class="card bg-base-100 shadow-sm mb-3 scroll-mt-4">
+  <div class="card-body p-4 gap-2">
+    <h2 class="font-semibold">Thanh toán</h2>
+    <% if total.nil? %>
+      <p class="text-sm opacity-70">Chưa có giá phòng<%= ": nhập giá mỗi đêm bên dưới để tính tiền" if manage %>.</p>
+    <% elsif manage %>
+      <% groups = (booking.start_date...booking.end_date).group_by { booking.price_on(it) } %>
+      <% groups.each do |price, nights| %>
+        <div class="flex justify-between text-sm">
+          <span><%= nights.size %> đêm<%= " T6–T7" if groups.size > 1 && nights.all? { it.friday? || it.saturday? } %> × <%= vnd(price) %></span>
+          <span><%= vnd(price * nights.size) %></span>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="flex justify-between text-sm"><span>Tiền phòng</span><span><%= vnd(total) %></span></div>
+    <% end %>
+    <% booking.payments.sort_by(&:created_at).each do |payment| %>
+      <div id="<%= dom_id(payment) %>" class="flex justify-between items-center gap-2 text-sm">
+        <span class="min-w-0"><%= [ payment.note || (payment.refund? ? "Hoàn tiền" : "Thu"), payment.method_label, payment.created_at.strftime("%d/%m"), payment.user&.name ].compact.join(" · ") %></span>
+        <span class="flex items-center gap-1 shrink-0">
+          <%= payment.refund? ? "+" : "−" %><%= vnd(payment.amount) %>
+          <% if manage %>
+            <%= button_to admin_booking_payment_path(booking, payment), method: :delete, class: "btn btn-ghost btn-xs btn-square text-error",
+                  aria: { label: "Xoá khoản #{vnd(payment.amount)}" }, form: { data: { turbo_confirm: "Xoá khoản #{payment.refund? ? "hoàn" : "thu"} #{vnd(payment.amount)}? Chỉ xoá khi ghi nhầm." } } do %>
+              <%= render "shared/icon", name: "x" %>
+            <% end %>
+          <% end %>
+        </span>
+      </div>
+    <% end %>
+    <div id="due" class="flex justify-between font-semibold border-t border-base-300 pt-2">
+      <% if due.nil? %>
+        <span>Đã thu</span><span><%= vnd(paid) %></span>
+      <% elsif due.positive? %>
+        <span>Còn phải thu</span><span class="text-warning"><%= vnd(due) %></span>
+      <% elsif due.zero? %>
+        <span>Đã thu đủ</span><span class="text-success">✓</span>
+      <% else %>
+        <span>Thu dư</span><span><%= vnd(-due) %></span>
+      <% end %>
+    </div>
+
+    <% refund_only = booking.cancelled? %>
+    <% if (allowed_to?(:operate, place) && !refund_only) || (manage && paid.positive?) %>
+      <details id="ghi-nhan" class="mt-1">
+        <summary class="btn btn-outline btn-primary btn-block">Ghi nhận thanh toán</summary>
+        <%= form_with model: Payment.new, url: admin_booking_payments_path(booking), class: "group flex flex-col gap-3 mt-3" do |form| %>
+          <% if manage %>
+            <div class="join w-full">
+              <% unless refund_only %>
+                <%= form.radio_button :kind, "payment", checked: true, class: "join-item btn flex-1", aria: { label: "Thu tiền" } %>
+              <% end %>
+              <%= form.radio_button :kind, "refund", checked: refund_only, class: "join-item btn flex-1", aria: { label: "Hoàn tiền" } %>
+            </div>
+          <% else %>
+            <%= form.hidden_field :kind, value: "payment" %>
+          <% end %>
+          <div>
+            <%= form.label :amount, "Số tiền (₫)", class: "block mb-1 font-medium" %>
+            <%= form.text_field :amount, inputmode: "numeric", required: true, value: (number_with_delimiter(due, delimiter: ".") if due&.positive? && !refund_only),
+                  class: "input input-lg w-full", aria: { describedby: "amount_hint" } %>
+            <p id="amount_hint" class="text-sm opacity-70 mt-1">
+              <% if refund_only %>Đã thu <%= vnd(paid) %>.<% elsif due %>Còn phải thu <%= vnd([ due, 0 ].max) %>. Có thể thu một phần.<% else %>Ví dụ 300.000 hoặc 300k.<% end %>
+            </p>
+          </div>
+          <fieldset>
+            <legend class="mb-1 font-medium">Hình thức</legend>
+            <div class="flex flex-wrap gap-x-4">
+              <% Payment::METHODS.each do |key, label| %>
+                <label class="inline-flex items-center gap-2 min-h-11 cursor-pointer"><%= form.radio_button :payment_method, key, checked: key == "cash", class: "radio radio-sm" %><%= label %></label>
+              <% end %>
+            </div>
+          </fieldset>
+          <div id="bank" class="hidden group-has-[input[value=bank]:checked]:block rounded-box bg-base-200 p-3 text-sm">
+            <% if place.bank? %>
+              <div class="font-medium"><%= place.bank_name %> · <%= place.bank_account %></div>
+              <% if place.bank_holder %><div><%= place.bank_holder %></div><% end %>
+              <div>Nội dung: <span class="font-semibold"><%= booking.code&.delete("-") %></span></div>
+            <% else %>
+              Chưa có tài khoản chuyển khoản.<% if manage %> Thêm ở <%= link_to "trang homestay", admin_place_path(place.slug, anchor: "chuyen-khoan"), class: "link" %>.<% end %>
+            <% end %>
+          </div>
+          <div>
+            <%= form.label :note, "Ghi chú", class: "block mb-1 font-medium" %>
+            <%= form.text_field :note, maxlength: 200, placeholder: "Ví dụ: cọc thêm", class: "input w-full" %>
+          </div>
+          <%= form.submit "Ghi nhận", class: "btn btn-primary btn-block" %>
+        <% end %>
+      </details>
+    <% end %>
+  </div>
+</section>

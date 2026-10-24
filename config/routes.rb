@@ -30,6 +30,7 @@ Rails.application.routes.draw do
     resources :places, only: :show, param: :slug do
       post :sync_feeds, on: :member
       patch :commissions, on: :member
+      patch :bank, on: :member
       resource :calendar, only: :show
       resource :activity, only: :show
       resource :report, only: :show
@@ -69,6 +70,7 @@ Rails.application.routes.draw do
         post :move
         post :declare
       end
+      resources :payments, only: %i[create destroy]
     end
   end
 

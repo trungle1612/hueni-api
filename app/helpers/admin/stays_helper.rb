@@ -36,15 +36,7 @@ module Admin::StaysHelper
         [ "Nhận phòng", "#{booking_label(booking)} nhận phòng #{booking.room.name}?" ]
       end
     confirm += "\n⚠ #{booking.errors.full_messages.join(". ")}" if !booking.changed? && booking.errors.empty? && booking.invalid?
-    button_class = [ "btn", "btn-primary", size ].compact.join(" ")
-    return button_to(label, check_in_admin_booking_path(booking), class: button_class,
-      form: { data: { turbo_confirm: confirm } }) if booking.guests
-
-    form_with url: check_in_admin_booking_path(booking), class: "flex gap-1", data: { turbo_confirm: confirm } do |form|
-      form.number_field(:guests, in: 1..booking.room.max_guests, required: true, placeholder: "Số khách",
-        class: [ "input w-24 placeholder:text-base-content/70", size&.sub("btn", "input") ].compact.join(" "), aria: { label: "Số khách" }) +
-        form.button(label, class: button_class)
-    end
+    stay_form(check_in_admin_booking_path(booking), label, booking, confirm:, size:, primary: true, ask_guests: !booking.guests)
   end
 
   def declare_button(booking, size: nil)
@@ -52,8 +44,7 @@ module Admin::StaysHelper
   end
 
   def check_out_button(booking, size: nil)
-    button_to "Trả phòng", check_out_admin_booking_path(booking), class: [ "btn", size ].compact.join(" "),
-      form: { data: { turbo_confirm: "#{booking_label(booking)} trả phòng #{booking.room.name}?" } }
+    stay_form(check_out_admin_booking_path(booking), "Trả phòng", booking, confirm: "#{booking_label(booking)} trả phòng #{booking.room.name}?", size:)
   end
 
   def no_show_button(booking, size: nil)
@@ -86,5 +77,23 @@ module Admin::StaysHelper
   end
 
   private
+    # With money due (#139): "Đã thu X, nhận phòng" records it in cash (collect=1), "Nhận phòng, ghi nợ" leaves it owed.
+    def stay_form(path, label, booking, confirm:, size:, primary: false, ask_guests: false)
+      button_class = class_names("btn", size, "btn-primary": primary)
+      due = booking.due
+      form_with url: path, class: "flex flex-wrap justify-end gap-1", data: { turbo_confirm: confirm } do |form|
+        parts = []
+        parts << form.number_field(:guests, in: 1..booking.room.max_guests, required: true, placeholder: "Số khách",
+          class: [ "input w-24 placeholder:text-base-content/70", size&.sub("btn", "input") ].compact.join(" "), aria: { label: "Số khách" }) if ask_guests
+        if due&.positive?
+          parts << form.button("Đã thu #{vnd(due)}, #{label.downcase_first}", name: "collect", value: "1", class: class_names("btn btn-primary", size))
+          parts << form.button("#{label}, ghi nợ", class: class_names("btn btn-outline", size))
+        else
+          parts << form.button(label, class: button_class)
+        end
+        safe_join(parts)
+      end
+    end
+
     def stay_badge(text, colour) = tag.span(text, class: "badge badge-soft badge-sm #{colour}")
 end

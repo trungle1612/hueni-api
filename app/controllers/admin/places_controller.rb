@@ -1,7 +1,7 @@
 class Admin::PlacesController < Admin::BaseController
   before_action :set_place
   before_action -> { authorize!(:operate, @place) }, only: :sync_feeds
-  before_action -> { authorize!(:manage, @place) }, only: :commissions
+  before_action -> { authorize!(:manage, @place) }, only: %i[commissions bank]
 
   def show
     # By floor (#138, rooms without one last), switched-off rooms last within it.
@@ -24,6 +24,15 @@ class Admin::PlacesController < Admin::BaseController
       redirect_to admin_calendar_feeds_path(anchor: @place.slug), notice: "Đã lưu hoa hồng của #{@place.name}."
     else
       redirect_to admin_calendar_feeds_path(anchor: @place.slug), alert: "Hoa hồng #{@place.errors.messages_for(:commissions).to_sentence}."
+    end
+  end
+
+  # Tài khoản chuyển khoản (#139), shown in Ghi nhận thanh toán.
+  def bank
+    if @place.update(params.expect(place: %i[bank_name bank_account bank_holder]))
+      redirect_to admin_place_path(@place.slug, anchor: "chuyen-khoan"), notice: "Đã lưu tài khoản chuyển khoản."
+    else
+      redirect_to admin_place_path(@place.slug, anchor: "chuyen-khoan"), alert: @place.errors.full_messages.to_sentence
     end
   end
 
