@@ -85,6 +85,6 @@
 <% if allowed_to?(:manage, @place) %>
   <section id="history" class="mt-6">
     <h2 class="font-semibold">Lịch sử</h2>
-    <%= render "admin/activities/list", versions: @booking.versions.reorder(id: :desc).to_a, show_room: false %>
+    <%= render "admin/activities/list", versions: @booking.history.to_a, show_room: false %>
   </section>
 <% end %>

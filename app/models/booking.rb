@@ -132,6 +132,15 @@ class Booking < ApplicationRecord
   def paid = payments.reject(&:new_record?).sum(&:signed_amount)
   def due = (total - paid if manual? && total)
 
+  # Lịch sử on the booking page: its own changes plus its payments and services (create / destroy only, so
+  # booking_id is in object_changes on create and in object on destroy).
+  def history
+    PaperTrail::Version.where(place_id: room.place_id).where(<<~SQL, id:).order(id: :desc)
+      (item_type = 'Booking' AND item_id = :id) OR (item_type IN ('Payment', 'BookingCharge')
+        AND COALESCE(json_extract(object_changes, '$.booking_id[1]'), json_extract(object, '$.booking_id')) = :id)
+    SQL
+  end
+
   # Chưa cọc: a direct booking not yet checked in with nothing paid (the calendar's amber bar, like the Zalo app).
   def awaiting_deposit? = manual? && !checked_in_at && !paid.positive?
   # Holds a night the room is under Bảo trì (today through maintenance_until).

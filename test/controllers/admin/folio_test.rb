@@ -37,6 +37,8 @@ class Admin::FolioTest < ActionDispatch::IntegrationTest
     get admin_place_activity_path("tomo-homestay")
     assert_select "body", text: /Thêm dịch vụ.*Nước suối × 2 chai · 30.000 ₫ · DP-\d{4}/m
     assert_select "body", text: /Bỏ dịch vụ/
+    get edit_admin_booking_path(@booking)
+    assert_select "#history", text: /Bỏ dịch vụ.*Thêm dịch vụ.*Đặt phòng/m
   end
 
   test "Giảm giá: an amount or %, with a reason, never above the room; staff at most 10%" do
