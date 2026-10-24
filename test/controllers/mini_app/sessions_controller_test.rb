@@ -39,12 +39,7 @@ class MiniApp::SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "unauthorized", response.parsed_body["error"]
   end
 
-  test "an unknown Zalo account is not registered; a token Zalo refuses (or another app's) is rejected" do
-    zalo_me("stranger", { id: "zalo-nobody", name: "X" })
-    post app_v1_session_path, params: { access_token: "stranger" }, as: :json
-    assert_response :forbidden
-    assert_equal "not_registered", response.parsed_body["error"]
-
+  test "a token Zalo refuses (or another app's) is rejected" do
     zalo_me("bad", { error: 452, message: "Invalid access token" })
     post app_v1_session_path, params: { access_token: "bad" }, as: :json
     assert_response :unauthorized
@@ -78,6 +73,67 @@ class MiniApp::SessionsControllerTest < ActionDispatch::IntegrationTest
   test "CORS preflight answers without a token" do
     process :options, "/app/v1/me", headers: { "Origin" => "https://h5.zdn.vn", "Access-Control-Request-Method" => "GET" }
     assert_response :no_content
-    assert_equal "Authorization, Content-Type", response.headers["Access-Control-Allow-Headers"]
+    assert_equal "Authorization, Content-Type, X-Registration-Token", response.headers["Access-Control-Allow-Headers"]
+  end
+
+  test "like the web: the Zalo phone links an owner or staff member without Zalo (#98), never an admin" do
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    zalo_me("zmp-na", { id: "zalo-na", name: "Na" })
+    stub_request(:get, "https://graph.zalo.me/v2.0/me/info")
+      .with(headers: { "access_token" => "zmp-na", "code" => "phone-code", "secret_key" => "test-secret" })
+      .to_return(body: { data: { number: "84987654321" }, error: 0 }.to_json)
+    post app_v1_session_path, params: { access_token: "zmp-na", phone_token: "phone-code" }, as: :json
+    assert_response :created
+    assert_equal "zalo-na", staff.reload.zalo_id
+
+    users(:admin).update!(phone_number: "0911222333")
+    zalo_me("zmp-x", { id: "zalo-x", name: "X" })
+    stub_request(:get, "https://graph.zalo.me/v2.0/me/info").with(headers: { "code" => "admin-code" })
+      .to_return(body: { data: { number: "84911222333" } }.to_json)
+    post app_v1_session_path, params: { access_token: "zmp-x", phone_token: "admin-code" }, as: :json
+    assert_response :forbidden
+    assert_nil users(:admin).reload.zalo_id
+  end
+
+  test "like /dang-ky: an unknown Zalo registers with the registration token, corrects it while pending, signs in once approved" do
+    place = Place.create!(slug: "nha-hanh", name: "Nhà Hạnh", phone: "0234111222") # no owner yet
+    zalo_me("zmp-new", { id: "zalo-new", name: "Chị Hạnh" })
+    post app_v1_session_path, params: { access_token: "zmp-new" }, as: :json
+    assert_response :forbidden
+    assert_equal [ "not_registered", nil ], response.parsed_body.values_at("error", "registration")
+    headers = { "X-Registration-Token" => response.parsed_body["registration_token"] }
+
+    form = { name: "Chị Hạnh", phone_number: "0933 111 222", place_name: "Nhà Hạnh", maps_url: "" }
+    assert_enqueued_jobs 1, only: NotifyRegistrationJob do
+      post app_v1_registration_path, params: { registration: form }, headers:, as: :json
+    end
+    assert_response :created
+    request = RegistrationRequest.sole
+    assert_equal [ "zalo-new", "Chị Hạnh", place, "0933111222" ], [ request.zalo_id, request.zalo_name, request.place, request.phone_number ]
+    assert_equal "pending", response.parsed_body.dig("registration", "status")
+
+    post app_v1_registration_path, params: { registration: form }, headers:, as: :json
+    assert_response :conflict
+    patch app_v1_registration_path, params: { registration: form.merge(phone_number: "12") }, headers:, as: :json
+    assert_response :unprocessable_entity
+    assert_match "10 số", response.parsed_body.dig("errors", "phone_number").sole
+    patch app_v1_registration_path, params: { registration: form.merge(maps_url: "maps.app.goo.gl/x") }, headers:, as: :json
+    assert_equal "https://maps.app.goo.gl/x", request.reload.maps_url
+
+    post app_v1_session_path, params: { access_token: "zmp-new" }, as: :json
+    assert_equal "pending", response.parsed_body.dig("registration", "status")
+
+    assert request.approve!(by: users(:admin))
+    get app_v1_registration_path, headers:, as: :json
+    assert_response :conflict
+    assert_equal "registered", response.parsed_body["error"]
+    post app_v1_session_path, params: { access_token: "zmp-new" }, as: :json
+    assert_response :created
+
+    get app_v1_registration_path, headers: { "X-Registration-Token" => "forged" }, as: :json
+    assert_response :unauthorized
+    travel 31.minutes
+    get app_v1_registration_path, headers:, as: :json
+    assert_response :unauthorized
   end
 end

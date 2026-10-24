@@ -34,7 +34,7 @@ class MiniApp::V1::BaseController < ActionController::API
 
     def allow_cors
       response.headers["Access-Control-Allow-Origin"] = "*"
-      response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
+      response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-Registration-Token"
       response.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS"
       response.headers["Access-Control-Max-Age"] = "86400"
     end

@@ -41,15 +41,8 @@ class ZaloSessionsController < ApplicationController
       redirect_to registration_path
     end
 
-    # #98: with Zalo's phone permission, the number on the Zalo account (verified by Zalo) links an owner or
-    # staff member who has none yet. `normalizes` turns Zalo's 84… / +84… into our 0…. Never admins.
-    def link_by_phone(zalo_id)
-      phone = request.env.dig("omniauth.auth", "extra", "raw_info", "phone").to_s
-      return if phone.blank?
-
-      user = User.user.find_by(phone_number: phone, zalo_id: nil)
-      user if user&.update(zalo_id:)
-    end
+    # #98: with Zalo's phone permission (User.link_zalo_by_phone).
+    def link_by_phone(zalo_id) = User.link_zalo_by_phone(request.env.dig("omniauth.auth", "extra", "raw_info", "phone").to_s, zalo_id)
 
     # The token (kept in the session by PasswordSetupsController#edit) proves who this is.
     # The new placeholder password consumes the link.

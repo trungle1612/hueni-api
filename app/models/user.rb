@@ -36,6 +36,14 @@ class User < ApplicationRecord
     api_tokens.delete_all
   end
 
+  # #98: the phone number on a Zalo account (verified by Zalo) links an owner or staff member who has no Zalo yet.
+  # `normalizes` turns Zalo's 84… / +84… into our 0…. Never admins. The web login and the Mini App (#152) both use it.
+  def self.link_zalo_by_phone(phone, zalo_id)
+    return if phone.blank? || zalo_id.blank?
+    user = User.user.find_by(phone_number: phone, zalo_id: nil)
+    user if user&.update(zalo_id:)
+  end
+
   def initial = name.to_s.first.to_s.upcase
 
   # The single access rule for admin code: look records up only through these.
