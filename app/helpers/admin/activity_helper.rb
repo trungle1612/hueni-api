@@ -43,6 +43,7 @@ module Admin::ActivityHelper
       in [ "Booking", "destroy" ] then [ activity_ota?(version) ? :sync : :cancel, "Xoá đặt phòng", activity_stay(after) ]
       in [ "Booking", "update" ] then activity_booking_update(version, changes, after)
       in [ "Room", "create" ] then [ :room, "Thêm phòng" ]
+      in [ "Room", "destroy" ] then [ :cancel, "Xoá phòng", after["name"] ]
       in [ "Room", "update" ] then activity_room_update(changes)
       in [ "CalendarFeed", "create" | "destroy" ]
         [ :feed, version.event == "create" ? "Thêm kênh" : "Xoá kênh", CalendarFeed::PROVIDER_LABELS.fetch(after["provider"], "iCal") ]

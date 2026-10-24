@@ -144,6 +144,9 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     patch admin_room_path(rooms(:garden)), params: { room: { active: "0", price: "1" } }
     assert_response :forbidden
     assert rooms(:garden).reload.active?
+    delete admin_room_path(rooms(:garden))
+    assert_response :forbidden
+    assert Room.exists?(rooms(:garden).id)
     assert_not Room.exists?(name: "X")
 
     get edit_admin_room_path(other) # homestay she isn't a member of
@@ -223,6 +226,49 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     rooms(:garden).dirty!
     patch admin_room_path(rooms(:garden)), params: { room: { state: "active" } }
     assert_equal [ "dirty", true ], rooms(:garden).reload.values_at(:housekeeping, :active)
+  end
+
+  test "Xoá phòng: only a room without bookings, with its feeds; upcoming bookings are listed" do
+    travel_to Time.zone.local(2026, 10, 1, 12)
+    get edit_admin_room_path(rooms(:limdim))
+    assert_select "#xoa-phong", text: /còn 1 đặt phòng sắp tới/
+    assert_select "#xoa-phong a[href=?]", edit_admin_booking_path(bookings(:limdim_confirmed)), text: "Anh Minh · 01/10–03/10"
+    assert_select "#xoa-phong button", 0
+
+    delete admin_room_path(rooms(:limdim))
+    assert_redirected_to edit_admin_room_path(rooms(:limdim), anchor: "xoa-phong")
+    assert_equal "Phòng đã có đặt phòng nên không xoá được.", flash[:alert]
+    assert Room.exists?(rooms(:limdim).id)
+
+    travel_to Time.zone.local(2026, 10, 10, 12)
+    get edit_admin_room_path(rooms(:limdim))
+    assert_select "#xoa-phong", text: /không xoá được, để giữ lịch sử/
+
+    rooms(:garden).calendar_feeds.create!(url: "https://1.1.1.1/g.ics", provider: "airbnb")
+    get edit_admin_room_path(rooms(:garden))
+    assert_select "#xoa-phong form[action=?][data-turbo-confirm='Xoá Phòng Garden? Không hoàn tác được.'] button", admin_room_path(rooms(:garden)), text: "Xoá Phòng Garden"
+    assert_difference -> { CalendarFeed.count } => -1 do
+      delete admin_room_path(rooms(:garden))
+    end
+    assert_redirected_to admin_rooms_path(anchor: "tomo-homestay")
+    assert_equal "Đã xoá phòng Garden.", flash[:notice]
+    assert_not Room.exists?(rooms(:garden).id)
+
+    other = Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 2)
+    delete admin_room_path(other)
+    assert_response :not_found
+  end
+
+  test "lowering Số khách tối đa saves and names upcoming bookings with more guests" do
+    travel_to Time.zone.local(2026, 10, 1, 12)
+    bookings(:limdim_confirmed).update!(guests: 4)
+    rooms(:limdim).bookings.create!(start_date: "2026-10-23", end_date: "2026-10-27", guests: 3)
+    patch admin_room_path(rooms(:limdim)), params: { room: { max_guests: 2 } }
+    assert_equal 2, rooms(:limdim).reload.max_guests
+    assert_equal "Đã lưu phòng Limdim. Đặt phòng 01/10–03/10 có 4 khách, nhiều hơn tối đa 2. Đặt phòng 23/10–27/10 có 3 khách, nhiều hơn tối đa 2.", flash[:notice]
+
+    patch admin_room_path(rooms(:limdim)), params: { room: { name: "Limdim" } }
+    assert_equal "Đã lưu phòng Limdim.", flash[:notice]
   end
 
   test "admins who aren't members can't mark a room clean" do

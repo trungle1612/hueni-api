@@ -8,3 +8,21 @@
   <%= render "admin/activities/list", versions: PaperTrail::Version.where(room_id: @room.id).order(id: :desc).limit(5).to_a, show_room: false %>
   <%= link_to "Xem tất cả hoạt động ›", admin_place_activity_path(@place.slug), class: "link link-hover inline-block py-3" %>
 </section>
+<section id="xoa-phong" class="mt-6 scroll-mt-4">
+  <h2 class="font-semibold mb-2">Xoá phòng</h2>
+  <% upcoming = @room.upcoming_bookings.order(:start_date).to_a %>
+  <% if upcoming.any? %>
+    <p class="text-sm">Phòng còn <%= upcoming.size %> đặt phòng sắp tới. Đổi sang phòng khác hoặc huỷ trước khi xoá, hoặc chọn <b>Tạm ngưng</b> ở trên.</p>
+    <ul class="list bg-base-100 rounded-box shadow-sm mt-2">
+      <% upcoming.each do |booking| %>
+        <li class="list-row py-2"><%= link_to "#{booking_label(booking)} · #{stay_dates(booking)}", booking.manual? ? edit_admin_booking_path(booking) : admin_place_calendar_path(@place.slug), class: "link link-hover" %></li>
+      <% end %>
+    </ul>
+  <% elsif @room.bookings.exists? %>
+    <p class="text-sm opacity-70">Phòng đã có đặt phòng nên không xoá được, để giữ lịch sử và báo cáo. Không cho thuê nữa thì chọn <b>Tạm ngưng</b> ở trên.</p>
+  <% else %>
+    <p class="text-sm opacity-70 mb-2">Phòng chưa có đặt phòng nào. Xoá luôn cả kênh OTA của phòng.</p>
+    <%= button_to "Xoá #{room_title(@room.name_was)}", admin_room_path(@room), method: :delete, class: "btn btn-ghost btn-block text-error",
+          form: { data: { turbo_confirm: "Xoá #{room_title(@room.name_was)}? Không hoàn tác được." } } %>
+  <% end %>
+</section>
