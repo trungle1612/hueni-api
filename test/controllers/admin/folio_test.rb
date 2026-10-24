@@ -29,8 +29,8 @@ class Admin::FolioTest < ActionDispatch::IntegrationTest
     assert_response :not_found
 
     post admin_booking_charges_path(@booking), params: { service_id: @water.id, quantity: "1" }
-    delete admin_booking_charge_path(@booking, @booking.charges.last)
-    delete admin_booking_charge_path(@booking, @booking.charges.sole)
+    delete admin_booking_charge_path(@booking, @booking.charges.reload.last)
+    delete admin_booking_charge_path(@booking, @booking.charges.reload.sole)
     assert_equal "Đã bỏ Nước suối × 2 chai.", flash[:notice]
     assert_equal 800_000, @booking.reload.total
 
