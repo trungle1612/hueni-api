@@ -1,6 +1,11 @@
 <% content_for :title, "Tổng quan · hueni admin" %>
 
-<h1 class="text-xl font-semibold mb-4">Tổng quan</h1>
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">Tổng quan</h1>
+  <% if @places.any? %>
+    <%= link_to render("shared/icon", name: "search"), admin_search_path, id: "search", class: "btn btn-ghost btn-square", aria: { label: "Tìm đặt phòng" } %>
+  <% end %>
+</div>
 
 <%# Admins link from their own page in Người dùng. %>
 <%= render "shared/link_zalo" unless Current.user.zalo_id || Current.user.admin? %>

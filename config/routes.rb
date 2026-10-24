@@ -27,6 +27,7 @@ Rails.application.routes.draw do
     root "dashboard#show"
     get "calendar", to: "calendars#index"
     get "report", to: "reports#index"
+    get "tim", to: "searches#show", as: :search
     resources :places, only: :show, param: :slug do
       post :sync_feeds, on: :member
       patch :commissions, on: :member
