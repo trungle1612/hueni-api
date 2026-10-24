@@ -79,6 +79,8 @@ class Admin::ActivityHelperTest < ActionView::TestCase
     room.dirty!
     room.clean!
     assert_equal [ :clean, "Dọn xong", nil ], entry
+    room.destroy!
+    assert_equal [ :cancel, "Xoá phòng", "Mây Trắng" ], entry
   end
 
   test "feed rows" do

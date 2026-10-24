@@ -1,6 +1,6 @@
 class Admin::RoomsController < Admin::BaseController
   before_action :set_place, only: %i[new create]
-  before_action :set_room, only: %i[edit update clean maintenance]
+  before_action :set_room, only: %i[edit update destroy clean maintenance]
   before_action -> { authorize!(:manage, @place) }, except: %i[index clean maintenance]
   before_action -> { authorize!(:operate, @place) }, only: %i[clean maintenance]
 
@@ -30,9 +30,17 @@ class Admin::RoomsController < Admin::BaseController
 
   def update
     if @room.update(room_params)
-      redirect_to admin_rooms_path(anchor: @place.slug), notice: [ "Đã lưu phòng #{@room.name}.", *price_notes ].join(" ")
+      redirect_to admin_rooms_path(anchor: @place.slug), notice: [ "Đã lưu phòng #{@room.name}.", *price_notes, *capacity_notes ].join(" ")
     else
       render :edit, status: :unprocessable_entity
+    end
+  end
+
+  def destroy
+    if @room.destroy
+      redirect_to admin_rooms_path(anchor: @place.slug), notice: "Đã xoá phòng #{@room.name}."
+    else
+      redirect_to edit_admin_room_path(@room, anchor: "xoa-phong"), alert: @room.errors.full_messages.to_sentence
     end
   end
 
@@ -68,8 +76,16 @@ class Admin::RoomsController < Admin::BaseController
 
     def price_notes
       return [] unless @room.saved_change_to_price? || @room.saved_change_to_weekend_price?
-      kept = @room.quoted_bookings.count
+      kept = @room.upcoming_bookings.count
       [ ("#{kept} đặt phòng sắp tới giữ giá cũ." if kept.positive?),
         ("Giá thứ 6, thứ 7 đang thấp hơn ngày thường, kiểm tra lại nếu không cố ý." if @room.weekend_price_below_price?) ].compact
+    end
+
+    # Lowering Số khách tối đa still saves; upcoming stays with more guests are named so the owner can fix them.
+    def capacity_notes
+      return [] unless @room.saved_change_to_max_guests?
+      @room.upcoming_bookings.where(guests: (@room.max_guests + 1)..).order(:start_date).map do
+        "Đặt phòng #{helpers.stay_dates(it)} có #{it.guests} khách, nhiều hơn tối đa #{@room.max_guests}."
+      end
     end
 end

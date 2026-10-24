@@ -3,7 +3,7 @@ class Room < ApplicationRecord
 
   belongs_to :place
   has_many :bookings
-  has_many :calendar_feeds
+  has_many :calendar_feeds, dependent: :destroy
   # Becoming dirty is part of check-out, so only "dọn xong" (→ clean) and Bảo trì are logged.
   has_paper_trail on: %i[create update destroy], only: [ :name, :max_guests, :price, :weekend_price, :active, :maintenance_reason, :maintenance_until,
     { housekeeping: ->(room) { !room.dirty? } } ],
@@ -21,6 +21,12 @@ class Room < ApplicationRecord
   # weekend_price: Friday and Saturday nights; blank = the weekday price.
   vnd_price :price, :weekend_price
   validate :photo_urls_are_http_urls
+  # Xoá phòng (#122): only a room that never had a booking (one added by mistake), so history and Báo cáo stay whole.
+  before_destroy prepend: true do
+    next unless bookings.exists?
+    errors.add(:base, "Phòng đã có đặt phòng nên không xoá được.")
+    throw :abort
+  end
   with_options if: :maintenance? do
     validates :maintenance_reason, presence: true, length: { maximum: 200 }
     validates :maintenance_until, presence: true
@@ -30,8 +36,8 @@ class Room < ApplicationRecord
       if: :will_save_change_to_housekeeping?
   end
 
-  # Upcoming stays that keep the price they were quoted when this room's price changes.
-  def quoted_bookings = bookings.blocking.where(end_date: Date.current.next_day..).where(checked_out_at: nil)
+  # Stays not over yet: they keep their quoted price when this room's price changes, and block Xoá phòng.
+  def upcoming_bookings = bookings.blocking.where(end_date: Date.current.next_day..).where(checked_out_at: nil)
 
   def maintenance_on?(date) = maintenance? && maintenance_until >= date
 
