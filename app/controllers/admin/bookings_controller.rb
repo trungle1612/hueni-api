@@ -150,7 +150,7 @@ class Admin::BookingsController < Admin::BaseController
       end
     end
 
-    # "Đã thu X, nhận phòng" (collect=1) records what is due in cash with the check-in / check-out; else it stays owed.
+    # "Thu X và nhận phòng" (collect=1) records what is due in cash with the check-in / check-out; else it stays owed.
     def collecting_due
       due = @booking.due
       @collected = due if params[:collect] && due&.positive?

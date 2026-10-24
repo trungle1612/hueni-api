@@ -77,7 +77,7 @@ module Admin::StaysHelper
   end
 
   private
-    # With money due (#139): "Đã thu X, nhận phòng" records it in cash (collect=1), "Nhận phòng, ghi nợ" leaves it owed.
+    # With money due (#139): "Thu X và nhận phòng" records it in cash (collect=1), "Nhận phòng, ghi nợ" leaves it owed.
     def stay_form(path, label, booking, confirm:, size:, primary: false, ask_guests: false)
       button_class = class_names("btn", size, "btn-primary": primary)
       due = booking.due
@@ -86,7 +86,7 @@ module Admin::StaysHelper
         parts << form.number_field(:guests, in: 1..booking.room.max_guests, required: true, placeholder: "Số khách",
           class: [ "input w-24 placeholder:text-base-content/70", size&.sub("btn", "input") ].compact.join(" "), aria: { label: "Số khách" }) if ask_guests
         if due&.positive?
-          parts << form.button("Đã thu #{vnd(due)}, #{label.downcase_first}", name: "collect", value: "1", class: class_names("btn btn-primary", size))
+          parts << form.button("Thu #{vnd(due)} và #{label.downcase_first}", name: "collect", value: "1", class: class_names("btn btn-primary", size))
           parts << form.button("#{label}, ghi nợ", class: class_names("btn btn-outline", size))
         else
           parts << form.button(label, class: button_class)
