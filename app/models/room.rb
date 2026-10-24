@@ -29,6 +29,7 @@ class Room < ApplicationRecord
   validates :floor, numericality: { only_integer: true, in: 0..200 }, allow_nil: true
   validates :note, length: { maximum: 1000 }
   validate -> { errors.add(:room_type, :invalid) if room_type && room_type.place_id != place_id }
+  validate -> { errors.add(:room_type, room_type.errors.messages_for(:name).first) unless room_type.valid? }, if: -> { room_type&.new_record? }
   # Xoá phòng (#122): only a room that never had a booking (one added by mistake), so history and Báo cáo stay whole.
   before_destroy prepend: true do
     next unless bookings.exists?
@@ -68,6 +69,16 @@ class Room < ApplicationRecord
   end
 
   def amenity_labels = AMENITIES.values_at(*amenities)
+
+  # The room form types the Loại phòng: one of this homestay's types (any case), or a new one saved with the room.
+  # Resolved before validation: rooms.build assigns attributes before the place.
+  attr_writer :room_type_name
+  def room_type_name = @room_type_name || room_type&.name
+
+  before_validation if: -> { @room_type_name && place } do
+    name = @room_type_name.squish
+    self.room_type = name.presence && (place.room_types.find { it.name.casecmp?(name) } || place.room_types.build(name:))
+  end
 
   def weekend_price_below_price? = weekend_price && price && weekend_price < price
 

@@ -273,20 +273,34 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
 
   test "room form saves Tầng, Loại phòng, tiện nghi and ghi chú; Phòng lists type and floor" do
     double = places(:tomo).room_types.create!(name: "Phòng đôi")
-    other_type = places(:hiuhill).room_types.create!(name: "Không phải của tôi")
+    places(:hiuhill).room_types.create!(name: "Không phải của tôi")
     get edit_admin_room_path(rooms(:garden))
-    assert_select "select[name='room[room_type_id]'] option", text: "Phòng đôi"
-    assert_select "select[name='room[room_type_id]'] option", text: "Không phải của tôi", count: 0
+    assert_select "datalist#room_types option[value=?]", "Phòng đôi"
+    assert_select "datalist#room_types option[value=?]", "Không phải của tôi", count: 0
     assert_select "input[type=checkbox][name='room[amenities][]']", Room::AMENITIES.size
 
-    patch admin_room_path(rooms(:garden)), params: { room: { floor: "2", room_type_id: double.id, amenities: [ "", "balcony", "ac", "pool" ], note: " Vòi sen yếu " } }
+    # An existing type matches in any case.
+    patch admin_room_path(rooms(:garden)), params: { room: { floor: "2", room_type_name: " phòng  ĐÔI ", amenities: [ "", "balcony", "ac", "pool" ], note: " Vòi sen yếu " } }
     assert_equal [ 2, double, [ "ac", "balcony" ], "Vòi sen yếu" ], rooms(:garden).reload.values_at(:floor, :room_type, :amenities, :note)
     get admin_rooms_path
     assert_select "#room_#{rooms(:garden).id}", text: /Phòng đôi · Tầng 2 · 2 khách/
 
-    patch admin_room_path(rooms(:garden)), params: { room: { room_type_id: other_type.id } }
+    # A new name creates the type for this homestay; a too long one creates nothing.
+    assert_difference -> { places(:tomo).room_types.count } do
+      patch admin_room_path(rooms(:garden)), params: { room: { room_type_name: "Gia đình" } }
+    end
+    assert_equal "Gia đình", rooms(:garden).reload.room_type.name
+    assert_no_difference -> { RoomType.count } do
+      patch admin_room_path(rooms(:garden)), params: { room: { room_type_name: "x" * 51 } }
+    end
     assert_response :unprocessable_entity
-    assert_equal double, rooms(:garden).reload.room_type
+    assert_select "#room_type_error"
+
+    patch admin_room_path(rooms(:garden)), params: { room: { room_type_name: "" } }
+    assert_nil rooms(:garden).reload.room_type
+
+    post admin_place_rooms_path("tomo-homestay"), params: { room: { name: "Mới", max_guests: 2, room_type_name: "Dorm" } }
+    assert_equal "Dorm", places(:tomo).rooms.find_by!(name: "Mới").room_type.name
   end
 
   test "owners manage Loại phòng; a type in use can't be deleted; staff 403, other homestay 404" do
