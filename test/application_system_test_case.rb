@@ -1,5 +1,11 @@
 require "test_helper"
 
+# Recent Chrome reports a node detached by a Turbo page swap as UnknownError ("Node with given id does not
+# belong to the document") instead of StaleElementReferenceError; let Capybara retry it the same way (#133).
+Capybara::Selenium::Driver.prepend(Module.new do
+  def invalid_element_errors = super + [ Selenium::WebDriver::Error::UnknownError ]
+end)
+
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1000 ]
 
