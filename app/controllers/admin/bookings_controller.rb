@@ -125,7 +125,7 @@ class Admin::BookingsController < Admin::BaseController
 
     def booking_params
       quote = %i[price weekend_price] if Current.user.allowed_to?(:manage, @place) # staff never see prices
-      params.expect(booking: [ :start_date, :end_date, :status, :guests, :guest_name, :guest_phone, :note, :deposit, *quote ])
+      params.expect(booking: [ :start_date, :end_date, :status, :guests, :guest_name, :guest_phone, :note, :deposit, :cancel_reason, :cancel_reason_other, *quote ])
     end
 
     # Back to the timeline, scrolled to the booking when it's outside the default range.

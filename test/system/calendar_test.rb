@@ -28,12 +28,15 @@ class CalendarTest < ApplicationSystemTestCase
 
     click_on "Chị Mai"
     assert_selector "a[href='tel:0905123456']"
-    accept_confirm { click_button "Huỷ đặt phòng" }
+    find("#huy summary").click
+    choose "Khác"
+    fill_in "Nhập lý do", with: "Bão"
+    click_button "Xác nhận huỷ"
 
     assert_text "Đã huỷ đặt phòng."
     assert_no_text "Chị Mai"
     assert_equal 1, tomo_rooms_left
-    assert Booking.find_by!(guest_name: "Chị Mai").cancelled?
+    assert_equal [ "cancelled", "Bão" ], Booking.find_by!(guest_name: "Chị Mai").values_at(:status, :cancel_reason)
   end
 
   test "overlapping booking on the same room is rejected" do

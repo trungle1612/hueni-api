@@ -40,12 +40,32 @@
   <% end %>
 <% end %>
 <%= render "form", booking: @booking, place: @place %>
-<% if @booking.cancelled? %>
+<% if @booking.status_in_database == "cancelled" %>
+  <p id="cancelled" class="alert alert-soft mt-3">Đã huỷ<%= " · #{@booking.cancel_reason}" if @booking.cancel_reason %></p>
   <%= button_to "Khôi phục đặt phòng", admin_booking_path(@booking), method: :patch, params: { booking: { status: "confirmed" } },
         class: "btn btn-outline btn-primary btn-block mt-3" %>
 <% elsif !@booking.checked_in_at %>
-  <%= button_to "Huỷ đặt phòng", admin_booking_path(@booking), method: :patch, params: { booking: { status: "cancelled" } },
-        class: "btn btn-ghost btn-block text-error mt-3", form: { data: { turbo_confirm: "Huỷ đặt phòng này? Phòng sẽ trống lại." } } %>
+  <%# Huỷ asks why (#123); Khác shows a text field. %>
+  <details id="huy" class="mt-3" <%= "open" if @booking.errors.include?(:cancel_reason) %>>
+    <summary class="btn btn-ghost btn-block text-error">Huỷ đặt phòng</summary>
+    <%= form_with model: @booking, url: admin_booking_path(@booking), method: :patch, id: "cancel_form", class: "card bg-base-100 shadow-sm mt-2" do |form| %>
+      <div class="card-body p-4 gap-2">
+        <%= form.hidden_field :status, value: "cancelled", id: nil %>
+        <fieldset class="group flex flex-col gap-2">
+          <legend class="font-medium mb-1">Lý do huỷ</legend>
+          <% Booking::CANCEL_REASONS.each do |reason| %>
+            <label class="flex items-center gap-3 min-h-11 cursor-pointer"><%= form.radio_button :cancel_reason, reason, class: "radio" %><%= reason %></label>
+          <% end %>
+          <label class="flex items-center gap-3 min-h-11 cursor-pointer"><%= form.radio_button :cancel_reason, "other", class: "radio" %>Khác</label>
+          <%= form.text_field :cancel_reason_other, maxlength: 200, placeholder: "Nhập lý do", aria: { label: "Lý do khác" },
+                class: "input w-full hidden group-has-[input[value=other]:checked]:block" %>
+        </fieldset>
+        <%= field_error @booking, :cancel_reason %>
+        <p class="text-sm opacity-70">Phòng sẽ trống lại. Đặt phòng đã huỷ vẫn giữ trong lịch sử, khôi phục được.</p>
+        <%= form.submit "Xác nhận huỷ", class: "btn btn-error btn-block" %>
+      </div>
+    <% end %>
+  </details>
 <% end %>
 <% if allowed_to?(:manage, @place) %>
   <section id="history" class="mt-6">

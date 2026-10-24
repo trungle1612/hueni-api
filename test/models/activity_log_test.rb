@@ -48,7 +48,7 @@ class ActivityLogTest < ActiveSupport::TestCase
     version = assert_one_version(booking, "update") { booking.update!(note: "Đến muộn", end_date: "2026-10-09") }
     assert_equal({ "note" => [ nil, "Đến muộn" ], "end_date" => [ "2026-10-08", "2026-10-09" ] }, version.object_changes)
 
-    version = assert_one_version(booking, "update") { booking.update!(status: "cancelled") }
+    version = assert_one_version(booking, "update") { booking.update!(status: "cancelled", cancel_reason: "Khách huỷ") }
     assert_equal [ "confirmed", "cancelled" ], version.object_changes["status"]
 
     assert_no_difference(-> { PaperTrail::Version.count }) { booking.touch }

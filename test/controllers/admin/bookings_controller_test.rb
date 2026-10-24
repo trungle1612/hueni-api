@@ -131,10 +131,18 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "a[href='tel:0905123456']"
 
-    patch admin_booking_path(booking), params: { booking: { status: "cancelled" } }
+    assert_select "#huy form[action='#{admin_booking_path(booking)}'] input[type=radio][name='booking[cancel_reason]']", 4
+    patch admin_booking_path(booking), params: { booking: { status: "cancelled", cancel_reason: "other", cancel_reason_other: "" } }
+    assert_response :unprocessable_entity
+    assert_select "#huy[open] #cancel_reason_error", text: /không thể để trống/
+    assert_select "#cancelled", 0
+    assert booking.reload.confirmed?
+
+    patch admin_booking_path(booking), params: { booking: { status: "cancelled", cancel_reason: "Khách huỷ" } }
     assert booking.reload.cancelled?
     assert_redirected_to admin_place_calendar_path("tomo-homestay")
     get edit_admin_booking_path(booking)
+    assert_select "#cancelled", text: "Đã huỷ · Khách huỷ"
     assert_select "form[action='#{admin_booking_path(booking)}'] button", text: "Khôi phục đặt phòng"
 
     patch admin_booking_path(booking), params: { booking: { status: "confirmed" } }
@@ -149,7 +157,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     [ ical, other ].each do |booking|
       get edit_admin_booking_path(booking)
       assert_response :not_found
-      patch admin_booking_path(booking), params: { booking: { status: "cancelled" } }
+      patch admin_booking_path(booking), params: { booking: { status: "cancelled", cancel_reason: "Khách huỷ" } }
       assert_response :not_found
       assert_not booking.reload.cancelled?
     end
@@ -208,7 +216,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_nil booking.reload.checked_in_at
 
     booking.check_in
-    patch admin_booking_path(booking), params: { booking: { status: "cancelled" } }
+    patch admin_booking_path(booking), params: { booking: { status: "cancelled", cancel_reason: "Khách huỷ" } }
     assert_response :unprocessable_entity
     assert_select "[role=alert]", text: /Khách đã nhận phòng, không huỷ được/
     assert booking.reload.confirmed?
@@ -220,7 +228,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='booking[guests]'][type=number][max='4']"
     assert_select "#stay form[action='#{check_in_admin_booking_path(booking)}'][data-turbo-confirm='Anh Minh nhận phòng Limdim?']"
     assert_select "form[action='#{check_out_admin_booking_path(booking)}']", count: 0
-    assert_select "button", text: "Huỷ đặt phòng"
+    assert_select "#huy summary", text: "Huỷ đặt phòng"
   end
 
   test "edit page of a checked-in guest shows the time and check-out, hides cancel" do
@@ -229,7 +237,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     get edit_admin_booking_path(booking)
     assert_select "#stay", text: /Đã nhận phòng lúc 12:00 01\/10/
     assert_select "#stay form[action='#{check_out_admin_booking_path(booking)}']"
-    assert_select "button", text: "Huỷ đặt phòng", count: 0
+    assert_select "#huy", count: 0
 
     booking.check_out
     get edit_admin_booking_path(booking)
@@ -323,7 +331,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     get edit_admin_booking_path(booking)
     assert_select "#move", count: 0 # limdim is taken by Anh Minh
 
-    bookings(:limdim_confirmed).update!(status: "cancelled")
+    bookings(:limdim_confirmed).update!(status: "cancelled", cancel_reason: "Khách huỷ")
     staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
     places(:tomo).place_memberships.create!(user: staff, role: "staff")
     delete session_path
