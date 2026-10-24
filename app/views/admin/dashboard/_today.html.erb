@@ -1,23 +1,24 @@
 <% many_places = @places.size > 1 %>
-<% stays = ->(group, bookings) { render partial: "stay", collection: bookings, as: :booking, locals: { group:, many_places: } } %>
+<%# Ngày mai: the same lists, nothing to press yet. %>
+<% stays = ->(group, bookings) { render partial: "stay", collection: bookings, as: :booking, locals: { group: (@tomorrow ? :tomorrow : group), many_places: } } %>
 <% heading = ->(kind, label, count) { safe_join([ activity_icon(kind, size: "size-7"), tag.span(label), tag.span(count, class: "badge badge-sm badge-ghost") ]) } %>
 <section id="today" class="card bg-base-100 shadow-sm mb-6">
   <div class="card-body p-4 gap-4">
-    <h2 class="font-semibold">Hôm nay</h2>
+    <h2 class="font-semibold"><%= @tomorrow ? "Ngày mai #{Date.current.next_day.strftime("%d/%m")}" : "Hôm nay" %></h2>
     <% if @departures.any? %>
       <div id="departures">
-        <div class="flex items-center gap-2 font-semibold"><%= heading.(:check_out, "Trả phòng", @departures.size) %></div>
+        <div class="flex items-center gap-2 font-semibold"><%= heading.(:check_out, "Chờ đi", @departures.size) %></div>
         <div class="divide-y divide-base-200"><%= stays.(:departures, @departures) %></div>
       </div>
     <% end %>
     <% if @dirty_rooms.any? %>
       <div id="dirty_rooms">
-        <div class="flex items-center gap-2 font-semibold"><%= heading.(:clean, "Cần dọn", @dirty_rooms.size) %></div>
+        <div class="flex items-center gap-2 font-semibold"><%= heading.(:clean, @tomorrow ? "Sẽ cần dọn" : "Cần dọn", @dirty_rooms.size) %></div>
         <div class="divide-y divide-base-200">
           <% @dirty_rooms.each do |room| %>
             <div class="flex justify-between items-center gap-3 py-3">
               <div class="min-w-0 truncate"><span class="font-semibold">Phòng <%= room.name %></span><% if many_places %> <span class="text-sm opacity-80">· <%= room.place.name %></span><% end %></div>
-              <%= clean_button(room, size: "shrink-0") %>
+              <%= clean_button(room, size: "shrink-0") unless @tomorrow %>
             </div>
           <% end %>
         </div>
@@ -25,7 +26,7 @@
     <% end %>
     <% if @arrivals.any? %>
       <div id="arrivals">
-        <div class="flex items-center gap-2 font-semibold"><%= heading.(:check_in, "Sắp đến", @arrivals.size) %></div>
+        <div class="flex items-center gap-2 font-semibold"><%= heading.(:check_in, "Chờ đến", @arrivals.size) %></div>
         <div class="divide-y divide-base-200"><%= stays.(:arrivals, @arrivals) %></div>
       </div>
     <% end %>

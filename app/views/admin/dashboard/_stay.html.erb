@@ -12,7 +12,9 @@
       </div>
     <% end %>
   <% end %>
-  <% unless (group == :in_house && !booking.needs_declaration?) %>
+  <% if group == :tomorrow %>
+    <% if (call = call_link(booking)) %><div class="flex justify-end sm:shrink-0"><%= call %></div><% end %>
+  <% elsif !(group == :in_house && !booking.needs_declaration?) %>
     <div class="flex items-center justify-end gap-2 sm:shrink-0">
       <% if group == :arrivals %>
         <%# Không đến cancels: kept apart from call / Nhận phòng so a thumb doesn't land on it. %>

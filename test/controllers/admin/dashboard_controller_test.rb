@@ -173,10 +173,67 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "#in_house form[action='#{declare_admin_booking_path(staying)}']", text: "Đã khai báo"
     assert_select "#today_booking_#{staying.id} .badge", text: "Chưa khai báo lưu trú"
     assert_select "#today", text: /Chị Hoa/, count: 0
-    assert_select "#stat_arrivals", text: /1\s*Sắp đến/
-    assert_select "#stat_in_house", text: /1\s*Đang ở/
-    assert_select "#stat_departures", text: /2\s*Trả phòng/
+    assert_select "#stat_arrivals", text: /1\s*Chờ đến/
+    assert_select "#stat_in_house", text: /1\/2\s*Đang ở/ # of 2 open rooms
+    assert_select "#stat_departures", text: /2\s*Chờ đi/
     assert_select "#stat_dirty_rooms", text: /1\s*Cần dọn/
+    assert_select "#issues h2", "Cần xử lý · 3"
+    assert_select "#issues a[href=?]", admin_place_path("tomo-homestay", anchor: "room_#{rooms(:limdim).id}"), text: /Khách đến, phòng chưa dọn\s*Anh Minh · Phòng Limdim/
+    assert_select "#issues a", text: /Chưa khai báo lưu trú\s*Anh Tú · Phòng Garden/
+    assert_select "#issues a[href=?]", edit_admin_booking_path(staying), text: /Chưa khai báo lưu trú\s*Cô Ba/
+    assert_select "#issues details", count: 0
+  end
+
+  test "Cần xử lý: OTA conflicts from today on, top 3 then Xem thêm" do
+    travel_to Time.zone.local(2026, 10, 2, 9)
+    feed = calendar_feeds(:limdim_airbnb)
+    feed.bookings.create!(room: rooms(:limdim), uid: "old", start_date: "2026-09-01", end_date: "2026-09-03", source: "ical")
+    rooms(:limdim).bookings.build(start_date: "2026-09-02", end_date: "2026-09-03", guest_name: "Đã qua").save!(validate: false)
+    feed.bookings.create!(room: rooms(:limdim), uid: "a", start_date: "2026-10-02", end_date: "2026-10-04", source: "ical")
+    rooms(:garden).bookings.create!(start_date: "2026-10-01", end_date: "2026-10-05", guest_name: "Cô Ba").update_columns(checked_in_at: 1.day.ago)
+    rooms(:garden).bookings.create!(start_date: "2026-10-06", end_date: "2026-10-08", guest_name: "Chị Hoa")
+    feed.bookings.create!(room: rooms(:limdim), uid: "b", start_date: "2026-10-10", end_date: "2026-10-12", source: "ical")
+    rooms(:limdim).bookings.build(start_date: "2026-10-11", end_date: "2026-10-12", guest_name: "Chị Lan").save!(validate: false)
+
+    log_in users(:owner)
+    get admin_root_path
+    # Anh Minh (fixture 1–3/10) vs Airbnb 2/10; Chị Lan vs Airbnb 11/10; Cô Ba without lưu trú. September's is over.
+    assert_select "#issues h2", "Cần xử lý · 3"
+    assert_select "#issues > .card-body > div > a", 3
+    assert_select "#issues a[href=?]", admin_place_calendar_path("tomo-homestay", from: "2026-10-02"), text: /Trùng lịch OTA\s*Airbnb và Anh Minh · Phòng Limdim · 02\/10/
+    assert_select "#issues a", text: /Đã qua/, count: 0
+
+    rooms(:limdim).dirty! # Anh Minh and the Airbnb guest both arrive today to a dirty room
+    get admin_root_path
+    assert_select "#issues h2", "Cần xử lý · 5"
+    assert_select "#issues details summary", "Xem thêm 2"
+    assert_select "#issues details a", 2
+  end
+
+  test "Ngày mai: who arrives, who leaves, Sẽ cần dọn, who stays on; nothing to press" do
+    travel_to Time.zone.local(2026, 10, 2, 9)
+    # Anh Minh (fixture 1–3/10, not in yet) leaves tomorrow; Cô Ba stays on; Chị Hoa arrives.
+    rooms(:garden).bookings.create!(start_date: "2026-10-01", end_date: "2026-10-05", guest_name: "Cô Ba", guest_phone: "0905123456").update_columns(checked_in_at: 1.day.ago)
+    rooms(:limdim).bookings.create!(start_date: "2026-10-03", end_date: "2026-10-04", guest_name: "Chị Hoa", guest_phone: "0905000111")
+    rooms(:limdim).bookings.create!(start_date: "2026-10-04", end_date: "2026-10-05", guest_name: "Sau nữa")
+
+    log_in users(:owner)
+    get admin_root_path(day: "mai")
+    assert_select "#day a.tab-active", "Ngày mai"
+    assert_select "#today h2", "Ngày mai 03/10"
+    assert_select "#departures", text: /Anh Minh/
+    assert_select "#dirty_rooms", text: /Phòng Limdim/
+    assert_select "#arrivals", text: /Chị Hoa/
+    assert_select "#arrivals a[href='tel:0905000111']"
+    assert_select "#in_house", text: /Cô Ba/
+    assert_select "#today form", count: 0
+    assert_select "#today", text: /Sau nữa/, count: 0
+    assert_select "#stat_dirty_rooms", text: /1\s*Sẽ cần dọn/
+    assert_select "#stat_in_house", text: /1\/2\s*Đang ở/
+
+    travel_to Time.zone.local(2026, 10, 20, 9)
+    get admin_root_path(day: "mai")
+    assert_select "#today", text: "Ngày mai chưa có khách đến hay đi."
   end
 
   test "homestay name shows in rows only for users with several homestays" do
