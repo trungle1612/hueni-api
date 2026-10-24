@@ -6,9 +6,9 @@ class Admin::BaseController < ApplicationController
   # Owner-only action on a homestay you can see but don't own (e.g. you're staff there).
   class Forbidden < StandardError; end
 
-  rescue_from Forbidden, with: -> { render "admin/forbidden", status: :forbidden }
+  rescue_from Forbidden, with: -> { render "admin/forbidden", status: :forbidden, formats: :html }
   # Out of scope (or gone): a friendly 404 inside the admin layout, also in development.
-  rescue_from ActiveRecord::RecordNotFound, with: -> { render "admin/not_found", status: :not_found }
+  rescue_from ActiveRecord::RecordNotFound, with: -> { render "admin/not_found", status: :not_found, formats: :html }
 
   helper_method :allowed_to?
 

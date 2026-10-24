@@ -23,7 +23,7 @@ class Admin::ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "#month", "Tháng 10/2026"
     assert_select "nav", text: /đến hôm nay, 20\/10/
     assert_select "a", text: "Về tháng này", count: 0
-    assert_select "#tile-revenue h2", "Tiền phòng 1–20/10 (ước tính)"
+    assert_select "#tile-revenue h2", "Doanh thu 1–20/10"
     assert_select "#tile-revenue", /800\.000 ₫\s*Từ 2 đêm có khách\.\s*tăng 100% so với 1–20\/9\./
     assert_select "#tile-revenue", /chưa trừ hoa hồng/
     assert_select "#ahead", /Đã đặt trước 2 đêm từ 21\/10 đến cuối tháng · khoảng 800\.000 ₫/
@@ -98,5 +98,31 @@ class Admin::ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "aside a", text: /Báo cáo/, count: 0
     get admin_report_path
     assert_redirected_to admin_root_path
+  end
+
+  test "tabs 7 ngày · Tháng này · Tháng 9, Công nợ, Thực nhận and Xuất CSV" do
+    places(:tomo).update!(commissions: { "airbnb" => "15" })
+    calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:limdim), uid: "a", start_date: "2026-10-15", end_date: "2026-10-17", source: "ical")
+    owed = rooms(:limdim).bookings.create!(start_date: "2026-10-18", end_date: "2026-10-19", guest_name: "Chị Mai")
+    log_in users(:owner)
+
+    get admin_place_report_path("tomo-homestay", period: "7d")
+    assert_select "#periods a.tab-active", "7 ngày"
+    assert_select "#periods a[href=?]", admin_place_report_path("tomo-homestay", month: "2026-09"), text: "Tháng 9"
+    assert_select "#month", "7 ngày qua · 14–20/10"
+    assert_select "#tile-revenue h2", "Doanh thu 14–20/10"
+    assert_select "#tile-due", /400\.000 ₫\s*1 đặt phòng/
+    assert_select "#debts a[href=?]", edit_admin_booking_path(owed, anchor: "thanh-toan"), text: /Chị Mai · Limdim.*quá hạn\s*400\.000 ₫/m
+    assert_select "#channels tr", text: /Airbnb\s*2 đêm · hoa hồng 15%\s*800\.000 ₫\s*680\.000 ₫/
+    assert_select "#channels tr", text: /Trực tiếp\s*1 đêm · không hoa hồng/
+
+    get admin_place_report_path("tomo-homestay", period: "7d", format: :csv)
+    assert_equal "text/csv; charset=utf-8", response.media_type + "; charset=" + response.charset
+    assert_match "bao-cao-tomo-homestay-2026-10-14-2026-10-20.csv", response.headers["Content-Disposition"]
+    assert_match "Chị Mai", response.body.force_encoding("UTF-8")
+
+    log_in staff
+    get admin_place_report_path("tomo-homestay", format: :csv)
+    assert_response :forbidden
   end
 end
