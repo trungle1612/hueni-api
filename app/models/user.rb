@@ -3,6 +3,7 @@ class User < ApplicationRecord
 
   has_secure_password
   has_many :sessions, dependent: :destroy
+  has_many :api_tokens, dependent: :delete_all
   has_many :place_memberships, dependent: :destroy
   has_many :places, through: :place_memberships
 
@@ -32,6 +33,15 @@ class User < ApplicationRecord
   def reset_login!
     update!(password: User.unknown_password, zalo_id: nil)
     sessions.destroy_all
+    api_tokens.delete_all
+  end
+
+  # #98: the phone number on a Zalo account (verified by Zalo) links an owner or staff member who has no Zalo yet.
+  # `normalizes` turns Zalo's 84… / +84… into our 0…. Never admins. The web login and the Mini App (#152) both use it.
+  def self.link_zalo_by_phone(phone, zalo_id)
+    return if phone.blank? || zalo_id.blank?
+    user = User.user.find_by(phone_number: phone, zalo_id: nil)
+    user if user&.update(zalo_id:)
   end
 
   def initial = name.to_s.first.to_s.upcase

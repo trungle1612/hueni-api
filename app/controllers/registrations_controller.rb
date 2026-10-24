@@ -20,7 +20,7 @@ class RegistrationsController < ApplicationController
 
   def create
     @registration = RegistrationRequest.new(registration_params.merge(zalo_id: @zalo["zalo_id"], zalo_name: @zalo["zalo_name"]))
-    @registration.place = matching_place(@registration.place_name)
+    @registration.place = RegistrationRequest.matching_place(@registration.place_name)
     if @registration.save
       NotifyRegistrationJob.perform_later(@registration, admin_registration_request_url(@registration))
       redirect_to registration_path
@@ -38,7 +38,7 @@ class RegistrationsController < ApplicationController
     return redirect_to registration_path unless @registration&.pending?
 
     @registration.assign_attributes(registration_params)
-    @registration.place = matching_place(@registration.place_name)
+    @registration.place = RegistrationRequest.matching_place(@registration.place_name)
     if @registration.save
       redirect_to registration_path, notice: "Đã cập nhật thông tin."
     else
@@ -66,10 +66,4 @@ class RegistrationsController < ApplicationController
     def latest_request = RegistrationRequest.where(zalo_id: @zalo["zalo_id"]).order(:id).last
 
     def registration_params = params.expect(registration_request: %i[name phone_number place_name maps_url])
-
-    # The name picked from the suggestions (or typed exactly). Two homestays with that name → none: the admin picks.
-    def matching_place(name)
-      places = Place.where(name: name.to_s.strip).limit(2).to_a
-      places.first if places.one?
-    end
 end

@@ -19,6 +19,12 @@ class RegistrationRequest < ApplicationRecord
   validates :maps_url, format: { with: %r{\Ahttps?://\S+\z}i, allow_blank: true }
   validate :phone_number_free, if: :will_save_change_to_phone_number?
 
+  # The name picked from the suggestions (or typed exactly). Two homestays with that name → none: the admin picks.
+  def self.matching_place(name)
+    places = Place.where(name: name.to_s.strip).limit(2).to_a
+    places.first if places.one?
+  end
+
   def homestay_name = place&.name || place_name
   # The admin verifies by calling the homestay's number on hueni. Without one, the note must say how it was verified.
   def verifiable? = place&.phone.present?
