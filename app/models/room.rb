@@ -2,10 +2,11 @@ class Room < ApplicationRecord
   include VndPrice
 
   belongs_to :place
+  belongs_to :room_type, optional: true
   has_many :bookings
   has_many :calendar_feeds, dependent: :destroy
   # Becoming dirty is part of check-out, so only "dọn xong" (→ clean) and Bảo trì are logged.
-  has_paper_trail on: %i[create update destroy], only: [ :name, :max_guests, :price, :weekend_price, :active, :maintenance_reason, :maintenance_until,
+  has_paper_trail on: %i[create update destroy], only: [ :name, :max_guests, :price, :weekend_price, :active, :maintenance_reason, :maintenance_until, :floor, :room_type_id, :amenities, :note,
     { housekeeping: ->(room) { !room.dirty? } } ],
     meta: { place_id: :place_id, room_id: :id }
 
@@ -21,6 +22,13 @@ class Room < ApplicationRecord
   # weekend_price: Friday and Saturday nights; blank = the weekday price.
   vnd_price :price, :weekend_price
   validate :photo_urls_are_http_urls
+
+  # Tiện nghi (#138): keys, labels for the form and the booking page.
+  AMENITIES = { "ac" => "Máy lạnh", "window" => "Cửa sổ", "balcony" => "Ban công", "bathtub" => "Bồn tắm", "kitchen" => "Bếp nhỏ", "desk" => "Bàn làm việc" }.freeze
+  normalizes :note, with: ->(value) { value.strip.presence }
+  validates :floor, numericality: { only_integer: true, in: 0..200 }, allow_nil: true
+  validates :note, length: { maximum: 1000 }
+  validate -> { errors.add(:room_type, :invalid) if room_type && room_type.place_id != place_id }
   # Xoá phòng (#122): only a room that never had a booking (one added by mistake), so history and Báo cáo stay whole.
   before_destroy prepend: true do
     next unless bookings.exists?
@@ -53,6 +61,13 @@ class Room < ApplicationRecord
 
   # Daily: Bảo trì past its last day ends; the room needs cleaning before the next guest.
   def self.end_maintenance = maintenance.where(maintenance_until: ...Date.current).find_each { it.update!(housekeeping: "dirty") }
+
+  # Checkbox lists send a blank first value; keep AMENITIES order.
+  def amenities=(value)
+    super(AMENITIES.keys & Array(value))
+  end
+
+  def amenity_labels = AMENITIES.values_at(*amenities)
 
   def weekend_price_below_price? = weekend_price && price && weekend_price < price
 

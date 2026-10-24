@@ -156,4 +156,15 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_equal Date.new(2026, 10, 1), booking.reload.start_date
     assert booking.checked_in_at
   end
+
+  test "rooms are grouped by floor when floors are set" do
+    log_in users(:owner)
+    get admin_place_path("tomo-homestay")
+    assert_select "main h2", text: /tầng/i, count: 0
+
+    rooms(:limdim).update!(floor: 1)
+    get admin_place_path("tomo-homestay")
+    assert_equal [ "Tầng 1", "Chưa ghi tầng" ], css_select("main h2").map { it.text.strip }.grep(/tầng/i)
+    assert_equal [ "room_#{rooms(:limdim).id}", "room_#{rooms(:garden).id}" ], css_select(".card[id^=room_]").map { it["id"] }
+  end
 end

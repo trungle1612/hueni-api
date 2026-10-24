@@ -11,11 +11,20 @@
   <% end %>
 <% end %>
 
+<% if @room_types.any? %>
+  <%# Loại phòng filter (#138). %>
+  <%= form_with url: admin_place_calendar_path(@place.slug), method: :get, class: "mb-3", data: { controller: "autosubmit" } do %>
+    <%= hidden_field_tag :from, params[:from] if params[:from].present? %>
+    <%= select_tag :type, options_from_collection_for_select(@room_types, :id, :name, @room_type&.id), include_blank: "Mọi loại phòng",
+          class: "select select-sm w-full", aria: { label: "Loại phòng" }, data: { action: "change->autosubmit#submit" } %>
+  <% end %>
+<% end %>
+
 <div class="flex items-center gap-1 mb-3">
-  <%= link_to "‹", admin_place_calendar_path(@place.slug, from: @days.begin - @days.count), class: "btn btn-sm btn-square", aria: { label: "Trước" } %>
-  <%= link_to "›", admin_place_calendar_path(@place.slug, from: @days.end), class: "btn btn-sm btn-square", aria: { label: "Sau" } %>
+  <%= link_to "‹", admin_place_calendar_path(@place.slug, from: @days.begin - @days.count, type: @room_type&.id), class: "btn btn-sm btn-square", aria: { label: "Trước" } %>
+  <%= link_to "›", admin_place_calendar_path(@place.slug, from: @days.end, type: @room_type&.id), class: "btn btn-sm btn-square", aria: { label: "Sau" } %>
   <span class="text-sm ml-1"><%= @days.begin.strftime("%d/%m") %> – <%= (@days.end - 1).strftime("%d/%m/%Y") %></span>
-  <%= link_to "Hôm nay", admin_place_calendar_path(@place.slug), class: "btn btn-ghost btn-sm" unless @days.cover?(Date.current) %>
+  <%= link_to "Hôm nay", admin_place_calendar_path(@place.slug, type: @room_type&.id), class: "btn btn-ghost btn-sm" unless @days.cover?(Date.current) %>
   <%= link_to "+ Đặt phòng", new_admin_place_booking_path(@place.slug), class: "btn btn-primary btn-sm ml-auto" %>
 </div>
 

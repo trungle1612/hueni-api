@@ -271,6 +271,56 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Đã lưu phòng Limdim.", flash[:notice]
   end
 
+  test "room form saves Tầng, Loại phòng, tiện nghi and ghi chú; Phòng lists type and floor" do
+    double = places(:tomo).room_types.create!(name: "Phòng đôi")
+    other_type = places(:hiuhill).room_types.create!(name: "Không phải của tôi")
+    get edit_admin_room_path(rooms(:garden))
+    assert_select "select[name='room[room_type_id]'] option", text: "Phòng đôi"
+    assert_select "select[name='room[room_type_id]'] option", text: "Không phải của tôi", count: 0
+    assert_select "input[type=checkbox][name='room[amenities][]']", Room::AMENITIES.size
+
+    patch admin_room_path(rooms(:garden)), params: { room: { floor: "2", room_type_id: double.id, amenities: [ "", "balcony", "ac", "pool" ], note: " Vòi sen yếu " } }
+    assert_equal [ 2, double, [ "ac", "balcony" ], "Vòi sen yếu" ], rooms(:garden).reload.values_at(:floor, :room_type, :amenities, :note)
+    get admin_rooms_path
+    assert_select "#room_#{rooms(:garden).id}", text: /Phòng đôi · Tầng 2 · 2 khách/
+
+    patch admin_room_path(rooms(:garden)), params: { room: { room_type_id: other_type.id } }
+    assert_response :unprocessable_entity
+    assert_equal double, rooms(:garden).reload.room_type
+  end
+
+  test "owners manage Loại phòng; a type in use can't be deleted; staff 403, other homestay 404" do
+    post admin_place_room_types_path("tomo-homestay"), params: { room_type: { name: "  Phòng   đôi " } }
+    assert_redirected_to admin_rooms_path(anchor: "loai-phong-tomo-homestay")
+    type = places(:tomo).room_types.sole
+    assert_equal "Phòng đôi", type.name
+    post admin_place_room_types_path("tomo-homestay"), params: { room_type: { name: "phòng đôi" } }
+    assert_equal "Tên loại phòng đã tồn tại", flash[:alert]
+
+    patch admin_place_room_type_path("tomo-homestay", type), params: { room_type: { name: "Phòng 2 người" } }
+    assert_equal "Phòng 2 người", type.reload.name
+    get admin_rooms_path
+    assert_select "#loai-phong-tomo-homestay summary", text: /Phòng 2 người/
+
+    rooms(:garden).update!(room_type: type)
+    delete admin_place_room_type_path("tomo-homestay", type)
+    assert_equal "Phòng 2 người đang có phòng dùng, đổi loại của các phòng đó trước.", flash[:alert]
+    rooms(:garden).update!(room_type: nil)
+    delete admin_place_room_type_path("tomo-homestay", type)
+    assert_not RoomType.exists?(type.id)
+
+    other = places(:hiuhill).room_types.create!(name: "Đồi")
+    patch admin_place_room_type_path("hiuhill-homestay", other), params: { room_type: { name: "x" } }
+    assert_response :not_found
+
+    staff = User.create!(name: "Em Hằng", phone_number: "0987111222", password: "password123")
+    staff.place_memberships.create!(place: places(:tomo), role: "staff")
+    delete session_path
+    log_in staff
+    post admin_place_room_types_path("tomo-homestay"), params: { room_type: { name: "X" } }
+    assert_response :forbidden
+  end
+
   test "admins who aren't members can't mark a room clean" do
     rooms(:garden).dirty!
     delete session_path

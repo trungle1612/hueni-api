@@ -6,7 +6,7 @@ class Admin::RoomsController < Admin::BaseController
 
   # Room setup for every homestay you own; the homestay page stays the daily board.
   def index
-    @places = owned_places.includes(rooms: :calendar_feeds)
+    @places = owned_places.includes(:room_types, rooms: %i[calendar_feeds room_type])
     raise Forbidden if @places.none?
   end
 
@@ -71,7 +71,8 @@ class Admin::RoomsController < Admin::BaseController
     end
 
     def room_params
-      params.expect(room: [ :name, :max_guests, :price, :weekend_price, :active, :state, :maintenance_reason, :maintenance_until ])
+      params.expect(room: [ :name, :max_guests, :price, :weekend_price, :active, :state, :maintenance_reason, :maintenance_until,
+        :floor, :room_type_id, :note, amenities: [] ])
     end
 
     def price_notes

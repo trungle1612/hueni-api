@@ -72,6 +72,8 @@ class Admin::ActivityHelperTest < ActionView::TestCase
     assert_equal [ :room, "Thêm phòng", nil ], entry
     room.update!(name: "Mây Trắng", price: 350_000, max_guests: 3)
     assert_equal [ :room, "Sửa phòng", "đổi tên Mây → Mây Trắng, giá chưa có → 350.000 ₫, tối đa 2 → 3 khách" ], entry
+    room.update!(floor: 2, room_type: places(:tomo).room_types.create!(name: "Phòng đôi"), amenities: [ "ac" ], note: "x")
+    assert_equal [ :room, "Sửa phòng", "tầng — → 2, loại — → Phòng đôi, sửa tiện nghi, sửa ghi chú" ], entry
     room.update!(active: false)
     assert_equal [ :room, "Tạm ngưng phòng", nil ], entry
     room.update!(active: true)

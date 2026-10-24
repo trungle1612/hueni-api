@@ -34,6 +34,7 @@ Rails.application.routes.draw do
       resource :activity, only: :show
       resource :report, only: :show
       resources :rooms, only: %i[new create]
+      resources :room_types, only: %i[create update destroy]
       resources :bookings, only: %i[new create] do
         get :availability, on: :collection
       end

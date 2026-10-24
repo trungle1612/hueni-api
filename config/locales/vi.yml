@@ -20,6 +20,11 @@ vi:
         weekend_price: Giá thứ 6, thứ 7
         maintenance_reason: Lý do bảo trì
         maintenance_until: Ngày dự kiến xong
+        floor: Tầng
+        room_type: Loại phòng
+        note: Ghi chú nội bộ
+      room_type:
+        name: Tên loại phòng
       booking:
         start_date: Ngày nhận phòng
         end_date: Ngày trả phòng

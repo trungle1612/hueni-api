@@ -12,7 +12,10 @@ class Admin::CalendarsController < Admin::BaseController
     @place = Current.user.accessible_places.find_by!(slug: params[:place_slug])
     @places = Current.user.accessible_places.order(:name)
     @days = (date_param(:from) || Date.current).then { it...(it + DAYS) }
+    @room_types = @place.room_types.order(:name)
+    @room_type = @room_types.find(params[:type]) if params[:type].present?
     @rooms = @place.rooms.where(active: true).order(:name)
+    @rooms = @rooms.where(room_type: @room_type) if @room_type
     # In-house guests too: an overdue one still holds the room, one due out today is listed by the room name.
     bookings = Booking.blocking.where(room: @rooms).merge(Booking.overlapping(@days.begin, @days.end).or(Booking.in_house))
       .includes(:calendar_feed, :room).order(:start_date).to_a

@@ -27,8 +27,12 @@
 
 <% if @days.any? %>
   <div class="flex flex-col gap-3">
-    <% @days.each do |day| %>
+    <% floors = @days.any? { it.room.floor } %>
+    <% @days.each_with_index do |day, i| %>
       <% room, booking = day.room, day.booking %>
+      <% if floors && (i.zero? || @days[i - 1].room.floor != room.floor) %>
+        <h2 class="text-sm font-semibold opacity-70 <%= "mt-2" unless i.zero? %>"><%= room.floor ? "Tầng #{room.floor}" : "Chưa ghi tầng" %></h2>
+      <% end %>
       <div id="<%= dom_id(room) %>" class="card bg-base-100 shadow-sm overflow-hidden <%= "opacity-60" unless room.active? %>">
         <div class="flex justify-between items-center px-4 py-2 <%= room_tile_class(day) %>">
           <span class="font-semibold"><%= room.name %></span>

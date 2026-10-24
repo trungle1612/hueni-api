@@ -106,4 +106,18 @@ class Admin::CalendarsControllerTest < ActionDispatch::IntegrationTest
     get admin_place_calendar_path("tomo-homestay")
     assert_select "a[href=?]", new_admin_place_booking_path("tomo-homestay", room_id: rooms(:garden).id, start_date: "2026-10-05")
   end
+
+  test "Loại phòng filter shows only rooms of that type; another homestay's type is not found" do
+    double = places(:tomo).room_types.create!(name: "Phòng đôi")
+    rooms(:garden).update!(room_type: double)
+    log_in users(:owner)
+    get admin_place_calendar_path("tomo-homestay", type: double.id)
+    assert_select "select[name=type] option[selected]", text: "Phòng đôi"
+    assert_select "[data-room]", 1
+    assert_select "[data-room='#{rooms(:garden).id}']"
+    assert_select "a[aria-label='Sau'][href*='type=#{double.id}']"
+
+    get admin_place_calendar_path("tomo-homestay", type: places(:hiuhill).room_types.create!(name: "x").id)
+    assert_response :not_found
+  end
 end
