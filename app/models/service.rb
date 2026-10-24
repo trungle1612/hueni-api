@@ -4,6 +4,7 @@ class Service < ApplicationRecord
   include VndPrice
 
   belongs_to :place
+  has_paper_trail on: %i[create update destroy], only: %i[name price unit], meta: { place_id: :place_id }
 
   DEFAULTS = [ [ "Nước suối", 15_000, "chai" ], [ "Giặt ủi", 30_000, "kg" ], [ "Thuê xe máy", 150_000, "ngày" ],
     [ "Nhận phòng sớm", 100_000, nil ], [ "Trả phòng muộn", 150_000, nil ] ].freeze

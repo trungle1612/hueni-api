@@ -81,6 +81,11 @@ class Admin::FolioTest < ActionDispatch::IntegrationTest
     assert_equal 12_000, @water.reload.price
     delete admin_place_service_path("tomo-homestay", @water)
     assert_not Service.exists?(@water.id)
+    get admin_place_activity_path("tomo-homestay")
+    assert_select "body", text: /Thêm vào danh sách dịch vụ.*Giặt ủi · 30.000 ₫\/kg/m
+    assert_select "body", text: /Sửa dịch vụ.*Nước suối: giá 15.000 ₫ → 12.000 ₫/m
+    assert_select "body", text: /Xoá khỏi danh sách dịch vụ.*Nước suối · 12.000 ₫\/chai/m
+    assert_equal 0, PaperTrail::Version.where(item_type: "Service", place_id: Place.find_by!(slug: "moi").id).count
 
     delete session_path
     log_in @staff

@@ -50,6 +50,9 @@ module Admin::ActivityHelper
       in [ "Payment", "create" | "destroy" ] then activity_payment(version, after)
       in [ "BookingCharge", "create" | "destroy" ]
         [ version.event == "create" ? :ok : :cancel, version.event == "create" ? "Thêm dịch vụ" : "Bỏ dịch vụ", activity_charge(after) ]
+      in [ "Service", "create" ] then [ :ok, "Thêm vào danh sách dịch vụ", activity_service(after) ]
+      in [ "Service", "destroy" ] then [ :cancel, "Xoá khỏi danh sách dịch vụ", activity_service(after) ]
+      in [ "Service", "update" ] then [ :edit, "Sửa dịch vụ", activity_service_changes(changes, after) ]
       in [ "CalendarFeed", "update" ] then after["last_error"].present? ? [ :error, "Đồng bộ lỗi", sync_error_message(after["last_error"]) ] : [ :ok, "Đồng bộ lại được" ]
       else [ :edit, "Thay đổi" ]
       end
@@ -85,6 +88,16 @@ module Admin::ActivityHelper
     def activity_charge(after)
       label = "#{after["name"]} × #{after["quantity"]}#{" #{after["unit"]}" if after["unit"]}"
       [ label, vnd(after["unit_price"] * after["quantity"]), activity_code(after) ].compact.join(" · ")
+    end
+
+    def activity_service(attrs) = "#{attrs["name"]} · #{vnd(attrs["price"])}#{"/#{attrs["unit"]}" if attrs["unit"]}"
+
+    def activity_service_changes(changes, after)
+      parts = []
+      parts << "đổi tên #{changes["name"][0]} → #{changes["name"][1]}" if changes.key?("name")
+      parts << "giá #{vnd(changes["price"][0])} → #{vnd(changes["price"][1])}" if changes.key?("price")
+      parts << "đơn vị #{activity_value(changes["unit"][0])} → #{activity_value(changes["unit"][1])}" if changes.key?("unit")
+      [ (after["name"] unless changes.key?("name")), parts.join(", ") ].compact.join(": ")
     end
 
     def activity_code(after) = Booking.where(id: after["booking_id"]).pick(:number)&.then { format("DP-%04d", it) }
