@@ -2,17 +2,29 @@
 <% r = @report; prev = r.future? ? nil : r.previous %>
 <% card = "card bg-base-100 shadow-sm" %>
 <% compared = prev && "so với #{report_period(prev)}" %>
+<% period = r.month? ? { month: r.month.strftime("%Y-%m") } : { period: "7d" } %>
 
 <%= render "admin/rooms/header", back: admin_place_path(@place.slug), back_label: @place.name, title: "Báo cáo" %>
 
 <% if @places.size > 1 %>
   <%= form_with url: admin_report_path, method: :get, class: "mb-3", data: { controller: "autosubmit" } do %>
-    <%= hidden_field_tag :month, r.month.strftime("%Y-%m") %>
+    <% period.each do |key, value| %><%= hidden_field_tag key, value %><% end %>
     <%= select_tag :slug, options_for_select(@places.map { [ it.name, it.slug ] }, @place.slug),
           class: "select w-full", aria: { label: "Homestay" }, data: { action: "change->autosubmit#submit" } %>
   <% end %>
 <% end %>
 
+<% last_month = Date.current.prev_month.beginning_of_month %>
+<div class="flex items-end justify-between gap-2 mb-3">
+  <nav id="periods" class="tabs tabs-border" aria-label="Kỳ báo cáo">
+    <%= link_to "7 ngày", admin_place_report_path(@place.slug, period: "7d"), class: "tab #{"tab-active" unless r.month?}" %>
+    <%= link_to "Tháng này", admin_place_report_path(@place.slug), class: "tab #{"tab-active" if r.month? && r.current?}" %>
+    <%= link_to "Tháng #{last_month.month}", admin_place_report_path(@place.slug, month: last_month.strftime("%Y-%m")), class: "tab #{"tab-active" if r.month? && r.month == last_month}" %>
+  </nav>
+  <%= link_to "Xuất CSV", admin_place_report_path(@place.slug, **period, format: :csv), id: "csv", class: "btn btn-sm mb-1" %>
+</div>
+
+<% if r.month? %>
 <nav class="<%= card %> flex-row items-center justify-between gap-1 p-1.5 mb-3" aria-label="Chọn tháng">
   <%= link_to admin_place_report_path(@place.slug, month: r.month.prev_month.strftime("%Y-%m")), class: "btn btn-ghost h-11 px-2 gap-1" do %>
     <%= render "shared/icon", name: "chevron-left" %>Tháng <%= r.month.prev_month.month %>
@@ -29,6 +41,9 @@
     Tháng <%= r.month.next_month.month %><%= render "shared/icon", name: "chevron-right" %>
   <% end %>
 </nav>
+<% else %>
+<p id="month" class="text-center font-semibold mb-3">7 ngày qua · <%= report_period(r) %></p>
+<% end %>
 
 <% ahead = capture do %>
   <% if r.ahead.positive? %>
@@ -43,6 +58,7 @@
     <div class="card-body p-4 gap-1">
       <p class="text-lg font-semibold">
         <% if r.future? %>Chưa có ai đặt phòng cho tháng <%= r.month.month %>.
+        <% elsif !r.month? %>Chưa có đêm nào có khách trong 7 ngày qua.
         <% elsif r.current? %>Chưa có đêm nào có khách từ 1/<%= r.month.month %> đến hôm nay.
         <% else %>Tháng <%= r.month.month %> không có đêm nào có khách và không có lượt đặt nào.<% end %>
       </p>
@@ -52,14 +68,14 @@
 <% else %>
   <section id="tile-revenue" class="<%= card %> mb-3">
     <div class="card-body p-4 gap-1">
-      <h2 class="text-sm font-medium opacity-70"><%= r.future? ? "Đã đặt trước cho tháng #{r.month.month}" : "Tiền phòng #{report_period(r)} (ước tính)" %></h2>
+      <h2 class="text-sm font-medium opacity-70"><%= r.future? ? "Đã đặt trước cho tháng #{r.month.month}" : "Doanh thu #{report_period(r)}" %></h2>
       <p class="text-4xl font-bold tabular-nums"><%= vnd(r.revenue) %></p>
       <p>
         <%= r.future? ? "#{r.sold} đêm đã có khách đặt." : "Từ #{r.sold} đêm có khách." %>
         <% if (delta = prev && report_delta(r.revenue, prev.revenue, kind: :percent)) %><%= delta %> <%= compared %>.<% end %>
       </p>
       <p class="text-sm opacity-70">
-        Số đêm × giá phòng hiện tại, chưa trừ hoa hồng Airbnb / Booking.com.
+        Tiền phòng + dịch vụ − giảm giá, gồm cả tiền chưa thu, chưa trừ hoa hồng OTA.
         <% if r.unpriced? %>Đêm chưa có giá không được tính.<% end %>
       </p>
       <%= ahead unless r.future? %>
@@ -73,14 +89,15 @@
              prev && report_delta(r.alos, prev.alos, kind: :nights) ],
            [ "cancellations", "Khách huỷ", r.cancellation_rate && percent(r.cancellation_rate),
              "#{r.outcomes["cancelled"] + r.ota_cancelled} trong #{r.booking_count + r.ota_cancelled} lượt",
-             prev && report_delta(r.cancellation_rate, prev.cancellation_rate, kind: :points, higher_is_better: false) ]
+             prev && report_delta(r.cancellation_rate, prev.cancellation_rate, kind: :points, higher_is_better: false) ],
+           [ "due", "Còn phải thu", r.due.positive? && vnd(r.due), "#{r.debts.size} đặt phòng", nil ]
      ].select { |_, _, value| value } %>
   <section id="stats" class="<%= card %> mb-3" aria-label="Chi tiết">
     <dl class="card-body p-4 grid grid-cols-2 gap-x-3 gap-y-4">
       <% stats.each do |id, label, value, sub, delta| %>
         <div id="tile-<%= id %>">
           <dt class="text-sm opacity-70"><%= label %></dt>
-          <dd class="text-xl font-bold tabular-nums"><%= value %></dd>
+          <dd class="text-xl font-bold tabular-nums <%= "text-warning" if id == "due" %>"><%= value %></dd>
           <% if sub || delta %><dd class="text-sm flex flex-wrap items-center gap-1"><%= safe_join([ sub, delta ].compact, " ") %></dd><% end %>
         </div>
       <% end %>
@@ -88,26 +105,46 @@
     <% if stats.any? { |*, delta| delta } %><p class="text-sm opacity-70 px-4 pb-3 -mt-2">Tăng / giảm <%= compared %>.</p><% end %>
   </section>
 
+  <% if r.debts.any? %>
+    <section id="debts" class="<%= card %> p-4 mb-3">
+      <h2 class="font-semibold mb-1">Công nợ chưa thu</h2>
+      <ul class="divide-y divide-base-200">
+        <% r.debts.each do |booking| %>
+          <% overdue = r.overdue?(booking) %>
+          <li>
+            <%= link_to edit_admin_booking_path(booking, anchor: "thanh-toan"), class: "flex items-center justify-between gap-3 py-2" do %>
+              <span class="min-w-0">
+                <span class="font-medium"><%= booking.label %></span> · <%= booking.room.name %>
+                <span class="block text-sm opacity-70"><%= booking.code %> · <%= booking.start_date.strftime("%d/%m") %>–<%= booking.end_date.strftime("%d/%m") %><%= " · quá hạn" if overdue %></span>
+              </span>
+              <span class="tabular-nums font-semibold <%= overdue ? "text-error" : "text-warning" %>"><%= vnd(booking.due) %></span>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+
   <section id="rooms" class="<%= card %> p-4 mb-3">
-    <h2 class="font-semibold mb-1">Theo phòng</h2>
+    <h2 class="font-semibold mb-1"><%= r.rooms.size > 5 ? "Top 5 phòng" : "Theo phòng" %></h2>
     <table class="table tabular-nums">
-      <thead><tr><th class="ps-0">Phòng</th><th class="text-right">Đêm có khách</th><th class="text-right pe-0">Tiền phòng</th></tr></thead>
+      <thead><tr><th class="ps-0">Phòng</th><th class="text-right">Đêm có khách</th><th class="text-right pe-0">Doanh thu</th></tr></thead>
       <tbody>
-        <% r.rooms.each do |row| %>
+        <% r.top_rooms.each do |row| %>
           <tr>
             <td class="ps-0"><%= row.room.name %><progress class="progress progress-primary w-full h-1.5 block mt-1" value="<%= row.sold %>" max="<%= r.days %>"></progress></td>
             <td class="text-right"><%= row.sold %> / <%= r.days %></td>
             <td class="text-right pe-0"><%= row.revenue ? vnd(row.revenue) : link_to("Chưa có giá", edit_admin_room_path(row.room), class: "badge badge-soft badge-warning") %></td>
           </tr>
         <% end %>
-        <tr class="font-semibold"><td class="ps-0">Tổng</td><td class="text-right"><%= r.sold %> / <%= r.available %></td><td class="text-right pe-0"><%= vnd(r.revenue) %></td></tr>
+        <tr class="font-semibold"><td class="ps-0">Tổng<%= " (#{r.rooms.size} phòng)" if r.rooms.size > 5 %></td><td class="text-right"><%= r.sold %> / <%= r.available %></td><td class="text-right pe-0"><%= vnd(r.revenue) %></td></tr>
       </tbody>
     </table>
   </section>
 
   <% if r.channels.any? { |_, numbers| numbers[:nights].positive? } %>
     <section id="channels" class="<%= card %> p-4 mb-3">
-      <h2 class="font-semibold mb-2">Khách từ đâu</h2>
+      <h2 class="font-semibold mb-2">Theo nguồn đặt</h2>
       <% colors = { "manual" => "bg-primary", "airbnb" => "bg-secondary", "booking" => "bg-accent", "agoda" => "bg-info", "other" => "bg-neutral" } %>
       <div class="flex h-3 rounded-full overflow-hidden gap-0.5 mb-1" aria-hidden="true">
         <% r.channels.each do |channel, numbers| %>
@@ -116,13 +153,20 @@
         <% end %>
       </div>
       <table class="table tabular-nums">
-        <thead><tr><th class="ps-0">Kênh</th><th class="text-right">Đêm</th><th class="text-right pe-0">Tiền phòng</th></tr></thead>
+        <thead><tr><th class="ps-0">Nguồn</th><th class="text-right">Doanh thu</th><th class="text-right pe-0">Thực nhận</th></tr></thead>
         <tbody>
           <% r.channels.each do |channel, numbers| %>
             <tr>
-              <td class="ps-0"><span class="inline-block size-3 rounded-full align-[-1px] <%= colors.fetch(channel) %> me-1.5"></span><%= Report::CHANNEL_LABELS.fetch(channel) %></td>
-              <td class="text-right"><%= numbers[:nights] %> · <%= percent(numbers[:nights].to_f / r.sold) %></td>
-              <td class="text-right pe-0"><%= vnd(numbers[:revenue]) %></td>
+              <td class="ps-0">
+                <span class="inline-block size-3 rounded-full align-[-1px] <%= colors.fetch(channel) %> me-1.5"></span><%= Report::CHANNEL_LABELS.fetch(channel) %>
+                <span class="block text-sm opacity-70"><%= numbers[:nights] %> đêm · <%=
+                  if numbers[:commission] then "hoa hồng #{commission(numbers[:commission])}%"
+                  elsif Place::COMMISSION_PROVIDERS.include?(channel) then "chưa nhập % hoa hồng"
+                  else "không hoa hồng"
+                  end %></span>
+              </td>
+              <td class="text-right"><%= vnd(numbers[:revenue]) %></td>
+              <td class="text-right pe-0 font-semibold"><%= vnd(numbers[:net]) %></td>
             </tr>
           <% end %>
         </tbody>

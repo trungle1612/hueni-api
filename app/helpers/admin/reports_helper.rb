@@ -2,9 +2,10 @@ module Admin::ReportsHelper
   # 0.527 → "53%"; nil → "—"
   def percent(value) = value ? "#{(value * 100).round}%" : "—"
 
-  # "1–19/10" for a month in progress, else "tháng 10".
+  # "1–19/10" for a month in progress, "28/9–4/10" for 7 ngày, else "tháng 10".
   def report_period(report)
-    report.partial? ? "#{report.month.day}–#{report.last.strftime("%-d/%-m")}" : "tháng #{report.month.month}"
+    return "tháng #{report.month.month}" if report.month? && !report.partial?
+    "#{report.first.strftime(report.first.month == report.last.month ? "%-d" : "%-d/%-m")}–#{report.last.strftime("%-d/%-m")}"
   end
 
   # "tăng 6%" / "giảm 0,5 đêm" against the previous period, as a soft badge: green when good, red when bad.
