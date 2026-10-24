@@ -78,6 +78,13 @@ Rails.application.routes.draw do
     end
   end
 
+  # Zalo Mini App API (#119 C).
+  scope "app/v1", module: "mini_app/v1", as: "app_v1", defaults: { format: :json } do
+    resource :session, only: %i[create destroy]
+    resource :me, only: :show, controller: "me"
+    match "*path", to: "base#preflight", via: :options
+  end
+
   namespace :v1 do
     get "vacancy", to: "vacancy#show"
   end

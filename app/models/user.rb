@@ -3,6 +3,7 @@ class User < ApplicationRecord
 
   has_secure_password
   has_many :sessions, dependent: :destroy
+  has_many :api_tokens, dependent: :delete_all
   has_many :place_memberships, dependent: :destroy
   has_many :places, through: :place_memberships
 
@@ -32,6 +33,7 @@ class User < ApplicationRecord
   def reset_login!
     update!(password: User.unknown_password, zalo_id: nil)
     sessions.destroy_all
+    api_tokens.delete_all
   end
 
   def initial = name.to_s.first.to_s.upcase
