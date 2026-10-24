@@ -61,10 +61,10 @@ class Admin::PaymentsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  test "Đã thu X, nhận phòng records the cash due; ghi nợ leaves it owed" do
+  test "Thu X và nhận phòng records the cash due; ghi nợ leaves it owed" do
     log_in users(:owner)
     get edit_admin_booking_path(@booking)
-    assert_select "#stay button[name=collect][value='1']", "Đã thu 900.000 ₫, nhận phòng"
+    assert_select "#stay button[name=collect][value='1']", "Thu 900.000 ₫ và nhận phòng"
     assert_select "#stay button", "Nhận phòng, ghi nợ"
 
     post check_in_admin_booking_path(@booking), params: { collect: "1" }
