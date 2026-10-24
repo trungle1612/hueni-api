@@ -21,6 +21,29 @@
     </div>
     <div class="grid grid-cols-2 gap-3">
       <div>
+        <%= form.label :floor, "Tầng", class: "block mb-1 font-medium" %>
+        <%# Existing floors as suggestions; a new number starts a new floor. %>
+        <%= form.number_field :floor, min: 0, max: 200, placeholder: "Không", list: "floors",
+              class: class_names("input input-lg w-full", "input-error": room.errors.include?(:floor)) %>
+        <datalist id="floors"><% place.rooms.filter_map(&:floor).uniq.sort.each do |floor| %><option value="<%= floor %>"></option><% end %></datalist>
+        <%= field_error room, :floor %>
+      </div>
+      <div>
+        <%= form.label :room_type, "Loại phòng", class: "block mb-1 font-medium" %>
+        <%= form.select :room_type, Room::ROOM_TYPES.invert, { include_blank: "Chưa chọn" },
+              class: class_names("select select-lg w-full", "select-error": room.errors.include?(:room_type)) %>
+        <%= field_error room, :room_type %>
+      </div>
+      <p class="col-span-2 text-sm opacity-70">Không bắt buộc. Loại phòng dùng để lọc lịch phòng.</p>
+    </div>
+    <fieldset>
+      <legend class="mb-1 font-medium">Tiện nghi</legend>
+      <%= form.collection_check_boxes :amenities, Room::AMENITIES, :first, :last do |box| %>
+        <%= box.label(class: "inline-flex items-center gap-2 mr-4 min-h-11 cursor-pointer") { box.check_box(class: "checkbox checkbox-sm") + box.text } %>
+      <% end %>
+    </fieldset>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
         <%= form.label :price, "Giá mỗi đêm (₫)", class: "block mb-1 font-medium" %>
         <%= price_field form, :price, hint: "price_hint", autofocus: first_error == :price %>
         <%= field_error room, :price %>
@@ -31,6 +54,13 @@
         <%= field_error room, :weekend_price %>
       </div>
       <p id="price_hint" class="col-span-2 text-sm opacity-70">Không bắt buộc. Ví dụ 450.000 hoặc 450k. Giá mới áp dụng cho đặt phòng tạo sau khi lưu, đặt phòng đã có giữ giá cũ. Chỉ chủ cơ sở thấy giá.</p>
+    </div>
+    <div>
+      <%= form.label :note, "Ghi chú nội bộ", class: "block mb-1 font-medium" %>
+      <%= form.text_area :note, rows: 2, maxlength: 1000, placeholder: "Ví dụ: vòi sen yếu, khoá cửa kẹt",
+            class: class_names("textarea w-full", "textarea-error": room.errors.include?(:note)), aria: { describedby: "note_hint" } %>
+      <p id="note_hint" class="text-sm opacity-70 mt-1">Chỉ chủ cơ sở thấy, không lên hueni.me.</p>
+      <%= field_error room, :note %>
     </div>
     <% if room.persisted? %>
       <fieldset class="group flex flex-col gap-2">

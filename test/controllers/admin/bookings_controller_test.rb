@@ -130,6 +130,11 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     get edit_admin_booking_path(booking)
     assert_response :success
     assert_select "h1", "Sửa đặt phòng #{booking.code}"
+    assert_select "#room_details", 0
+    rooms(:garden).update!(amenities: %w[ac bathtub], room_type: "double", note: "chỉ chủ")
+    get edit_admin_booking_path(booking)
+    assert_select "#room_details", "Phòng đôi · Máy lạnh · Bồn tắm"
+    assert_no_match "chỉ chủ", response.body
     assert_match(/\ADP-\d{4}\z/, booking.code)
     assert_select "a[href='tel:0905123456']"
 

@@ -18,6 +18,9 @@
       <% else %>
         <div class="mb-1 font-medium">Phòng</div>
         <div class="text-lg font-semibold"><%= booking.room&.name || "Chưa có phòng nào đang nhận khách" %></div>
+        <% if (details = [ booking.room&.room_type_label, *booking.room&.amenity_labels ].compact).any? %>
+          <div id="room_details" class="text-sm opacity-70"><%= details.join(" · ") %></div>
+        <% end %>
         <%= form.hidden_field :room_id if booking.new_record? %>
       <% end %>
     </div>

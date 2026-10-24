@@ -4,7 +4,8 @@ class Admin::PlacesController < Admin::BaseController
   before_action -> { authorize!(:manage, @place) }, only: :commissions
 
   def show
-    @days = RoomDay.for(@place.rooms.order(active: :desc, name: :asc)) # switched-off rooms last
+    # By floor (#138, rooms without one last), switched-off rooms last within it.
+    @days = RoomDay.for(@place.rooms.order(Arel.sql("floor IS NULL, floor"), active: :desc, name: :asc))
     @vacancy_left = Vacancy.cached[:places].dig(@place.slug, :left)
     @feed_errors = CalendarFeed.where(room: @place.rooms).where.not(last_error: nil).count
     @memberships = @place.place_memberships.includes(:user).sort_by { [ it.owner? ? 0 : 1, it.user.name ] } if allowed_to?(:manage, @place)

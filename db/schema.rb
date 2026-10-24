@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_24_300000) do
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -119,8 +119,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_200000) do
     t.integer "weekend_price"
     t.string "maintenance_reason"
     t.date "maintenance_until"
+    t.string "room_type"
+    t.integer "floor"
+    t.json "amenities", default: [], null: false
+    t.text "note"
     t.index ["place_id", "name"], name: "index_rooms_on_place_id_and_name", unique: true
     t.check_constraint "housekeeping IN ('clean', 'dirty', 'maintenance')", name: "rooms_housekeeping_values"
+    t.check_constraint "room_type IN ('single', 'double', 'family', 'dorm', 'studio', 'villa')", name: "rooms_room_type_values"
   end
 
   create_table "sessions", force: :cascade do |t|

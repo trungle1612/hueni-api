@@ -271,6 +271,24 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Đã lưu phòng Limdim.", flash[:notice]
   end
 
+  test "room form saves Tầng, Loại phòng, tiện nghi and ghi chú; Phòng lists type and floor" do
+    get edit_admin_room_path(rooms(:garden))
+    assert_select "select[name='room[room_type]'] option", Room::ROOM_TYPES.size + 1
+    assert_select "select[name='room[room_type]'] option[value=double]", text: "Phòng đôi"
+    assert_select "input[type=checkbox][name='room[amenities][]']", Room::AMENITIES.size
+
+    patch admin_room_path(rooms(:garden)), params: { room: { floor: "2", room_type: "double", amenities: [ "", "balcony", "ac", "pool" ], note: " Vòi sen yếu " } }
+    assert_equal [ 2, "double", [ "ac", "balcony" ], "Vòi sen yếu" ], rooms(:garden).reload.values_at(:floor, :room_type, :amenities, :note)
+    get admin_rooms_path
+    assert_select "#room_#{rooms(:garden).id}", text: /Phòng đôi · Tầng 2 · 2 khách/
+
+    patch admin_room_path(rooms(:garden)), params: { room: { room_type: "penthouse" } }
+    assert_response :unprocessable_entity
+    assert_select "#room_type_error"
+    patch admin_room_path(rooms(:garden)), params: { room: { room_type: "" } }
+    assert_nil rooms(:garden).reload.room_type
+  end
+
   test "admins who aren't members can't mark a room clean" do
     rooms(:garden).dirty!
     delete session_path
