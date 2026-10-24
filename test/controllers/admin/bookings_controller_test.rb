@@ -129,6 +129,8 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-06", guest_phone: "0905123456")
     get edit_admin_booking_path(booking)
     assert_response :success
+    assert_select "h1", "Sửa đặt phòng #{booking.code}"
+    assert_match(/\ADP-\d{4}\z/, booking.code)
     assert_select "a[href='tel:0905123456']"
 
     assert_select "#huy form[action='#{admin_booking_path(booking)}'] input[type=radio][name='booking[cancel_reason]']", 4

@@ -13,6 +13,8 @@ class Booking < ApplicationRecord
   # What the guest paid ahead (Đã cọc), noted at the desk until payments exist (#119 B).
   vnd_price :deposit
   before_create { self.price, self.weekend_price = room.price, room.weekend_price if price.nil? && room }
+  # Booking code DP-0142 (#124): next number of the homestay, manual and iCal alike. Kept on a room move (same homestay).
+  before_create { self.number = room.place.next_booking_number! if room }
 
   # Blank form fields stay nil, so saving the form unchanged logs no "— → —" change.
   normalizes :guest_name, :guest_phone, :note, with: ->(value) { value.strip.presence }
@@ -83,6 +85,7 @@ class Booking < ApplicationRecord
   end
   # How the calendar, Hôm nay and messages name a booking.
   def guest_phone_dial = guest_phone&.gsub(/[^\d+]/, "")
+  def code = number && format("DP-%04d", number)
   def label = guest_name.presence || note.presence || (ical? ? calendar_feed&.provider_label || "iCal" : "Khách")
   def overlaps?(other) = start_date < other.occupied_until && other.start_date < occupied_until
   # One night's price: Friday and Saturday nights use the weekend price. Unquoted bookings (the room had no price

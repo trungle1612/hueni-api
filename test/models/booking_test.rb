@@ -77,6 +77,18 @@ class BookingTest < ActiveSupport::TestCase
       booking.errors[:base]
   end
 
+  test "booking codes count per homestay, iCal too, and survive a room move" do
+    places(:tomo).update!(last_booking_number: 141)
+    first = saved(guest_name: "A")
+    ical = calendar_feeds(:limdim_airbnb).bookings.create!(room: rooms(:limdim), uid: "x", start_date: "2026-10-10", end_date: "2026-10-11", source: "ical")
+    other = Booking.create!(room: Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 2), start_date: "2026-10-01", end_date: "2026-10-02")
+    assert_equal [ "DP-0142", "DP-0143", "DP-0001" ], [ first.code, ical.code, other.code ]
+    assert_equal 143, places(:tomo).reload.last_booking_number
+
+    first.update!(room: rooms(:limdim), start_date: "2026-10-20", end_date: "2026-10-21")
+    assert_equal "DP-0142", first.reload.code
+  end
+
   test "overlap ignores touching dates, other rooms, cancelled bookings and itself" do
     assert build(room: rooms(:limdim), start_date: "2026-10-03", end_date: "2026-10-05").valid? # checkout day is free
     assert build(room: rooms(:limdim), start_date: "2026-09-29", end_date: "2026-10-01").valid?

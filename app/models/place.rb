@@ -8,6 +8,12 @@ class Place < ApplicationRecord
   validates :slug, presence: true, uniqueness: true
   validates :name, presence: true
 
+  # Booking codes (#124): one UPDATE, so two bookings saved at once never share a number.
+  def next_booking_number!
+    Place.where(id:).update_all("last_booking_number = last_booking_number + 1")
+    Place.where(id:).pick(:last_booking_number)
+  end
+
   # Upserts places from hueni's homestay.json "places" array, keyed by slug. Never deletes.
   def self.import(hueni_places)
     counts = { created: 0, updated: 0, unchanged: 0 }

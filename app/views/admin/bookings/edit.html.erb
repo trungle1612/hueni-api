@@ -1,5 +1,5 @@
 <% content_for :title, "Sửa đặt phòng · hueni admin" %>
-<%= render "admin/rooms/header", back: admin_place_calendar_path(@place.slug), back_label: "Lịch phòng", title: "Sửa đặt phòng" %>
+<%= render "admin/rooms/header", back: admin_place_calendar_path(@place.slug), back_label: "Lịch phòng", title: [ "Sửa đặt phòng", @booking.code ].compact.join(" ") %>
 <% if @booking.checked_in_at || @booking.can_check_in? %>
   <div id="stay" class="card bg-base-100 shadow-sm mb-3">
     <div class="card-body p-4 flex-row justify-between items-center gap-2">

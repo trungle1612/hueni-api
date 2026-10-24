@@ -75,7 +75,7 @@
             <% from = ([ booking.start_date, @days.begin ].max - @days.begin).to_i + 2 %>
             <% to = ([ booking_bar_end(booking), @days.end ].min - @days.begin).to_i + 2 %>
             <% conflict = conflict_ids.include?(booking.id) %>
-            <% options = { id: dom_id(booking), title: booking_label(booking), style: "grid-column: #{from} / #{to}; grid-row: #{lane + 1}",
+            <% options = { id: dom_id(booking), title: [ booking.code, booking_label(booking) ].compact.join(" · "), style: "grid-column: #{from} / #{to}; grid-row: #{lane + 1}",
                  class: "z-[1] m-0.5 rounded px-1.5 flex items-center truncate #{booking_bar_class(booking)} #{"ring-2 ring-error" if conflict}",
                  data: { conflict: (true if conflict) } } %>
             <% if booking.manual? %>
