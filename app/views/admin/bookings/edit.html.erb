@@ -39,6 +39,7 @@
     </div>
   <% end %>
 <% end %>
+<%= render "payments", booking: @booking, place: @place %>
 <%= render "form", booking: @booking, place: @place %>
 <% if @booking.status_in_database == "cancelled" %>
   <p id="cancelled" class="alert alert-soft mt-3">Đã huỷ<%= " · #{@booking.cancel_reason}" if @booking.cancel_reason %></p>
@@ -61,6 +62,20 @@
                 class: "input w-full hidden group-has-[input[value=other]:checked]:block" %>
         </fieldset>
         <%= field_error @booking, :cancel_reason %>
+        <%# Money already paid: an explicit choice (#139). Only owners refund. %>
+        <% if (paid = @booking.paid).positive? %>
+          <fieldset id="refund" class="flex flex-col gap-1">
+            <legend class="font-medium mb-1">Tiền cọc <%= vnd(paid) %></legend>
+            <label class="flex items-center gap-3 min-h-11 cursor-pointer"><%= radio_button_tag :refund_method, "", true, class: "radio" %>Giữ lại tiền cọc</label>
+            <% if allowed_to?(:manage, @place) %>
+              <% Payment::METHODS.each do |key, label| %>
+                <label class="flex items-center gap-3 min-h-11 cursor-pointer"><%= radio_button_tag :refund_method, key, false, class: "radio" %>Hoàn cọc · <%= label %></label>
+              <% end %>
+            <% else %>
+              <p class="text-sm opacity-70">Chỉ chủ cơ sở hoàn cọc được.</p>
+            <% end %>
+          </fieldset>
+        <% end %>
         <p class="text-sm opacity-70">Phòng sẽ trống lại. Đặt phòng đã huỷ vẫn giữ trong lịch sử, khôi phục được.</p>
         <%= form.submit "Xác nhận huỷ", class: "btn btn-error btn-block" %>
       </div>

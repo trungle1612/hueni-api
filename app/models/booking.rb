@@ -3,15 +3,22 @@ class Booking < ApplicationRecord
 
   belongs_to :room
   belongs_to :calendar_feed, optional: true
-  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note price weekend_price deposit cancel_reason checked_in_at checked_out_at removed_from_feed_at declared_at],
+  # Saved on their own (Payment checks the balance), never along with the booking.
+  has_many :payments, dependent: :destroy, autosave: false, validate: false
+  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note price weekend_price cancel_reason checked_in_at checked_out_at removed_from_feed_at declared_at],
     meta: { place_id: ->(booking) { booking.room.place_id }, room_id: :room_id }
 
   after_commit { Vacancy.bust }
 
   # The quote: the room's prices when the booking was made. A later room price change (or a room move) keeps it.
   vnd_price :price, :weekend_price
-  # What the guest paid ahead (Đã cọc), noted at the desk until payments exist (#119 B).
+  # Đã cọc on the new-booking form: saved as the first payment (#139).
+  attribute :deposit, :integer
+  attribute :deposit_method, :string, default: "cash"
   vnd_price :deposit
+  validates :deposit_method, inclusion: { in: Payment::METHODS.keys }, if: :deposit
+  validate -> { errors.add(:deposit, "không được lớn hơn tiền phòng (#{VndPrice.format(room_total)})") if deposit && room_total && deposit > room_total }, on: :create
+  after_create { payments.create!(amount: deposit, payment_method: deposit_method, note: "Cọc", user: Current.user) if deposit&.positive? }
   before_create { self.price, self.weekend_price = room.price, room.weekend_price if price.nil? && room }
   # Booking code DP-0142 (#124): next number of the homestay, manual and iCal alike. Kept on a room move (same homestay).
   before_create { self.number = room.place.next_booking_number! if room }
@@ -23,7 +30,7 @@ class Booking < ApplicationRecord
   # like a hotel's night audit: they can be checked in and stay in Hôm nay.
   LATE_ARRIVAL_UNTIL = 6
 
-  # No Giữ chỗ (#127): a booking is confirmed or cancelled; Đã cọc (deposit) says whether money came in.
+  # No Giữ chỗ (#127): a booking is confirmed or cancelled; payments say whether money came in.
   enum :status, { confirmed: "confirmed", cancelled: "cancelled" }, validate: true
   enum :source, { manual: "manual", ical: "ical" }, validate: true
   # Status changes go through these events, so side effects (notifications, tracking) hang off them.
@@ -94,8 +101,19 @@ class Booking < ApplicationRecord
     weekday, weekend = price ? [ price, weekend_price ] : [ room.price, room.weekend_price ]
     (weekend if date.friday? || date.saturday?) || weekday
   end
-  # Chưa cọc: a direct booking not yet checked in with no deposit noted (the calendar's amber bar, like the Zalo app).
-  def awaiting_deposit? = manual? && !checked_in_at && !deposit&.positive?
+  # Thanh toán (#139): every booked night at its price; nil while a night has no price.
+  def room_total
+    return unless room && start_date && end_date
+    prices = (start_date...end_date).map { price_on(it) }
+    prices.sum unless prices.include?(nil)
+  end
+
+  # Saved payments minus refunds. OTA bookings are paid on the OTA: nothing is due here.
+  def paid = payments.reject(&:new_record?).sum(&:signed_amount)
+  def due = (room_total - paid if manual? && room_total)
+
+  # Chưa cọc: a direct booking not yet checked in with nothing paid (the calendar's amber bar, like the Zalo app).
+  def awaiting_deposit? = manual? && !checked_in_at && !paid.positive?
   # Holds a night the room is under Bảo trì (today through maintenance_until).
   def in_maintenance? = room.maintenance? && start_date <= room.maintenance_until && occupied_until > Date.current
   def early_check_in? = !checked_in_at && start_date > Date.current

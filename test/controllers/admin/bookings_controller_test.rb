@@ -97,11 +97,15 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     places(:tomo).place_memberships.create!(user: staff, role: "staff")
     delete session_path
     log_in staff
-    post admin_place_bookings_path("tomo-homestay"), params: { booking: { room_id: rooms(:garden).id, start_date: "2026-10-08", end_date: "2026-10-09", price: "1", deposit: "200k" } }
-    assert_equal [ 400_000, 200_000 ], Booking.last.then { [ it.price, it.deposit ] } # the room's price, not the staff's; staff note the deposit
+    post admin_place_bookings_path("tomo-homestay"), params: { booking: { room_id: rooms(:garden).id, start_date: "2026-10-08", end_date: "2026-10-09", price: "1", deposit: "200k", deposit_method: "bank" } }
+    # The room's price, not the staff's; staff note the deposit, saved as the first payment (#139).
+    assert_equal [ 400_000, 200_000 ], Booking.last.then { [ it.price, it.paid ] }
+    assert_equal [ "bank", "Cọc", staff ], Booking.last.payments.sole.then { [ it.payment_method, it.note, it.user ] }
     get edit_admin_booking_path(Booking.last)
     assert_select "#quote", 0
-    assert_select "input[name='booking[deposit]'][value='200.000']"
+    assert_select "#thanh-toan", text: /Tiền phòng\s*400.000 ₫/
+    assert_select "#thanh-toan", text: /Cọc · Chuyển khoản/
+    assert_select "#due", text: /Còn phải thu\s*200.000 ₫/
   end
 
   test "overlapping booking is rejected" do

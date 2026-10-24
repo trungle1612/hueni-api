@@ -20,6 +20,13 @@ class Place < ApplicationRecord
     super(value.transform_values { Float(it, exception: false) || it })
   end
 
+  # Tài khoản chuyển khoản (#139): shown when a guest pays by Chuyển khoản. Owner-set, not from hueni.
+  normalizes :bank_name, :bank_account, :bank_holder, with: ->(value) { value.squish.presence }
+  validates :bank_name, :bank_holder, length: { maximum: 100 }
+  validates :bank_account, length: { maximum: 30 }
+
+  def bank? = bank_name.present? && bank_account.present?
+
   # Booking codes (#124): one UPDATE, so two bookings saved at once never share a number.
   def next_booking_number!
     Place.where(id:).update_all("last_booking_number = last_booking_number + 1")

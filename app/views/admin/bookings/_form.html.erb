@@ -63,7 +63,8 @@
             class: class_names("input input-lg w-full", "input-error": booking.errors.include?(:guests)), aria: field_aria(booking, :guests) %>
       <%= field_error booking, :guests %>
     </div>
-    <%# Owners quote the price (weekend price only when editing: a new booking takes the room's); anyone at the desk notes the deposit. %>
+    <%# Owners quote the price (weekend price only when editing: a new booking takes the room's); anyone at the desk notes the deposit
+        of a new booking, later money goes through Thanh toán (#139). %>
     <div class="grid grid-cols-2 gap-3">
       <% if allowed_to?(:manage, place) %>
         <div id="quote">
@@ -79,11 +80,14 @@
           </div>
         <% end %>
       <% end %>
-      <div>
-        <%= form.label :deposit, "Đã cọc (₫)", class: "block mb-1 font-medium" %>
-        <%= price_field form, :deposit, placeholder: "Chưa cọc", autofocus: first_error == :deposit %>
-        <%= field_error booking, :deposit %>
-      </div>
+      <% if booking.new_record? %>
+        <div id="deposit">
+          <%= form.label :deposit, "Đã cọc (₫)", class: "block mb-1 font-medium" %>
+          <%= price_field form, :deposit, placeholder: "Chưa cọc", autofocus: first_error == :deposit %>
+          <%= form.select :deposit_method, Payment::METHODS.invert, {}, class: "select select-sm w-full mt-1", aria: { label: "Hình thức cọc" } %>
+          <%= field_error booking, :deposit %>
+        </div>
+      <% end %>
       <% if allowed_to?(:manage, place) %>
         <p id="quote_hint" class="col-span-2 text-sm opacity-70"><%= booking.new_record? ? "Để trống: lấy giá phòng lúc lưu." : "Giá đã chốt cho đặt phòng này. Đổi giá phòng không làm đổi giá này." %></p>
       <% end %>

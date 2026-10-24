@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_300000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_24_400000) do
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -31,7 +31,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_300000) do
     t.datetime "declared_at"
     t.integer "price"
     t.integer "weekend_price"
-    t.integer "deposit"
     t.string "cancel_reason"
     t.integer "number"
     t.index ["calendar_feed_id", "uid"], name: "index_bookings_on_calendar_feed_id_and_uid", unique: true
@@ -53,6 +52,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_300000) do
     t.datetime "updated_at", null: false
     t.index ["room_id", "url"], name: "index_calendar_feeds_on_room_id_and_url", unique: true
     t.check_constraint "provider IN ('airbnb', 'booking', 'agoda', 'other')", name: "calendar_feeds_provider_values"
+  end
+
+  create_table "payments", force: :cascade do |t|
+    t.integer "booking_id", null: false
+    t.integer "user_id"
+    t.integer "amount", null: false
+    t.string "kind", default: "payment", null: false
+    t.string "payment_method", null: false
+    t.string "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["booking_id"], name: "index_payments_on_booking_id"
+    t.index ["user_id"], name: "index_payments_on_user_id"
+    t.check_constraint "amount > 0", name: "payments_amount_positive"
+    t.check_constraint "kind IN ('payment', 'refund')", name: "payments_kind_values"
+    t.check_constraint "payment_method IN ('cash', 'bank', 'card')", name: "payments_payment_method_values"
   end
 
   create_table "place_memberships", force: :cascade do |t|
@@ -81,6 +96,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_300000) do
     t.datetime "updated_at", null: false
     t.integer "last_booking_number", default: 0, null: false
     t.json "commissions", default: {}, null: false
+    t.string "bank_name"
+    t.string "bank_account"
+    t.string "bank_holder"
     t.index ["slug"], name: "index_places_on_slug", unique: true
   end
 
@@ -183,6 +201,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_300000) do
   add_foreign_key "bookings", "calendar_feeds"
   add_foreign_key "bookings", "rooms"
   add_foreign_key "calendar_feeds", "rooms"
+  add_foreign_key "payments", "bookings"
+  add_foreign_key "payments", "users"
   add_foreign_key "place_memberships", "places"
   add_foreign_key "place_memberships", "users"
   add_foreign_key "registration_requests", "places"
