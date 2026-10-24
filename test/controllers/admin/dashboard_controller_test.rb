@@ -165,6 +165,9 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "#arrivals form[action='#{check_in_admin_booking_path(bookings(:limdim_confirmed))}']"
     assert_select "#arrivals form[action='#{no_show_admin_booking_path(bookings(:limdim_confirmed))}']"
     assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /Phòng Limdim · 01\/10–03\/10/
+    bookings(:limdim_confirmed).update_column(:number, 7)
+    get admin_root_path
+    assert_select "#today_booking_#{bookings(:limdim_confirmed).id}", text: /DP-0007 · Phòng Limdim/
     assert_select "#in_house", text: /Cô Ba · 2 khách/
     assert_select "#in_house form", count: 1
     assert_select "#in_house form[action='#{declare_admin_booking_path(staying)}']", text: "Đã khai báo"

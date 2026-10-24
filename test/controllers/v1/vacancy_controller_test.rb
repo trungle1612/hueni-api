@@ -24,10 +24,10 @@ class V1::VacancyControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "exposes no guest or feed data" do
-    bookings(:limdim_confirmed).update!(guest_phone: "0905123456", note: "secret", uid: "abc@airbnb.com")
+    bookings(:limdim_confirmed).update!(guest_phone: "0905123456", note: "secret", uid: "abc@airbnb.com", number: 142)
     get "/v1/vacancy"
 
-    [ "Anh Minh", "0905123456", "secret", "abc@airbnb.com", calendar_feeds(:limdim_airbnb).url ].each { assert_not_includes response.body, it }
+    [ "Anh Minh", "0905123456", "secret", "abc@airbnb.com", calendar_feeds(:limdim_airbnb).url, "DP-0142", "142" ].each { assert_not_includes response.body, it }
   end
 
   test "cache is busted when a booking is written" do

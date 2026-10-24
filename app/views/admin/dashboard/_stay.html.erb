@@ -4,7 +4,7 @@
 <div id="<%= dom_id(booking, :today) %>" class="flex flex-col gap-2 py-3 sm:flex-row sm:justify-between sm:items-center sm:gap-3">
   <%= link_to booking.manual? ? edit_admin_booking_path(booking) : admin_place_calendar_path(booking.room.place.slug), class: "min-w-0" do %>
     <div class="font-semibold sm:truncate"><%= booking_label(booking) %><%= " · #{booking.guests} khách" if booking.guests %></div>
-    <div class="text-sm opacity-80 sm:truncate">Phòng <%= booking.room.name %><%= " · #{booking.room.place.name}" if many_places %> · <%= stay_dates(booking) %></div>
+    <div class="text-sm opacity-80 sm:truncate"><%= "#{booking.code} · " if booking.code %>Phòng <%= booking.room.name %><%= " · #{booking.room.place.name}" if many_places %> · <%= stay_dates(booking) %></div>
     <% if badges.present? || dirty %>
       <div class="flex flex-wrap gap-1 mt-1">
         <%= badges %>
