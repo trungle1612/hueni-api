@@ -3,13 +3,13 @@
     {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 4,
-      "fingerprint": "abcc3015545a50fa942d253139b43f9a0e2e7f82c3f60e93b7922d0128b8d20c",
+      "fingerprint": "9b7445a0bd120e0d568ee2f1588bd6fff57e9d69c0ac94679591ff2f3f22abbd",
       "check_name": "LinkToHref",
       "message": "Potentially unsafe model attribute in `link_to` href",
       "file": "app/views/admin/registration_requests/show.html.erb",
-      "line": 43,
+      "line": 57,
       "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
-      "code": "link_to(\"M\\u1EDF Google Maps \\u2197\", RegistrationRequest.find(params[:id]).maps_url, :target => \"_blank\", :rel => \"noopener noreferrer\", :class => \"link text-sm\")",
+      "code": "link_to(\"M\\u1EDF Google Maps \\u2197\", RegistrationRequest.find(params[:id]).maps_url, :target => \"_blank\", :rel => \"noopener noreferrer\", :class => \"link\")",
       "render_path": [
         {
           "type": "controller",

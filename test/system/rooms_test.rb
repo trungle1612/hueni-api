@@ -7,7 +7,9 @@ class RoomsTest < ApplicationSystemTestCase
 
   test "owner adds a room from Phòng" do
     within("aside") { click_on "Phòng" }
+    assert_selector "h1", text: "Phòng"
     click_on "+ Thêm phòng"
+    assert_selector "h1", text: "Thêm phòng" # Turbo has swapped the page; filling earlier hits detached nodes
     fill_in "Tên phòng", with: "Mây"
     fill_in "Số khách tối đa", with: "2"
     fill_in "Giá mỗi đêm (₫)", with: "300k"
