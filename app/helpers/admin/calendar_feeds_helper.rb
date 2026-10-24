@@ -1,4 +1,7 @@
 module Admin::CalendarFeedsHelper
+  # 15.5 → "15,5", 15.0 → "15"; nil stays blank.
+  def commission(value) = value && number_with_precision(value, precision: 1, strip_insignificant_zeros: true, separator: ",")
+
   def feed_status_badge(feed)
     label, color =
       if feed.last_error then [ "Lỗi #{time_ago_in_words(feed.last_error_at)} trước", "badge-error" ]

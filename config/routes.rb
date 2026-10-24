@@ -28,6 +28,8 @@ Rails.application.routes.draw do
     get "calendar", to: "calendars#index"
     get "report", to: "reports#index"
     resources :places, only: :show, param: :slug do
+      post :sync_feeds, on: :member
+      patch :commissions, on: :member
       resource :calendar, only: :show
       resource :activity, only: :show
       resource :report, only: :show

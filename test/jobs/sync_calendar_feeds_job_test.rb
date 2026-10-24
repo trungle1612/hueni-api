@@ -26,5 +26,7 @@ class SyncCalendarFeedsJobTest < ActiveJob::TestCase
     SyncCalendarFeedJob.perform_now(feed.id)
 
     assert_equal "hourly", feed.sync_runs.sole.trigger
+    SyncCalendarFeedJob.perform_now(feed.id, "manual")
+    assert_equal "manual", feed.sync_runs.order(:id).last.trigger
   end
 end

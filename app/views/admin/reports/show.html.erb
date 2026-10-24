@@ -108,7 +108,7 @@
   <% if r.channels.any? { |_, numbers| numbers[:nights].positive? } %>
     <section id="channels" class="<%= card %> p-4 mb-3">
       <h2 class="font-semibold mb-2">Khách từ đâu</h2>
-      <% colors = { "manual" => "bg-primary", "airbnb" => "bg-secondary", "booking" => "bg-accent", "other" => "bg-neutral" } %>
+      <% colors = { "manual" => "bg-primary", "airbnb" => "bg-secondary", "booking" => "bg-accent", "agoda" => "bg-info", "other" => "bg-neutral" } %>
       <div class="flex h-3 rounded-full overflow-hidden gap-0.5 mb-1" aria-hidden="true">
         <% r.channels.each do |channel, numbers| %>
           <% next if numbers[:nights].zero? %>
