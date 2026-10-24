@@ -10,7 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_400000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_24_500000) do
+  create_table "booking_charges", force: :cascade do |t|
+    t.integer "booking_id", null: false
+    t.integer "user_id"
+    t.string "name", null: false
+    t.integer "unit_price", null: false
+    t.string "unit"
+    t.integer "quantity", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["booking_id"], name: "index_booking_charges_on_booking_id"
+    t.index ["user_id"], name: "index_booking_charges_on_user_id"
+    t.check_constraint "unit_price >= 0 AND quantity > 0", name: "booking_charges_amounts"
+  end
+
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -33,6 +47,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_400000) do
     t.integer "weekend_price"
     t.string "cancel_reason"
     t.integer "number"
+    t.integer "discount"
+    t.string "discount_reason"
     t.index ["calendar_feed_id", "uid"], name: "index_bookings_on_calendar_feed_id_and_uid", unique: true
     t.index ["room_id", "start_date", "end_date"], name: "index_bookings_on_room_id_and_start_date_and_end_date"
     t.check_constraint "checked_out_at IS NULL OR checked_in_at IS NOT NULL", name: "bookings_checkout_after_checkin"
@@ -146,6 +162,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_400000) do
     t.check_constraint "room_type IN ('single', 'double', 'family', 'dorm', 'studio', 'villa')", name: "rooms_room_type_values"
   end
 
+  create_table "services", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.string "name", null: false
+    t.integer "price", null: false
+    t.string "unit"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id", "name"], name: "index_services_on_place_id_and_name", unique: true
+    t.index ["place_id"], name: "index_services_on_place_id"
+    t.check_constraint "price >= 0", name: "services_price_non_negative"
+  end
+
   create_table "sessions", force: :cascade do |t|
     t.integer "user_id", null: false
     t.string "ip_address"
@@ -198,6 +226,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_400000) do
     t.index ["room_id", "id"], name: "index_versions_on_room_id_and_id"
   end
 
+  add_foreign_key "booking_charges", "bookings"
+  add_foreign_key "booking_charges", "users"
   add_foreign_key "bookings", "calendar_feeds"
   add_foreign_key "bookings", "rooms"
   add_foreign_key "calendar_feeds", "rooms"
@@ -209,6 +239,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_400000) do
   add_foreign_key "registration_requests", "users"
   add_foreign_key "registration_requests", "users", column: "decided_by_id"
   add_foreign_key "rooms", "places"
+  add_foreign_key "services", "places"
   add_foreign_key "sessions", "users"
   add_foreign_key "sync_runs", "calendar_feeds", on_delete: :cascade
 end

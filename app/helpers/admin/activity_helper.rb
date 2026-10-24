@@ -48,6 +48,11 @@ module Admin::ActivityHelper
       in [ "CalendarFeed", "create" | "destroy" ]
         [ :feed, version.event == "create" ? "Thêm kênh" : "Xoá kênh", CalendarFeed::PROVIDER_LABELS.fetch(after["provider"], "iCal") ]
       in [ "Payment", "create" | "destroy" ] then activity_payment(version, after)
+      in [ "BookingCharge", "create" | "destroy" ]
+        [ version.event == "create" ? :ok : :cancel, version.event == "create" ? "Thêm dịch vụ" : "Bỏ dịch vụ", activity_charge(after) ]
+      in [ "Service", "create" ] then [ :ok, "Thêm vào danh sách dịch vụ", activity_service(after) ]
+      in [ "Service", "destroy" ] then [ :cancel, "Xoá khỏi danh sách dịch vụ", activity_service(after) ]
+      in [ "Service", "update" ] then [ :edit, "Sửa dịch vụ", activity_service_changes(changes, after) ]
       in [ "CalendarFeed", "update" ] then after["last_error"].present? ? [ :error, "Đồng bộ lỗi", sync_error_message(after["last_error"]) ] : [ :ok, "Đồng bộ lại được" ]
       else [ :edit, "Thay đổi" ]
       end
@@ -60,10 +65,12 @@ module Admin::ActivityHelper
   end
 
   private
-    # The record as it was right after this change (before it, for a destroy).
+    # The record as it was right after this change (before it, for a destroy). A create's object_changes leaves out
+    # attributes still at their column default (a charge's quantity 1), so those come from the defaults.
     def activity_after(version)
       return version.object.to_h if version.event == "destroy"
-      version.object.to_h.merge(version.object_changes.to_h.transform_values(&:last))
+      before = version.event == "create" ? version.item_type.safe_constantize&.column_defaults.to_h : version.object.to_h
+      before.merge(version.object_changes.to_h.transform_values(&:last))
     end
 
     def activity_dates(attrs) = [ attrs["start_date"], attrs["end_date"] ].map { Date.parse(it).strftime("%d/%m") }.join("–")
@@ -77,9 +84,25 @@ module Admin::ActivityHelper
     def activity_payment(version, after)
       refund = after["kind"] == "refund"
       action = version.event == "destroy" ? "Xoá khoản #{refund ? "hoàn" : "thu"}" : (refund ? "Hoàn tiền" : "Thu tiền")
-      code = Booking.where(id: after["booking_id"]).pick(:number)&.then { format("DP-%04d", it) }
-      [ version.event == "destroy" || refund ? :cancel : :ok, action, [ vnd(after["amount"]), Payment::METHODS[after["payment_method"]], code ].compact.join(" · ") ]
+      [ version.event == "destroy" || refund ? :cancel : :ok, action, [ vnd(after["amount"]), Payment::METHODS[after["payment_method"]], activity_code(after) ].compact.join(" · ") ]
     end
+
+    def activity_charge(after)
+      label = "#{after["name"]} × #{after["quantity"]}#{" #{after["unit"]}" if after["unit"]}"
+      [ label, vnd(after["unit_price"] * after["quantity"]), activity_code(after) ].compact.join(" · ")
+    end
+
+    def activity_service(attrs) = "#{attrs["name"]} · #{vnd(attrs["price"])}#{"/#{attrs["unit"]}" if attrs["unit"]}"
+
+    def activity_service_changes(changes, after)
+      parts = []
+      parts << "đổi tên #{changes["name"][0]} → #{changes["name"][1]}" if changes.key?("name")
+      parts << "giá #{vnd(changes["price"][0])} → #{vnd(changes["price"][1])}" if changes.key?("price")
+      parts << "đơn vị #{activity_value(changes["unit"][0])} → #{activity_value(changes["unit"][1])}" if changes.key?("unit")
+      [ (after["name"] unless changes.key?("name")), parts.join(", ") ].compact.join(": ")
+    end
+
+    def activity_code(after) = Booking.where(id: after["booking_id"]).pick(:number)&.then { format("DP-%04d", it) }
 
     def activity_booking_update(version, changes, after)
       before = version.object.to_h
@@ -110,6 +133,7 @@ module Admin::ActivityHelper
       end
       parts << "sửa ghi chú" if changes.key?("note")
       parts << "đã cọc #{vnd(changes["deposit"][0]) || "—"} → #{vnd(changes["deposit"][1]) || "—"}" if changes.key?("deposit")
+      parts << "giảm giá #{vnd(changes["discount"][0]) || "—"} → #{vnd(changes["discount"][1]) || "—"}#{" (#{after["discount_reason"]})" if after["discount_reason"]}" if changes.key?("discount")
       { "price" => "giá", "weekend_price" => "giá T6–T7" }.each do |attr, label|
         parts << "#{label} #{vnd(changes[attr][0]) || "giá phòng"} → #{vnd(changes[attr][1]) || "giá phòng"}" if changes.key?(attr)
       end

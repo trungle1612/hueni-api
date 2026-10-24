@@ -31,6 +31,7 @@ Rails.application.routes.draw do
       post :sync_feeds, on: :member
       patch :commissions, on: :member
       patch :bank, on: :member
+      resources :services, only: %i[create update destroy]
       resource :calendar, only: :show
       resource :activity, only: :show
       resource :report, only: :show
@@ -69,8 +70,10 @@ Rails.application.routes.draw do
         post :undo_check_out
         post :move
         post :declare
+        patch :discount
       end
       resources :payments, only: %i[create destroy]
+      resources :charges, controller: "booking_charges", only: %i[create destroy]
     end
   end
 

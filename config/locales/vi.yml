@@ -39,6 +39,14 @@ vi:
         deposit: Đã cọc
         cancel_reason: Lý do huỷ
         deposit_method: Hình thức cọc
+        discount: Giảm giá
+        discount_reason: Lý do giảm giá
+      service:
+        name: Tên dịch vụ
+        price: Giá
+        unit: Đơn vị
+      booking_charge:
+        quantity: Số lượng
       payment:
         amount: Số tiền
         kind: Loại

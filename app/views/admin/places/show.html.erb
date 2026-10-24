@@ -122,6 +122,38 @@
 <% end %>
 
 <% if manage %>
+  <%# Dịch vụ (#140): the catalog staff pick from on a booking's Thanh toán. %>
+  <% services = @place.services.sort_by(&:name) %>
+  <details id="dich-vu" class="card bg-base-100 shadow-sm mt-6 scroll-mt-4">
+    <summary class="card-body p-4 flex-row justify-between items-center cursor-pointer">
+      <span class="font-semibold">Dịch vụ</span>
+      <span class="text-sm opacity-70"><%= services.any? ? "#{services.size} dịch vụ" : "Chưa có" %></span>
+    </summary>
+    <div class="px-4 pb-4 flex flex-col gap-2">
+      <% services.each do |service| %>
+        <div id="<%= dom_id(service) %>" class="flex items-center gap-1">
+          <%= form_with model: service, url: admin_place_service_path(@place.slug, service), class: "grid grid-cols-[1fr_5.5rem_3.5rem_auto] gap-1 flex-1 min-w-0" do |form| %>
+            <%= form.text_field :name, maxlength: 50, required: true, aria: { label: "Tên dịch vụ" }, class: "input input-sm w-full" %>
+            <%= form.text_field :price, value: number_with_delimiter(service.price, delimiter: "."), inputmode: "numeric", aria: { label: "Giá" }, class: "input input-sm w-full" %>
+            <%= form.text_field :unit, maxlength: 20, placeholder: "đv", aria: { label: "Đơn vị" }, class: "input input-sm w-full" %>
+            <%= form.submit "Lưu", class: "btn btn-sm" %>
+          <% end %>
+          <%= button_to admin_place_service_path(@place.slug, service), method: :delete, class: "btn btn-ghost btn-sm btn-square text-error",
+                aria: { label: "Xoá #{service.name}" }, form: { data: { turbo_confirm: "Xoá dịch vụ #{service.name}?" } } do %>
+            <%= render "shared/icon", name: "x" %>
+          <% end %>
+        </div>
+      <% end %>
+      <%= form_with model: Service.new, url: admin_place_services_path(@place.slug), class: "grid grid-cols-[1fr_5.5rem_3.5rem_auto] gap-1 mr-9" do |form| %>
+        <%= form.text_field :name, maxlength: 50, required: true, placeholder: "Dịch vụ mới", aria: { label: "Tên dịch vụ mới" }, class: "input input-sm w-full" %>
+        <%= form.text_field :price, inputmode: "numeric", required: true, placeholder: "Giá", aria: { label: "Giá" }, class: "input input-sm w-full" %>
+        <%= form.text_field :unit, maxlength: 20, placeholder: "đv", aria: { label: "Đơn vị" }, class: "input input-sm w-full" %>
+        <%= form.submit "+ Thêm", class: "btn btn-primary btn-sm" %>
+      <% end %>
+      <p class="text-sm opacity-70">Giá như 15.000 hoặc 15k, đơn vị như chai, kg, ngày (để trống nếu tính một lần). Đổi giá không làm đổi đặt phòng đã thêm dịch vụ.</p>
+    </div>
+  </details>
+
   <%# Tài khoản chuyển khoản (#139): shown in Ghi nhận thanh toán when the guest pays by Chuyển khoản. %>
   <details id="chuyen-khoan" class="card bg-base-100 shadow-sm mt-6 scroll-mt-4">
     <summary class="card-body p-4 flex-row justify-between items-center cursor-pointer">
