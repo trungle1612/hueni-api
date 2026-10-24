@@ -29,14 +29,12 @@
         <%= field_error room, :floor %>
       </div>
       <div>
-        <%= form.label :room_type_name, "Loại phòng", class: "block mb-1 font-medium" %>
-        <%# Existing types as suggestions; a new name creates the type. %>
-        <%= form.text_field :room_type_name, maxlength: 50, placeholder: "Ví dụ: Phòng đôi", list: "room_types", autocomplete: "off",
-              class: class_names("input input-lg w-full", "input-error": room.errors.include?(:room_type)) %>
-        <datalist id="room_types"><% place.room_types.sort_by(&:name).each do |type| %><option value="<%= type.name %>"></option><% end %></datalist>
+        <%= form.label :room_type, "Loại phòng", class: "block mb-1 font-medium" %>
+        <%= form.select :room_type, Room::ROOM_TYPES.invert, { include_blank: "Chưa chọn" },
+              class: class_names("select select-lg w-full", "select-error": room.errors.include?(:room_type)) %>
         <%= field_error room, :room_type %>
       </div>
-      <p class="col-span-2 text-sm opacity-70">Không bắt buộc. Gõ loại mới hoặc chọn loại đã có; dùng để lọc lịch phòng. Đổi tên, xoá loại ở mục <%= link_to "Loại phòng", admin_rooms_path(anchor: "loai-phong-#{place.slug}"), class: "link" %>.</p>
+      <p class="col-span-2 text-sm opacity-70">Không bắt buộc. Loại phòng dùng để lọc lịch phòng.</p>
     </div>
     <fieldset>
       <legend class="mb-1 font-medium">Tiện nghi</legend>

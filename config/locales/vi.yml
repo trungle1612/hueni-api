@@ -23,8 +23,6 @@ vi:
         floor: Tầng
         room_type: Loại phòng
         note: Ghi chú nội bộ
-      room_type:
-        name: Tên loại phòng
       booking:
         start_date: Ngày nhận phòng
         end_date: Ngày trả phòng

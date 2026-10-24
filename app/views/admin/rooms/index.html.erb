@@ -28,7 +28,7 @@
                   <% end %>
                 </div>
                 <div class="text-sm opacity-70">
-                  <%= [ room.room_type&.name, ("Tầng #{room.floor}" if room.floor) ].compact.map { "#{it} · " }.join %><%= room.max_guests %> khách · <%= room.price ? "#{vnd(room.price)}/đêm#{" · T6–T7 #{vnd(room.weekend_price)}" if room.weekend_price}" : "chưa có giá" %> ·
+                  <%= [ room.room_type_label, ("Tầng #{room.floor}" if room.floor) ].compact.map { "#{it} · " }.join %><%= room.max_guests %> khách · <%= room.price ? "#{vnd(room.price)}/đêm#{" · T6–T7 #{vnd(room.weekend_price)}" if room.weekend_price}" : "chưa có giá" %> ·
                   <%= feeds.any? ? "#{feeds.size} kênh OTA" : "chưa có kênh OTA" %>
                 </div>
                 <% if feeds.any?(&:last_error) %><span class="badge badge-soft badge-error badge-sm mt-1">Lỗi đồng bộ</span><% end %>
@@ -42,31 +42,6 @@
           <div class="card-body items-center text-center py-8">Chưa có phòng nào. Thêm phòng để hiện trên hueni.me.</div>
         </div>
       <% end %>
-      <%# Loại phòng (#138): the homestay's own list. %>
-      <% types = place.room_types.sort_by(&:name) %>
-      <details id="loai-phong-<%= place.slug %>" class="card bg-base-100 shadow-sm mt-3 scroll-mt-4">
-        <summary class="card-body p-4 flex-row justify-between items-center cursor-pointer">
-          <span class="font-semibold">Loại phòng</span>
-          <span class="text-sm opacity-70 truncate"><%= types.map(&:name).join(" · ").presence || "Chưa có" %></span>
-        </summary>
-        <div class="px-4 pb-4 flex flex-col gap-2">
-          <% types.each do |type| %>
-            <div id="<%= dom_id(type) %>" class="flex items-center gap-2">
-              <%= form_with model: type, url: admin_place_room_type_path(place.slug, type), class: "flex flex-1 gap-2 min-w-0" do |form| %>
-                <%= form.text_field :name, maxlength: 50, required: true, aria: { label: "Tên loại phòng" }, class: "input flex-1 min-w-0" %>
-                <%= form.submit "Lưu", class: "btn" %>
-              <% end %>
-              <%= button_to "Xoá", admin_place_room_type_path(place.slug, type), method: :delete, class: "btn btn-ghost text-error",
-                    form: { data: { turbo_confirm: "Xoá loại phòng #{type.name}?" } } %>
-            </div>
-          <% end %>
-          <%= form_with model: RoomType.new, url: admin_place_room_types_path(place.slug), class: "flex gap-2" do |form| %>
-            <%= form.text_field :name, maxlength: 50, required: true, placeholder: "Ví dụ: Phòng đôi", aria: { label: "Loại phòng mới" }, class: "input flex-1 min-w-0" %>
-            <%= form.submit "+ Thêm", class: "btn btn-primary" %>
-          <% end %>
-          <p class="text-sm opacity-70">Gán loại cho phòng trong trang Sửa phòng. Loại đang có phòng dùng thì không xoá được.</p>
-        </div>
-      </details>
     </section>
   <% end %>
 </div>

@@ -1,6 +1,5 @@
 class Place < ApplicationRecord
   has_many :rooms
-  has_many :room_types, dependent: :destroy
   has_many :place_memberships, dependent: :destroy
   has_many :users, through: :place_memberships
 

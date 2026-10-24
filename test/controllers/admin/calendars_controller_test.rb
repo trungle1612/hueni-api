@@ -107,17 +107,18 @@ class Admin::CalendarsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", new_admin_place_booking_path("tomo-homestay", room_id: rooms(:garden).id, start_date: "2026-10-05")
   end
 
-  test "Loại phòng filter shows only rooms of that type; another homestay's type is not found" do
-    double = places(:tomo).room_types.create!(name: "Phòng đôi")
-    rooms(:garden).update!(room_type: double)
+  test "Loại phòng filter lists the types in use and shows only rooms of that type" do
+    rooms(:garden).update!(room_type: "double")
     log_in users(:owner)
-    get admin_place_calendar_path("tomo-homestay", type: double.id)
+    get admin_place_calendar_path("tomo-homestay", type: "double")
+    assert_select "select[name=type] option", 2
     assert_select "select[name=type] option[selected]", text: "Phòng đôi"
     assert_select "[data-room]", 1
     assert_select "[data-room='#{rooms(:garden).id}']"
-    assert_select "a[aria-label='Sau'][href*='type=#{double.id}']"
+    assert_select "a[aria-label='Sau'][href*='type=double']"
 
-    get admin_place_calendar_path("tomo-homestay", type: places(:hiuhill).room_types.create!(name: "x").id)
-    assert_response :not_found
+    get admin_place_calendar_path("tomo-homestay", type: "villa")
+    assert_select "select[name=type] option[selected]", 0
+    assert_select "[data-room]", places(:tomo).rooms.where(active: true).count
   end
 end

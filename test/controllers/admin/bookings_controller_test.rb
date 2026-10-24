@@ -131,7 +131,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "Sửa đặt phòng #{booking.code}"
     assert_select "#room_details", 0
-    rooms(:garden).update!(amenities: %w[ac bathtub], room_type: places(:tomo).room_types.create!(name: "Phòng đôi"), note: "chỉ chủ")
+    rooms(:garden).update!(amenities: %w[ac bathtub], room_type: "double", note: "chỉ chủ")
     get edit_admin_booking_path(booking)
     assert_select "#room_details", "Phòng đôi · Máy lạnh · Bồn tắm"
     assert_no_match "chỉ chủ", response.body

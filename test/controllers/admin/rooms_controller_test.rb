@@ -272,67 +272,21 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "room form saves Tầng, Loại phòng, tiện nghi and ghi chú; Phòng lists type and floor" do
-    double = places(:tomo).room_types.create!(name: "Phòng đôi")
-    places(:hiuhill).room_types.create!(name: "Không phải của tôi")
     get edit_admin_room_path(rooms(:garden))
-    assert_select "datalist#room_types option[value=?]", "Phòng đôi"
-    assert_select "datalist#room_types option[value=?]", "Không phải của tôi", count: 0
+    assert_select "select[name='room[room_type]'] option", Room::ROOM_TYPES.size + 1
+    assert_select "select[name='room[room_type]'] option[value=double]", text: "Phòng đôi"
     assert_select "input[type=checkbox][name='room[amenities][]']", Room::AMENITIES.size
 
-    # An existing type matches in any case.
-    patch admin_room_path(rooms(:garden)), params: { room: { floor: "2", room_type_name: " phòng  ĐÔI ", amenities: [ "", "balcony", "ac", "pool" ], note: " Vòi sen yếu " } }
-    assert_equal [ 2, double, [ "ac", "balcony" ], "Vòi sen yếu" ], rooms(:garden).reload.values_at(:floor, :room_type, :amenities, :note)
+    patch admin_room_path(rooms(:garden)), params: { room: { floor: "2", room_type: "double", amenities: [ "", "balcony", "ac", "pool" ], note: " Vòi sen yếu " } }
+    assert_equal [ 2, "double", [ "ac", "balcony" ], "Vòi sen yếu" ], rooms(:garden).reload.values_at(:floor, :room_type, :amenities, :note)
     get admin_rooms_path
     assert_select "#room_#{rooms(:garden).id}", text: /Phòng đôi · Tầng 2 · 2 khách/
 
-    # A new name creates the type for this homestay; a too long one creates nothing.
-    assert_difference -> { places(:tomo).room_types.count } do
-      patch admin_room_path(rooms(:garden)), params: { room: { room_type_name: "Gia đình" } }
-    end
-    assert_equal "Gia đình", rooms(:garden).reload.room_type.name
-    assert_no_difference -> { RoomType.count } do
-      patch admin_room_path(rooms(:garden)), params: { room: { room_type_name: "x" * 51 } }
-    end
+    patch admin_room_path(rooms(:garden)), params: { room: { room_type: "penthouse" } }
     assert_response :unprocessable_entity
     assert_select "#room_type_error"
-
-    patch admin_room_path(rooms(:garden)), params: { room: { room_type_name: "" } }
+    patch admin_room_path(rooms(:garden)), params: { room: { room_type: "" } }
     assert_nil rooms(:garden).reload.room_type
-
-    post admin_place_rooms_path("tomo-homestay"), params: { room: { name: "Mới", max_guests: 2, room_type_name: "Dorm" } }
-    assert_equal "Dorm", places(:tomo).rooms.find_by!(name: "Mới").room_type.name
-  end
-
-  test "owners manage Loại phòng; a type in use can't be deleted; staff 403, other homestay 404" do
-    post admin_place_room_types_path("tomo-homestay"), params: { room_type: { name: "  Phòng   đôi " } }
-    assert_redirected_to admin_rooms_path(anchor: "loai-phong-tomo-homestay")
-    type = places(:tomo).room_types.sole
-    assert_equal "Phòng đôi", type.name
-    post admin_place_room_types_path("tomo-homestay"), params: { room_type: { name: "phòng đôi" } }
-    assert_equal "Tên loại phòng đã tồn tại", flash[:alert]
-
-    patch admin_place_room_type_path("tomo-homestay", type), params: { room_type: { name: "Phòng 2 người" } }
-    assert_equal "Phòng 2 người", type.reload.name
-    get admin_rooms_path
-    assert_select "#loai-phong-tomo-homestay summary", text: /Phòng 2 người/
-
-    rooms(:garden).update!(room_type: type)
-    delete admin_place_room_type_path("tomo-homestay", type)
-    assert_equal "Phòng 2 người đang có phòng dùng, đổi loại của các phòng đó trước.", flash[:alert]
-    rooms(:garden).update!(room_type: nil)
-    delete admin_place_room_type_path("tomo-homestay", type)
-    assert_not RoomType.exists?(type.id)
-
-    other = places(:hiuhill).room_types.create!(name: "Đồi")
-    patch admin_place_room_type_path("hiuhill-homestay", other), params: { room_type: { name: "x" } }
-    assert_response :not_found
-
-    staff = User.create!(name: "Em Hằng", phone_number: "0987111222", password: "password123")
-    staff.place_memberships.create!(place: places(:tomo), role: "staff")
-    delete session_path
-    log_in staff
-    post admin_place_room_types_path("tomo-homestay"), params: { room_type: { name: "X" } }
-    assert_response :forbidden
   end
 
   test "admins who aren't members can't mark a room clean" do

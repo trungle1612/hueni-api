@@ -2,11 +2,10 @@ class Room < ApplicationRecord
   include VndPrice
 
   belongs_to :place
-  belongs_to :room_type, optional: true
   has_many :bookings
   has_many :calendar_feeds, dependent: :destroy
   # Becoming dirty is part of check-out, so only "dọn xong" (→ clean) and Bảo trì are logged.
-  has_paper_trail on: %i[create update destroy], only: [ :name, :max_guests, :price, :weekend_price, :active, :maintenance_reason, :maintenance_until, :floor, :room_type_id, :amenities, :note,
+  has_paper_trail on: %i[create update destroy], only: [ :name, :max_guests, :price, :weekend_price, :active, :maintenance_reason, :maintenance_until, :floor, :room_type, :amenities, :note,
     { housekeeping: ->(room) { !room.dirty? } } ],
     meta: { place_id: :place_id, room_id: :id }
 
@@ -23,13 +22,14 @@ class Room < ApplicationRecord
   vnd_price :price, :weekend_price
   validate :photo_urls_are_http_urls
 
+  # Loại phòng (#138): a fixed list; keys in the DB (check constraint), labels on screen.
+  ROOM_TYPES = { "single" => "Phòng đơn", "double" => "Phòng đôi", "family" => "Phòng gia đình", "dorm" => "Dorm", "studio" => "Studio", "villa" => "Villa" }.freeze
+  enum :room_type, ROOM_TYPES.keys.index_with(&:itself), prefix: true, validate: { allow_nil: true }
   # Tiện nghi (#138): keys, labels for the form and the booking page.
   AMENITIES = { "ac" => "Máy lạnh", "window" => "Cửa sổ", "balcony" => "Ban công", "bathtub" => "Bồn tắm", "kitchen" => "Bếp nhỏ", "desk" => "Bàn làm việc" }.freeze
   normalizes :note, with: ->(value) { value.strip.presence }
   validates :floor, numericality: { only_integer: true, in: 0..200 }, allow_nil: true
   validates :note, length: { maximum: 1000 }
-  validate -> { errors.add(:room_type, :invalid) if room_type && room_type.place_id != place_id }
-  validate -> { errors.add(:room_type, room_type.errors.messages_for(:name).first) unless room_type.valid? }, if: -> { room_type&.new_record? }
   # Xoá phòng (#122): only a room that never had a booking (one added by mistake), so history and Báo cáo stay whole.
   before_destroy prepend: true do
     next unless bookings.exists?
@@ -70,15 +70,7 @@ class Room < ApplicationRecord
 
   def amenity_labels = AMENITIES.values_at(*amenities)
 
-  # The room form types the Loại phòng: one of this homestay's types (any case), or a new one saved with the room.
-  # Resolved before validation: rooms.build assigns attributes before the place.
-  attr_writer :room_type_name
-  def room_type_name = @room_type_name || room_type&.name
-
-  before_validation if: -> { @room_type_name && place } do
-    name = @room_type_name.squish
-    self.room_type = name.presence && (place.room_types.find { it.name.casecmp?(name) } || place.room_types.build(name:))
-  end
+  def room_type_label = ROOM_TYPES[room_type]
 
   def weekend_price_below_price? = weekend_price && price && weekend_price < price
 

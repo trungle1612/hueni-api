@@ -122,10 +122,7 @@ module Admin::ActivityHelper
       parts << "giá T6–T7 #{vnd(changes["weekend_price"][0]) || "như thường"} → #{vnd(changes["weekend_price"][1]) || "như thường"}" if changes.key?("weekend_price")
       parts << "tối đa #{changes["max_guests"][0]} → #{changes["max_guests"][1]} khách" if changes.key?("max_guests")
       parts << "tầng #{activity_value(changes["floor"][0])} → #{activity_value(changes["floor"][1])}" if changes.key?("floor")
-      if changes.key?("room_type_id")
-        types = RoomType.where(id: changes["room_type_id"]).to_h { [ it.id, it.name ] }
-        parts << "loại #{types[changes["room_type_id"][0]] || "—"} → #{types[changes["room_type_id"][1]] || "—"}"
-      end
+      parts << "loại #{Room::ROOM_TYPES[changes["room_type"][0]] || "—"} → #{Room::ROOM_TYPES[changes["room_type"][1]] || "—"}" if changes.key?("room_type")
       parts << "sửa tiện nghi" if changes.key?("amenities")
       parts << "sửa ghi chú" if changes.key?("note")
       parts << (changes["active"][1] ? "bật phòng" : "tắt phòng") if changes.key?("active")

@@ -106,15 +106,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_300000) do
     t.check_constraint "status IN ('pending', 'approved', 'rejected')", name: "registration_requests_status_values"
   end
 
-  create_table "room_types", force: :cascade do |t|
-    t.integer "place_id", null: false
-    t.string "name", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["place_id", "name"], name: "index_room_types_on_place_id_and_name", unique: true
-    t.index ["place_id"], name: "index_room_types_on_place_id"
-  end
-
   create_table "rooms", force: :cascade do |t|
     t.integer "place_id", null: false
     t.string "name", null: false
@@ -128,13 +119,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_300000) do
     t.integer "weekend_price"
     t.string "maintenance_reason"
     t.date "maintenance_until"
-    t.integer "room_type_id"
+    t.string "room_type"
     t.integer "floor"
     t.json "amenities", default: [], null: false
     t.text "note"
     t.index ["place_id", "name"], name: "index_rooms_on_place_id_and_name", unique: true
-    t.index ["room_type_id"], name: "index_rooms_on_room_type_id"
     t.check_constraint "housekeeping IN ('clean', 'dirty', 'maintenance')", name: "rooms_housekeeping_values"
+    t.check_constraint "room_type IN ('single', 'double', 'family', 'dorm', 'studio', 'villa')", name: "rooms_room_type_values"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -197,9 +188,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_300000) do
   add_foreign_key "registration_requests", "places"
   add_foreign_key "registration_requests", "users"
   add_foreign_key "registration_requests", "users", column: "decided_by_id"
-  add_foreign_key "room_types", "places"
   add_foreign_key "rooms", "places"
-  add_foreign_key "rooms", "room_types"
   add_foreign_key "sessions", "users"
   add_foreign_key "sync_runs", "calendar_feeds", on_delete: :cascade
 end
