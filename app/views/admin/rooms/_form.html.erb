@@ -33,18 +33,39 @@
       <p id="price_hint" class="col-span-2 text-sm opacity-70">Không bắt buộc. Ví dụ 450.000 hoặc 450k. Giá mới áp dụng cho đặt phòng tạo sau khi lưu, đặt phòng đã có giữ giá cũ. Chỉ chủ cơ sở thấy giá.</p>
     </div>
     <% if room.persisted? %>
-      <fieldset class="flex flex-col gap-2">
-        <legend class="mb-1 font-medium">Trạng thái trên hueni.me</legend>
+      <fieldset class="group flex flex-col gap-2">
+        <legend class="mb-1 font-medium">Trạng thái</legend>
         <label class="flex items-start gap-3 rounded-box border border-base-300 p-3 cursor-pointer has-checked:border-success has-checked:bg-success/5">
-          <%= form.radio_button :active, true, class: "radio radio-success mt-0.5" %>
+          <%= form.radio_button :state, "active", class: "radio radio-success mt-0.5" %>
           <span><span class="block font-medium">Nhận khách</span>
             <span class="text-sm opacity-70">Hiện là phòng trống trên hueni.me khi chưa có khách.</span></span>
         </label>
-        <label class="flex items-start gap-3 rounded-box border border-base-300 p-3 cursor-pointer has-checked:border-warning has-checked:bg-warning/5">
-          <%= form.radio_button :active, false, class: "radio radio-warning mt-0.5" %>
-          <span><span class="block font-medium">Tạm ngưng</span>
-            <span class="text-sm opacity-70">Không hiện trên hueni.me và lịch phòng, ví dụ khi đang sửa chữa. Lịch sử vẫn giữ.</span></span>
+        <label class="flex items-start gap-3 rounded-box border border-base-300 p-3 cursor-pointer has-checked:border-neutral has-checked:bg-base-200">
+          <%= form.radio_button :state, "maintenance", class: "radio mt-0.5" %>
+          <span><span class="block font-medium">Bảo trì</span>
+            <span class="text-sm opacity-70">Đang sửa chữa đến ngày dự kiến: không nhận đặt phòng, không hiện trên hueni.me. Hết hạn thì phòng chuyển Chưa dọn.</span></span>
         </label>
+        <%# Shown only while Bảo trì is picked. %>
+        <div class="hidden group-has-[input[value=maintenance]:checked]:flex flex-col gap-3 pl-4">
+          <div>
+            <%= form.label :maintenance_reason, "Lý do", class: "block mb-1 font-medium" %>
+            <%= form.text_field :maintenance_reason, maxlength: 200, placeholder: "Ví dụ: hỏng máy lạnh",
+                  class: class_names("input w-full", "input-error": room.errors.include?(:maintenance_reason)) %>
+            <%= field_error room, :maintenance_reason %>
+          </div>
+          <div>
+            <%= form.label :maintenance_until, "Dự kiến xong", class: "block mb-1 font-medium" %>
+            <%= form.date_field :maintenance_until, min: Date.current, value: room.maintenance_until || Date.current,
+                  class: class_names("input w-full", "input-error": room.errors.include?(:maintenance_until)) %>
+            <%= field_error room, :maintenance_until %>
+          </div>
+        </div>
+        <label class="flex items-start gap-3 rounded-box border border-base-300 p-3 cursor-pointer has-checked:border-warning has-checked:bg-warning/5">
+          <%= form.radio_button :state, "paused", class: "radio radio-warning mt-0.5" %>
+          <span><span class="block font-medium">Tạm ngưng</span>
+            <span class="text-sm opacity-70">Không cho thuê một thời gian dài: không hiện trên hueni.me và lịch phòng. Lịch sử vẫn giữ.</span></span>
+        </label>
+        <%= field_error room, :base %>
       </fieldset>
     <% else %>
       <p class="text-sm">Phòng hiện trên hueni.me ngay sau khi lưu, là phòng trống khi chưa có khách.</p>

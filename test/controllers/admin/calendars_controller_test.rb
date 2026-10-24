@@ -20,6 +20,16 @@ class Admin::CalendarsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "Bảo trì days can't be booked; a booking already there is a conflict" do
+    rooms(:limdim).update!(housekeeping: "maintenance", maintenance_reason: "Sơn lại", maintenance_until: "2026-10-02")
+    get admin_place_calendar_path("tomo-homestay")
+    assert_select "[data-room='#{rooms(:limdim).id}'] [data-maintenance-day]", 2 # 01/10, 02/10
+    assert_select "a[aria-label='Đặt Limdim ngày 02/10']", 0
+    assert_select "a[aria-label='Đặt Limdim ngày 03/10']"
+    assert_select "#booking_#{bookings(:limdim_confirmed).id}[data-conflict]"
+    assert_select "[role=alert]", text: /Limdim bảo trì đến 02\/10 nhưng có “Anh Minh”/
+  end
+
   test "timeline shows active rooms, blocking bookings in range; iCal bars are read-only" do
     rooms(:garden).update!(active: false)
     ical = Booking.create!(room: rooms(:limdim), start_date: "2026-10-05", end_date: "2026-10-07", source: "ical",

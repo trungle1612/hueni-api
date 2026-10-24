@@ -1,8 +1,8 @@
 class Admin::RoomsController < Admin::BaseController
   before_action :set_place, only: %i[new create]
-  before_action :set_room, only: %i[edit update clean]
-  before_action -> { authorize!(:manage, @place) }, except: %i[index clean]
-  before_action -> { authorize!(:operate, @place) }, only: :clean
+  before_action :set_room, only: %i[edit update clean maintenance]
+  before_action -> { authorize!(:manage, @place) }, except: %i[index clean maintenance]
+  before_action -> { authorize!(:operate, @place) }, only: %i[clean maintenance]
 
   # Room setup for every homestay you own; the homestay page stays the daily board.
   def index
@@ -36,10 +36,20 @@ class Admin::RoomsController < Admin::BaseController
     end
   end
 
-  # Staff too: cleaning is day-to-day work, not an owner-only room change.
+  # Staff too: cleaning is day-to-day work, not an owner-only room change. Also ends Bảo trì early.
   def clean
+    was = @room.maintenance?
     @room.clean!
-    redirect_back_or_to admin_place_path(@place.slug), notice: "Đã dọn xong #{@room.name}."
+    redirect_back_or_to admin_place_path(@place.slug), notice: was ? "Xong bảo trì #{@room.name}, phòng sẵn sàng." : "Đã dọn xong #{@room.name}."
+  end
+
+  # Bảo trì (#121): staff too. Blocks the room through maintenance_until.
+  def maintenance
+    if @room.update(params.expect(room: [ :maintenance_reason, :maintenance_until ]).merge(housekeeping: "maintenance"))
+      redirect_to admin_place_path(@place.slug, anchor: helpers.dom_id(@room)), notice: "#{@room.name} bảo trì đến #{@room.maintenance_until.strftime("%d/%m")}."
+    else
+      redirect_to admin_place_path(@place.slug, anchor: helpers.dom_id(@room)), alert: @room.errors.full_messages.to_sentence
+    end
   end
 
   private
@@ -53,7 +63,7 @@ class Admin::RoomsController < Admin::BaseController
     end
 
     def room_params
-      params.expect(room: [ :name, :max_guests, :price, :weekend_price, :active ])
+      params.expect(room: [ :name, :max_guests, :price, :weekend_price, :active, :state, :maintenance_reason, :maintenance_until ])
     end
 
     def price_notes

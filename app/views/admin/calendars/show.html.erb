@@ -1,6 +1,6 @@
 <% content_for :title, "Lịch phòng · #{@place.name} · hueni admin" %>
 <% grid = "grid grid-cols-[4.75rem_repeat(14,2.75rem)]" %>
-<% conflict_ids = @conflicts.flatten.map(&:id).to_set %>
+<% conflict_ids = (@conflicts.flatten + @maintenance_conflicts).map(&:id).to_set %>
 
 <%= render "admin/rooms/header", back: admin_place_path(@place.slug), back_label: @place.name, title: "Lịch phòng" %>
 
@@ -26,6 +26,13 @@
   </div>
 <% end %>
 
+<% @maintenance_conflicts.each do |booking| %>
+  <div role="alert" class="alert alert-error alert-soft mb-3 text-sm">
+    ⚠ <%= booking.room.name %> bảo trì đến <%= booking.room.maintenance_until.strftime("%d/%m") %> nhưng có “<%= booking_label(booking) %>” <%= booking.start_date.strftime("%d/%m") %>–<%= booking.end_date.strftime("%d/%m") %>.
+    Đổi phòng, đổi ngày hoặc huỷ đặt phòng.
+  </div>
+<% end %>
+
 <% if @rooms.any? %>
   <div class="overflow-x-auto bg-base-100 rounded-box shadow-sm">
     <div class="w-max text-xs">
@@ -44,6 +51,9 @@
         <div data-room="<%= room.id %>" class="<%= grid %> border-b border-base-200 last:border-b-0" style="grid-template-rows: repeat(<%= [ lanes.map(&:last).max.to_i + 1, 1 ].max %>, 2.5rem)">
           <div class="row-span-full sticky left-0 z-10 bg-base-100 border-r border-base-300 px-2 py-3 font-semibold truncate">
             <%= room.name %><% if lanes.any? { |booking, _| conflict_ids.include?(booking.id) } %> <span class="text-error">⚠</span><% end %>
+            <% if room.maintenance? %>
+              <div data-maintenance class="font-normal opacity-70 truncate" title="Bảo trì đến <%= room.maintenance_until.strftime("%d/%m") %>: <%= room.maintenance_reason %>">Bảo trì</div>
+            <% end %>
             <% if @days.cover?(Date.current) %>
               <% room_bookings.select(&:departing_today?).each do |booking| %>
                 <div data-departing class="font-normal text-accent truncate" title="Trả phòng hôm nay: <%= booking_label(booking) %>">Trả: <%= booking_label(booking) %></div>
@@ -51,9 +61,15 @@
             <% end %>
           </div>
           <% @days.each_with_index do |day, i| %>
-            <%= link_to "", new_admin_place_booking_path(@place.slug, room_id: room.id, start_date: day.iso8601),
-                  class: "row-span-full border-l border-base-200 hover:bg-base-200 #{"bg-base-200/60" if day == Date.current}",
-                  style: "grid-column: #{i + 2}", aria: { label: "Đặt #{room.name} ngày #{day.strftime("%d/%m")}" } %>
+            <% if room.maintenance_on?(day) && day >= Date.current %>
+              <%# Bảo trì: not bookable, striped grey. %>
+              <%= tag.div class: "row-span-full border-l border-base-200 bg-[repeating-linear-gradient(135deg,var(--color-base-300)_0_4px,transparent_4px_8px)]",
+                    style: "grid-column: #{i + 2}", title: "Bảo trì: #{room.maintenance_reason}", data: { maintenance_day: day.iso8601 } %>
+            <% else %>
+              <%= link_to "", new_admin_place_booking_path(@place.slug, room_id: room.id, start_date: day.iso8601),
+                    class: "row-span-full border-l border-base-200 hover:bg-base-200 #{"bg-base-200/60" if day == Date.current}",
+                    style: "grid-column: #{i + 2}", aria: { label: "Đặt #{room.name} ngày #{day.strftime("%d/%m")}" } %>
+            <% end %>
           <% end %>
           <% lanes.each do |booking, lane| %>
             <% from = ([ booking.start_date, @days.begin ].max - @days.begin).to_i + 2 %>
@@ -80,6 +96,7 @@
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm <%= booking_bar_class(Booking.new(checked_out_at: Time.current)) %>"></i>✓ Đã trả phòng</span>
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm bg-error/15 border border-error"></i>Quá hạn chưa trả phòng</span>
     <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm ring-2 ring-error"></i>Trùng lịch</span>
+    <span class="flex items-center gap-1"><i class="inline-block w-4 h-2.5 rounded-sm bg-[repeating-linear-gradient(135deg,var(--color-base-300)_0_4px,transparent_4px_8px)] border border-base-300"></i>Bảo trì</span>
   </div>
 <% else %>
   <div class="card bg-base-100 border border-dashed border-base-300">

@@ -85,4 +85,40 @@ class RoomTest < ActiveSupport::TestCase
     assert room.reload.dirty?
     assert_raises(ActiveRecord::StatementInvalid) { room.update_column(:housekeeping, "cleaning") }
   end
+
+  test "Bảo trì needs a reason and a last day from today; ending it clears both" do
+    travel_to Time.zone.local(2026, 10, 5, 12)
+    room = rooms(:garden)
+    assert_not room.update(housekeeping: "maintenance")
+    assert_equal %i[maintenance_reason maintenance_until], room.errors.attribute_names.sort
+    assert_not room.update(housekeeping: "maintenance", maintenance_reason: "Hỏng máy lạnh", maintenance_until: "2026-10-04")
+    assert_includes room.errors[:maintenance_until], "không được trước hôm nay"
+
+    assert room.update(housekeeping: "maintenance", maintenance_reason: " Hỏng máy lạnh ", maintenance_until: "2026-10-07")
+    assert_equal "Hỏng máy lạnh", room.maintenance_reason
+    assert [ room.maintenance_on?(Date.new(2026, 10, 5)), room.maintenance_on?(Date.new(2026, 10, 7)) ].all?
+    assert_not room.maintenance_on?(Date.new(2026, 10, 8))
+
+    room.clean!
+    assert_equal [ nil, nil ], room.reload.values_at(:maintenance_reason, :maintenance_until)
+  end
+
+  test "Bảo trì is refused while a guest is in the room" do
+    travel_to Time.zone.local(2026, 10, 1, 15)
+    bookings(:limdim_confirmed).check_in(guests: 2)
+    assert_not rooms(:limdim).update(housekeeping: "maintenance", maintenance_reason: "Sơn lại", maintenance_until: "2026-10-05")
+    assert_includes rooms(:limdim).errors[:base], "Phòng đang có khách. Đổi tình trạng được sau khi trả phòng."
+  end
+
+  test "end_maintenance: past its last day the room needs cleaning" do
+    travel_to Time.zone.local(2026, 10, 5, 12)
+    rooms(:garden).update!(housekeeping: "maintenance", maintenance_reason: "Sơn lại", maintenance_until: "2026-10-05")
+    Room.end_maintenance
+    assert rooms(:garden).reload.maintenance?
+
+    travel_to Time.zone.local(2026, 10, 6, 0, 5)
+    Room.end_maintenance
+    assert rooms(:garden).reload.dirty?
+    assert_nil rooms(:garden).maintenance_until
+  end
 end

@@ -39,6 +39,9 @@ class Booking < ApplicationRecord
   validates :end_date, presence: true, comparison: { greater_than: :start_date, message: "phải sau ngày nhận phòng (ít nhất 1 đêm)" }, if: :start_date
   # iCal bookings skip this: the OTA already sold those nights, so an overlap is shown as a conflict instead.
   validate :room_is_free, if: -> { manual? && confirmed? && room && start_date && end_date }
+  # Only when the stay is new or moves: an existing booking caught by a later Bảo trì shows as a calendar conflict instead.
+  validate :room_not_in_maintenance, if: -> { manual? && confirmed? && room && start_date && end_date &&
+    (new_record? || will_save_change_to_start_date? || will_save_change_to_end_date? || will_save_change_to_room_id? || will_save_change_to_status?) }
   validate :guests_fit_room, if: -> { guests && room }
   validates :guest_name, length: { maximum: 100 }
   # Kept as typed (foreign guests: "+82 10 1234 5678"), but it must be dialable for the Gọi button.
@@ -82,6 +85,8 @@ class Booking < ApplicationRecord
   end
   # Chưa cọc: a direct booking not yet checked in with no deposit noted (the calendar's amber bar, like the Zalo app).
   def awaiting_deposit? = manual? && !checked_in_at && !deposit&.positive?
+  # Holds a night the room is under Bảo trì (today through maintenance_until).
+  def in_maintenance? = room.maintenance? && start_date <= room.maintenance_until && occupied_until > Date.current
   def early_check_in? = !checked_in_at && start_date > Date.current
 
   # What the booking form's availability line shows: the date and overlap messages this stay would get in its
@@ -221,6 +226,12 @@ class Booking < ApplicationRecord
         "Đổi ngày hoặc huỷ đặt phòng bị trùng.")
     end
 
+    def room_not_in_maintenance
+      return unless in_maintenance?
+      errors.add(:base, "Phòng bảo trì đến #{room.maintenance_until.strftime("%d/%m")} (#{room.maintenance_reason}). " \
+        "Chọn ngày từ #{room.maintenance_until.next_day.strftime("%d/%m")} hoặc phòng khác.")
+    end
+
     def guests_fit_room
       errors.add(:guests, "phải từ 1 đến #{room.max_guests}") unless guests.in?(1..room.max_guests)
     end
@@ -234,6 +245,7 @@ class Booking < ApplicationRecord
       elsif checked_in_at then "Khách đã nhận phòng rồi"
       elsif Booking.arrival_date >= end_date then "Đặt phòng đã kết thúc"
       elsif room.bookings.in_house.where.not(id: id).exists? then "Phòng đang có khách chưa trả phòng"
+      elsif room.maintenance_on?(Date.current) then "Phòng đang bảo trì"
       elsif early_check_in? && ical? then "Đặt phòng OTA: đổi ngày trên Airbnb / Booking.com"
       elsif early_check_in? && room.bookings.occupying(Date.current, start_date).where.not(id: id).exists?
         "Phòng chưa trống từ hôm nay"
@@ -246,6 +258,7 @@ class Booking < ApplicationRecord
       elsif other_room == room then "Khách đang ở phòng này"
       elsif other_room.place_id != room.place_id then "Chỉ đổi được sang phòng cùng homestay"
       elsif !other_room.active? then "Phòng #{other_room.name} đang tắt"
+      elsif other_room.maintenance_on?(Date.current) then "Phòng #{other_room.name} đang bảo trì"
       elsif guests && guests > other_room.max_guests then "Phòng #{other_room.name} tối đa #{other_room.max_guests} khách"
       elsif other_room.bookings.in_house.exists? || other_room.bookings.occupying(Date.current, occupied_until).exists?
         "Phòng #{other_room.name} không trống tới ngày trả phòng"

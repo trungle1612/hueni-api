@@ -108,6 +108,11 @@ module Admin::ActivityHelper
     end
 
     def activity_room_update(changes)
+      if changes["maintenance_until"]&.last
+        return [ :room, "Bảo trì", "đến #{Date.parse(changes["maintenance_until"][1]).strftime("%d/%m")} · #{changes.dig("maintenance_reason", 1) || "cùng lý do"}" ]
+      elsif changes.key?("maintenance_until")
+        return [ :clean, changes.key?("housekeeping") ? "Xong bảo trì" : "Hết hạn bảo trì, cần dọn" ]
+      end
       return [ :clean, "Dọn xong" ] if changes.keys == [ "housekeeping" ]
       return [ :room, changes["active"][1] ? "Nhận khách lại" : "Tạm ngưng phòng" ] if changes.keys == [ "active" ]
       parts = []

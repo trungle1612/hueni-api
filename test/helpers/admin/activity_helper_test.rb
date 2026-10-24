@@ -7,6 +7,17 @@ class Admin::ActivityHelperTest < ActionView::TestCase
 
   def entry = activity_entry(PaperTrail::Version.last).values_at(:kind, :action, :detail)
 
+  test "Bảo trì rows" do
+    room = rooms(:garden)
+    room.update!(housekeeping: "maintenance", maintenance_reason: "Hỏng máy lạnh", maintenance_until: "2026-10-07")
+    assert_equal [ :room, "Bảo trì", "đến 07/10 · Hỏng máy lạnh" ], entry
+    room.clean!
+    assert_equal [ :clean, "Xong bảo trì", nil ], entry
+    room.update!(housekeeping: "maintenance", maintenance_reason: "Sơn lại", maintenance_until: "2026-10-05")
+    travel_to(Time.zone.local(2026, 10, 6, 1)) { Room.end_maintenance }
+    assert_equal [ :clean, "Hết hạn bảo trì, cần dọn", nil ], entry
+  end
+
   test "booking rows" do
     booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Chị Mai")
     assert_equal [ :booking, "Đặt phòng", "Chị Mai 05/10–07/10" ], entry

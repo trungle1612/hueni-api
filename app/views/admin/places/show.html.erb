@@ -34,7 +34,8 @@
           <span class="font-semibold"><%= room.name %></span>
           <span data-state class="text-sm font-semibold opacity-80"><%= room_state_label(day) %></span>
         </div>
-        <% if booking || day.next_booking || room.dirty? %>
+        <% in_house = day.state.in?(%i[occupied leaving]) %>
+        <% if booking || day.next_booking || !room.clean? || (operate && room.active?) %>
           <div class="px-4 py-3 flex flex-col gap-1">
             <% if booking %>
               <div class="flex items-center gap-2">
@@ -50,15 +51,32 @@
                 <% if room.dirty? %><span class="badge badge-soft badge-warning badge-sm">Chưa dọn</span><% end %>
               </div>
             <% end %>
+            <% if room.maintenance? %>
+              <div data-maintenance class="text-sm">Bảo trì đến <b><%= room.maintenance_until.strftime("%d/%m") %></b> · <%= room.maintenance_reason %></div>
+            <% end %>
             <% early = day.next_booking if day.state == :free && day.next_booking&.can_check_in? %>
-            <% if operate && (room.dirty? || early || booking&.can_check_in? || booking&.can_check_out?) %>
+            <% if operate && (!room.clean? || early || booking&.can_check_in? || booking&.can_check_out?) %>
               <div class="flex flex-wrap justify-end gap-2 mt-1">
                 <%= clean_button(room, size: "btn-sm") if room.dirty? %>
+                <%= end_maintenance_button(room, size: "btn-sm") if room.maintenance? %>
                 <%= check_in_button(early, size: "btn-sm") if early %>
                 <%= no_show_button(booking, size: "btn-sm") if booking&.can_no_show? %>
                 <%= check_in_button(booking, size: "btn-sm") if booking&.can_check_in? %>
                 <%= check_out_button(booking, size: "btn-sm") if booking&.can_check_out? %>
               </div>
+            <% end %>
+            <% if operate && room.active? && !room.maintenance? && !in_house %>
+              <details id="<%= dom_id(room, :maintenance) %>" class="text-sm">
+                <summary class="cursor-pointer opacity-70 min-h-8 flex items-center">Báo bảo trì…</summary>
+                <%= form_with model: room, url: maintenance_admin_room_path(room), method: :patch, class: "flex flex-col gap-2 mt-2" do |form| %>
+                  <%= form.label :maintenance_reason, "Lý do", class: "font-medium" %>
+                  <%= form.text_field :maintenance_reason, required: true, maxlength: 200, placeholder: "Ví dụ: hỏng máy lạnh", class: "input w-full" %>
+                  <%= form.label :maintenance_until, "Dự kiến xong", class: "font-medium" %>
+                  <%= form.date_field :maintenance_until, required: true, min: Date.current, value: Date.current, class: "input w-full" %>
+                  <p class="opacity-70">Phòng bị khoá trên lịch và trên hueni.me đến hết ngày này. Đặt phòng đã có vẫn giữ, hiện trùng lịch để xử lý.</p>
+                  <%= form.submit "Bảo trì", class: "btn btn-sm" %>
+                <% end %>
+              </details>
             <% end %>
           </div>
         <% end %>

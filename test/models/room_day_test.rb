@@ -11,6 +11,12 @@ class RoomDayTest < ActiveSupport::TestCase
     assert_equal [ :arriving, bookings(:limdim_confirmed) ], day_of(rooms(:limdim)).then { [ it.state, it.booking ] }
   end
 
+  test "Bảo trì shows until its last day" do
+    rooms(:garden).update!(housekeeping: "maintenance", maintenance_reason: "Sơn lại", maintenance_until: "2026-10-03")
+    assert_equal :maintenance, day_of(rooms(:garden)).state
+    travel_to(Time.zone.local(2026, 10, 4, 9)) { assert_equal :free, day_of(rooms(:garden)).state }
+  end
+
   test "a guest due yesterday stays arriving until LATE_ARRIVAL_UNTIL" do
     travel_to(Time.utc(2026, 10, 2, 17, 30)) { assert_equal :arriving, day_of(rooms(:limdim)).state } # 00:30 on 3/10
     travel_to(Time.zone.local(2026, 10, 3, Booking::LATE_ARRIVAL_UNTIL)) { assert_equal :free, day_of(rooms(:limdim)).state }

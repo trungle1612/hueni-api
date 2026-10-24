@@ -10,6 +10,13 @@ class VacancyTest < ActiveSupport::TestCase
     assert_equal({ "tomo-homestay" => { left: 1, max_guests: 2 } }, Vacancy.on(Date.new(2026, 10, 1)))
   end
 
+  test "a room under Bảo trì is not free through its last day" do
+    travel_to Time.zone.local(2026, 10, 5, 12)
+    rooms(:garden).update!(housekeeping: "maintenance", maintenance_reason: "Sơn lại", maintenance_until: "2026-10-06")
+    assert_equal({ left: 1, max_guests: 4 }, Vacancy.on(Date.new(2026, 10, 6))["tomo-homestay"])
+    assert_equal({ left: 2, max_guests: 4 }, Vacancy.on(Date.new(2026, 10, 7))["tomo-homestay"])
+  end
+
   test "booking ending today leaves the room free" do
     assert_equal({ left: 2, max_guests: 4 }, Vacancy.on(Date.new(2026, 10, 3))["tomo-homestay"])
   end

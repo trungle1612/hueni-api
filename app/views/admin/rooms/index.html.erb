@@ -19,7 +19,9 @@
               <div class="list-col-grow min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="text-lg font-semibold"><%= room_title(room.name) %></span>
-                  <% if room.active? %>
+                  <% if room.maintenance? %>
+                    <span class="badge badge-soft badge-sm">Bảo trì đến <%= room.maintenance_until.strftime("%d/%m") %></span>
+                  <% elsif room.active? %>
                     <span class="badge badge-soft badge-success badge-sm">Nhận khách</span>
                   <% else %>
                     <span class="badge badge-soft badge-warning badge-sm">Tạm ngưng</span>
@@ -44,4 +46,4 @@
   <% end %>
 </div>
 
-<p class="text-sm opacity-70 mt-6">Phòng không xoá được, để giữ lịch sử đặt phòng. Không cho thuê nữa thì chọn Tạm ngưng.</p>
+<p class="text-sm opacity-70 mt-6">Phòng không xoá được, để giữ lịch sử đặt phòng. Đang sửa chữa thì chọn Bảo trì, không cho thuê nữa thì chọn Tạm ngưng.</p>

@@ -95,7 +95,7 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
   test "edits own room, price with separators, place_id ignored" do
     get edit_admin_room_path(rooms(:garden))
     assert_select "h1", "Phòng Garden"
-    assert_select "input[type=radio][name='room[active]'][value=true][checked]"
+    assert_select "input[type=radio][name='room[state]'][value=active][checked]"
 
     patch admin_room_path(rooms(:garden)), params: { room: { name: "Vườn", price: "350 000 ₫", place_id: places(:hiuhill).id } }
     rooms(:garden).reload
@@ -172,6 +172,57 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
 
     post clean_admin_room_path(rooms(:garden))
     assert rooms(:garden).reload.clean?
+  end
+
+  test "staff set Bảo trì from the homestay page and end it with Xong bảo trì; another owner's room is not found" do
+    travel_to Time.zone.local(2026, 10, 5, 12)
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    delete session_path
+    log_in staff
+
+    get admin_place_path("tomo-homestay")
+    assert_select "#maintenance_room_#{rooms(:garden).id} form[action='#{maintenance_admin_room_path(rooms(:garden))}']"
+    patch maintenance_admin_room_path(rooms(:garden)), params: { room: { maintenance_reason: "Hỏng máy lạnh", maintenance_until: "2026-10-07", housekeeping: "clean", price: "1" } }
+    assert_redirected_to admin_place_path("tomo-homestay", anchor: "room_#{rooms(:garden).id}")
+    assert_equal "Garden bảo trì đến 07/10.", flash[:notice]
+    assert_equal [ "maintenance", nil ], rooms(:garden).reload.values_at(:housekeeping, :price)
+
+    get admin_place_path("tomo-homestay")
+    assert_select "#room_#{rooms(:garden).id} [data-state]", "Bảo trì"
+    assert_select "#room_#{rooms(:garden).id} [data-maintenance]", text: /Bảo trì đến 07\/10 · Hỏng máy lạnh/
+    assert_select "#maintenance_room_#{rooms(:garden).id}", 0
+
+    patch maintenance_admin_room_path(rooms(:garden)), params: { room: { maintenance_reason: "", maintenance_until: "2026-10-01" } }
+    assert_match "Lý do bảo trì không thể để trống", flash[:alert]
+
+    post clean_admin_room_path(rooms(:garden))
+    assert_equal "Xong bảo trì Garden, phòng sẵn sàng.", flash[:notice]
+    assert rooms(:garden).reload.clean?
+
+    other = Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 2)
+    patch maintenance_admin_room_path(other), params: { room: { maintenance_reason: "x", maintenance_until: "2026-10-07" } }
+    assert_response :not_found
+  end
+
+  test "the room form picks Nhận khách, Bảo trì or Tạm ngưng; Phòng shows Bảo trì" do
+    travel_to Time.zone.local(2026, 10, 5, 12)
+    patch admin_room_path(rooms(:garden)), params: { room: { state: "maintenance", maintenance_reason: "", maintenance_until: "2026-10-07" } }
+    assert_response :unprocessable_entity
+    assert_select "#maintenance_reason_error", text: /không thể để trống/
+    assert_select "input[name='room[state]'][value=maintenance][checked]"
+
+    patch admin_room_path(rooms(:garden)), params: { room: { state: "maintenance", maintenance_reason: "Sơn lại", maintenance_until: "2026-10-07" } }
+    assert_equal [ "maintenance", true, "Sơn lại" ], rooms(:garden).reload.values_at(:housekeeping, :active, :maintenance_reason)
+    get admin_rooms_path
+    assert_select "#room_#{rooms(:garden).id} .badge", text: "Bảo trì đến 07/10"
+
+    patch admin_room_path(rooms(:garden)), params: { room: { state: "paused", maintenance_reason: "Sơn lại" } }
+    assert_equal [ "clean", false, nil ], rooms(:garden).reload.values_at(:housekeeping, :active, :maintenance_reason)
+
+    rooms(:garden).dirty!
+    patch admin_room_path(rooms(:garden)), params: { room: { state: "active" } }
+    assert_equal [ "dirty", true ], rooms(:garden).reload.values_at(:housekeeping, :active)
   end
 
   test "admins who aren't members can't mark a room clean" do

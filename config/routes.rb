@@ -41,6 +41,7 @@ Rails.application.routes.draw do
     end
     resources :rooms, only: %i[index edit update] do
       post :clean, on: :member
+      patch :maintenance, on: :member
       resources :calendar_feeds, only: :create
     end
     resources :sync_runs, only: :index, path: "dong-bo"
