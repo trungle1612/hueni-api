@@ -1,11 +1,36 @@
 <% content_for :title, "Kênh OTA · hueni admin" %>
 
 <h1 class="text-xl font-semibold mb-1">Kênh OTA</h1>
-<p class="text-sm opacity-70 mb-4">Lịch Airbnb / Booking.com tự đồng bộ mỗi giờ. Chủ homestay chạm vào tên phòng để thêm hoặc xoá kênh.</p>
+<p class="text-sm opacity-70 mb-4">Lịch Airbnb / Booking.com / Agoda tự đồng bộ mỗi giờ. Chủ homestay chạm vào tên phòng để thêm hoặc xoá kênh.</p>
 
 <% if @rooms_by_place.any? %>
   <% @rooms_by_place.each do |place, rooms| %>
-    <h2 class="text-sm font-semibold opacity-70 mt-4 mb-2"><%= place.name %></h2>
+    <div id="<%= place.slug %>" class="flex items-center justify-between gap-2 mt-4 mb-2 scroll-mt-4">
+      <h2 class="text-sm font-semibold opacity-70"><%= place.name %></h2>
+      <% if allowed_to?(:operate, place) && rooms.any? { it.calendar_feeds.any? } %>
+        <%= button_to "↻ Đồng bộ tất cả", sync_feeds_admin_place_path(place.slug), class: "btn btn-sm", data: { turbo_submits_with: "Đang gửi…" } %>
+      <% end %>
+    </div>
+    <% if allowed_to?(:manage, place) %>
+      <%# Hoa hồng (#125): owners only, kept for Thực nhận in Báo cáo. %>
+      <details id="<%= dom_id(place, :commissions) %>" class="card bg-base-100 shadow-sm mb-3">
+        <summary class="card-body p-4 flex-row justify-between items-center cursor-pointer">
+          <span class="font-semibold">Hoa hồng</span>
+          <span class="text-sm opacity-70"><%= place.commissions.map { |provider, value| "#{CalendarFeed::PROVIDER_LABELS[provider]} #{commission(value)}%" }.join(" · ").presence || "Chưa nhập" %></span>
+        </summary>
+        <%= form_with model: place, url: commissions_admin_place_path(place.slug), method: :patch, class: "px-4 pb-4 flex flex-col gap-3" do |form| %>
+          <div class="grid grid-cols-3 gap-2">
+            <% Place::COMMISSION_PROVIDERS.each do |provider| %>
+              <label class="flex flex-col gap-1 text-sm font-medium"><%= CalendarFeed::PROVIDER_LABELS[provider] %>
+                <span class="input w-full"><input type="text" inputmode="decimal" name="place[commissions][<%= provider %>]" value="<%= commission(place.commissions[provider]) %>" placeholder="—" class="w-full">%</span>
+              </label>
+            <% end %>
+          </div>
+          <p class="text-sm opacity-70">Phần trăm OTA giữ lại trên mỗi đặt phòng. Để trống nếu chưa biết. Chỉ chủ cơ sở thấy.</p>
+          <%= form.submit "Lưu hoa hồng", class: "btn btn-primary btn-block" %>
+        <% end %>
+      </details>
+    <% end %>
     <div class="flex flex-col gap-3">
       <% rooms.each do |room| %>
         <% errors = room.calendar_feeds.count(&:last_error) %>

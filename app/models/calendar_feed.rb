@@ -2,7 +2,7 @@ require "resolv"
 require "net/http"
 
 class CalendarFeed < ApplicationRecord
-  PROVIDER_LABELS = { "airbnb" => "Airbnb", "booking" => "Booking.com", "other" => "iCal" }.freeze
+  PROVIDER_LABELS = { "airbnb" => "Airbnb", "booking" => "Booking.com", "agoda" => "Agoda", "other" => "iCal" }.freeze
   MAX_BYTES = 2.megabytes
   MAX_REDIRECTS = 3
   TIMEOUT = 15
@@ -16,7 +16,7 @@ class CalendarFeed < ApplicationRecord
 
   after_commit { Vacancy.bust }
 
-  enum :provider, { airbnb: "airbnb", booking: "booking", other: "other" }, validate: true
+  enum :provider, { airbnb: "airbnb", booking: "booking", agoda: "agoda", other: "other" }, validate: true
 
   validates :url, presence: true, uniqueness: { scope: :room_id }
   validate :url_is_public_http, if: -> { url.present? }

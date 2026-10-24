@@ -8,6 +8,18 @@ class Place < ApplicationRecord
   validates :slug, presence: true, uniqueness: true
   validates :name, presence: true
 
+  # Hoa hồng % per OTA (#125), set by the owner on Kênh OTA; a blank field removes it. For Thực nhận in Báo cáo later.
+  COMMISSION_PROVIDERS = %w[airbnb booking agoda].freeze
+  validate do
+    errors.add(:commissions, "phải là số từ 0 đến 100") unless commissions.values.all? { it.is_a?(Numeric) && it.between?(0, 100) }
+  end
+
+  # "15,5" → 15.5; anything not a number is kept so the validation names it.
+  def commissions=(value)
+    value = value.to_h.stringify_keys.slice(*COMMISSION_PROVIDERS).transform_values { it.to_s.strip.tr(",", ".").presence }.compact
+    super(value.transform_values { Float(it, exception: false) || it })
+  end
+
   # Booking codes (#124): one UPDATE, so two bookings saved at once never share a number.
   def next_booking_number!
     Place.where(id:).update_all("last_booking_number = last_booking_number + 1")

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_24_200000) do
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -52,7 +52,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_100000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["room_id", "url"], name: "index_calendar_feeds_on_room_id_and_url", unique: true
-    t.check_constraint "provider IN ('airbnb', 'booking', 'other')", name: "calendar_feeds_provider_values"
+    t.check_constraint "provider IN ('airbnb', 'booking', 'agoda', 'other')", name: "calendar_feeds_provider_values"
   end
 
   create_table "place_memberships", force: :cascade do |t|
@@ -80,6 +80,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_100000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "last_booking_number", default: 0, null: false
+    t.json "commissions", default: {}, null: false
     t.index ["slug"], name: "index_places_on_slug", unique: true
   end
 
