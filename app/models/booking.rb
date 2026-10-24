@@ -3,7 +3,7 @@ class Booking < ApplicationRecord
 
   belongs_to :room
   belongs_to :calendar_feed, optional: true
-  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note price weekend_price deposit checked_in_at checked_out_at removed_from_feed_at declared_at],
+  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note price weekend_price deposit cancel_reason checked_in_at checked_out_at removed_from_feed_at declared_at],
     meta: { place_id: ->(booking) { booking.room.place_id }, room_id: :room_id }
 
   after_commit { Vacancy.bust }
@@ -34,6 +34,14 @@ class Booking < ApplicationRecord
     event(:cancel) { transitions from: :confirmed, to: :cancelled }
     event(:reopen) { transitions from: :cancelled, to: :confirmed }
   end
+
+  # Huỷ đặt phòng asks why (#123): a preset, or the text typed under Khác (cancel_reason "other").
+  CANCEL_REASONS = [ "Khách huỷ", "Không đến", "Đặt nhầm" ].freeze
+  attr_accessor :cancel_reason_other
+  normalizes :cancel_reason, with: ->(value) { value.strip.presence }
+  before_validation { self.cancel_reason = cancel_reason_other if cancel_reason == "other" }
+  before_save { self.cancel_reason = nil if confirmed? }
+  validates :cancel_reason, presence: true, length: { maximum: 200 }, if: -> { persisted? && manual? && cancelled? && will_save_change_to_status? }
 
   validates :start_date, presence: true
   validates :end_date, presence: true, comparison: { greater_than: :start_date, message: "phải sau ngày nhận phòng (ít nhất 1 đêm)" }, if: :start_date
@@ -203,11 +211,11 @@ class Booking < ApplicationRecord
   # Due out today and not checked out yet.
   def departing_today? = can_check_out? && end_date == Date.current
 
-  # The guest never came: cancel and say so in the note. Returns false with the reason in errors[:base].
+  # The guest never came: cancel with reason Không đến. Returns false with the reason in errors[:base].
   def no_show
     with_lock do
       next refuse(no_show_refusal) unless can_no_show?
-      self.note = [ note.presence, "Không đến" ].compact.join(" · ")
+      self.cancel_reason = "Không đến"
       cancel!
     end
   end

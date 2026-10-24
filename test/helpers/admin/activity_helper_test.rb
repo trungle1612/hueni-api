@@ -22,7 +22,7 @@ class Admin::ActivityHelperTest < ActionView::TestCase
     booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Chị Mai")
     assert_equal [ :booking, "Đặt phòng", "Chị Mai 05/10–07/10" ], entry
 
-    booking.update!(status: "cancelled")
+    booking.update!(status: "cancelled", cancel_reason: "Khách huỷ")
     booking.update!(status: "confirmed")
     assert_equal [ :booking, "Khôi phục", "Chị Mai 05/10–07/10" ], entry
 
@@ -43,8 +43,8 @@ class Admin::ActivityHelperTest < ActionView::TestCase
 
     other = rooms(:limdim).bookings.create!(start_date: "2026-10-10", end_date: "2026-10-12")
     assert_equal [ :booking, "Đặt phòng", "10/10–12/10" ], entry
-    other.update!(status: "cancelled")
-    assert_equal [ :cancel, "Huỷ", "10/10–12/10" ], entry
+    other.update!(status: "cancelled", cancel_reason: "Khách huỷ")
+    assert_equal [ :cancel, "Huỷ", "10/10–12/10 · Khách huỷ" ], entry
   end
 
   test "check-in and check-out of a stay without a guest name show its dates" do

@@ -41,7 +41,7 @@ places.each_with_index do |place, place_index|
     room.bookings.create!(start_date: today - 6 + i, end_date: today - 3 + i, status: "confirmed", guest_name: "Khách cũ #{i + 1}")
     room.bookings.create!(start_date: today + offset - 1, end_date: today + offset + 1, status: "confirmed", deposit: (200_000 if i.even?),
       guest_name: guest, guest_phone: "0905 #{100 + i}#{place_index} #{456 + offset}", note: ("Đến muộn" if i == 1))
-    room.bookings.create!(start_date: today + offset + 3, end_date: today + offset + 4, status: "cancelled", guest_name: "Khách huỷ", note: "Đổi kế hoạch")
+    room.bookings.create!(start_date: today + offset + 3, end_date: today + offset + 4, status: "cancelled", guest_name: "Khách huỷ", cancel_reason: "Khách huỷ")
     room.bookings.create!(start_date: today + 8 + i, end_date: today + 10 + i, status: "confirmed", note: "Đoàn")
   end
 

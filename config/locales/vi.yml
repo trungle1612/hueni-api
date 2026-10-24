@@ -30,6 +30,7 @@ vi:
         price: Giá mỗi đêm
         weekend_price: Giá thứ 6, thứ 7
         deposit: Đã cọc
+        cancel_reason: Lý do huỷ
       calendar_feed:
         url: Link iCal
         provider: Kênh

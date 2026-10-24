@@ -84,7 +84,7 @@ class BookingTest < ActiveSupport::TestCase
     assert build(room: rooms(:limdim), status: "cancelled").valid?
     assert bookings(:limdim_confirmed).valid?
 
-    bookings(:limdim_confirmed).update!(status: "cancelled")
+    bookings(:limdim_confirmed).update!(status: "cancelled", cancel_reason: "Khách huỷ")
     assert build(room: rooms(:limdim)).valid?
   end
 
@@ -131,11 +131,21 @@ class BookingTest < ActiveSupport::TestCase
   test "update_with_status moves through every allowed status event" do
     booking = build().tap(&:save!)
     { "cancelled" => :cancelled, "confirmed" => :confirmed }.each do |to, expected|
-      assert booking.update_with_status(status: to)
+      assert booking.update_with_status(status: to, cancel_reason: "Đặt nhầm")
       assert_equal expected, booking.reload.aasm.current_state
     end
     assert booking.update_with_status(status: "confirmed", note: "Khách quay lại")
-    assert_equal [ "confirmed", "Khách quay lại" ], booking.reload.values_at(:status, :note)
+    assert_equal [ "confirmed", "Khách quay lại", nil ], booking.reload.values_at(:status, :note, :cancel_reason)
+  end
+
+  test "cancelling a manual booking needs a reason; Khác takes the typed text" do
+    booking = build.tap(&:save!)
+    assert_not booking.update_with_status(status: "cancelled", cancel_reason: "other", cancel_reason_other: " ")
+    assert_equal [ "Lý do huỷ không thể để trống" ], booking.errors.full_messages
+    assert booking.reload.confirmed?
+
+    assert booking.update_with_status(status: "cancelled", cancel_reason: "other", cancel_reason_other: " Bão, đường ngập ")
+    assert_equal [ "cancelled", "Bão, đường ngập" ], booking.reload.values_at(:status, :cancel_reason)
   end
 
   test "update_with_status keeps a refused change unsaved" do
@@ -203,7 +213,7 @@ class BookingTest < ActiveSupport::TestCase
     assert_not_includes Booking.not_checked_in, staying
   end
 
-  test "no-show cancels a late manual booking and notes it" do
+  test "no-show cancels a late manual booking with reason Không đến" do
     booking = saved(room: rooms(:garden), start_date: "2026-10-01", end_date: "2026-10-04", note: "Đặt qua Zalo")
     travel_to Time.zone.local(2026, 10, 2, 9) do
       assert booking.can_no_show?
@@ -211,7 +221,7 @@ class BookingTest < ActiveSupport::TestCase
     end
     booking.reload
     assert booking.cancelled?
-    assert_equal "Đặt qua Zalo · Không đến", booking.note
+    assert_equal [ "Đặt qua Zalo", "Không đến" ], booking.values_at(:note, :cancel_reason)
   end
 
   test "no-show is refused unless the guest is late, the booking manual and not checked in" do
@@ -457,7 +467,7 @@ class BookingTest < ActiveSupport::TestCase
       booking.check_out
       other = saved(start_date: "2026-10-03", end_date: "2026-10-05")
       assert_refused booking, :undo_check_out, "Đêm còn lại đã có khách khác"
-      other.update!(status: "cancelled")
+      other.update!(status: "cancelled", cancel_reason: "Khách huỷ")
       assert booking.undo_check_out
     end
   end
@@ -502,7 +512,7 @@ class BookingTest < ActiveSupport::TestCase
       booking.errors.clear
       assert_not booking.move_to(rooms(:limdim))
       assert_includes booking.errors[:base], "Phòng Limdim không trống tới ngày trả phòng"
-      blocker.update!(status: "cancelled")
+      blocker.update!(status: "cancelled", cancel_reason: "Khách huỷ")
 
       assert booking.move_to(rooms(:limdim))
     end
