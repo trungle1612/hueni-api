@@ -11,17 +11,44 @@
 <% end %>
 
 <% if @places.any? %>
+  <nav id="day" class="tabs tabs-box mb-3" aria-label="Ngày">
+    <%= link_to "Hôm nay", admin_root_path, class: "tab flex-1 #{"tab-active" unless @tomorrow}" %>
+    <%= link_to "Ngày mai", admin_root_path(day: "mai"), class: "tab flex-1 #{"tab-active" if @tomorrow}" %>
+  </nav>
   <div id="stats" class="grid grid-cols-4 gap-2 mb-4">
-    <% { arrivals: [ "Sắp đến", @arrivals ], in_house: [ "Đang ở", @in_house ], departures: [ "Trả phòng", @departures ], dirty_rooms: [ "Cần dọn", @dirty_rooms ] }.each do |key, (label, list)| %>
-      <div id="stat_<%= key %>" class="bg-base-100 rounded-box shadow-sm py-2 text-center <%= "text-base-content/60" if list.empty? %>">
-        <div class="text-xl font-bold leading-tight"><%= list.size %></div>
+    <% { arrivals: [ "Chờ đến", @arrivals.size ], departures: [ "Chờ đi", @departures.size ], in_house: [ "Đang ở", @in_house.size, "/#{@open_rooms}" ],
+         dirty_rooms: [ @tomorrow ? "Sẽ cần dọn" : "Cần dọn", @dirty_rooms.size ] }.each do |key, (label, count, of)| %>
+      <div id="stat_<%= key %>" class="bg-base-100 rounded-box shadow-sm py-2 text-center <%= "text-base-content/60" if count.zero? %>">
+        <div class="text-xl font-bold leading-tight"><%= count %><% if of %><span class="text-sm font-normal opacity-70"><%= of %></span><% end %></div>
         <div class="text-sm opacity-80"><%= label %></div>
       </div>
     <% end %>
   </div>
+
+  <% if @issues.any? %>
+    <% issue = ->(kind, title, detail, path) { link_to(path, class: "flex items-center gap-3 py-2") { safe_join([ activity_icon(kind, size: "size-7"), tag.span(safe_join([ tag.span(title, class: "font-semibold"), tag.span(detail, class: "block text-sm opacity-80") ]), class: "min-w-0") ]) } } %>
+    <section id="issues" class="card bg-base-100 shadow-sm mb-4">
+      <div class="card-body p-4 gap-1">
+        <h2 class="font-semibold">Cần xử lý · <%= @issues.size %></h2>
+        <div class="divide-y divide-base-200">
+          <% @issues.first(3).each do |args| %><%= issue.(*args) %><% end %>
+        </div>
+        <% if @issues.size > 3 %>
+          <details>
+            <summary class="link link-primary text-sm py-1">Xem thêm <%= @issues.size - 3 %></summary>
+            <div class="divide-y divide-base-200"><% @issues.drop(3).each do |args| %><%= issue.(*args) %><% end %></div>
+          </details>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
 <% end %>
 
-<%= render "today" if [ @departures, @dirty_rooms, @arrivals, @in_house ].any?(&:present?) %>
+<% if [ @departures, @dirty_rooms, @arrivals, @in_house ].any?(&:present?) %>
+  <%= render "today" %>
+<% elsif @tomorrow %>
+  <p id="today" class="text-center opacity-70 mb-6">Ngày mai chưa có khách đến hay đi.</p>
+<% end %>
 
 <% if @places.any? %>
   <div class="flex flex-col gap-3">
