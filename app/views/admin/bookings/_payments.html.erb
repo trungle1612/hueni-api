@@ -1,5 +1,6 @@
 <%# Thanh toán (#139). Staff take money at the desk, so they see what is due; the nightly quote stays owner-only. %>
 <% manage = allowed_to?(:manage, place) %>
+<% operate = allowed_to?(:operate, place) %>
 <% total, due, paid = booking.room_total, booking.due, booking.paid %>
 <section id="thanh-toan" class="card bg-base-100 shadow-sm mb-3 scroll-mt-4">
   <div class="card-body p-4 gap-2">
@@ -16,6 +17,27 @@
       <% end %>
     <% else %>
       <div class="flex justify-between text-sm"><span>Tiền phòng</span><span><%= vnd(total) %></span></div>
+    <% end %>
+    <%# Dịch vụ and Giảm giá (#140). %>
+    <% booking.charges.sort_by(&:created_at).each do |charge| %>
+      <div id="<%= dom_id(charge) %>" class="flex justify-between items-center gap-2 text-sm">
+        <span class="min-w-0"><%= charge.name %> · <%= charge.quantity %><%= " #{charge.unit}" if charge.unit %> × <%= vnd(charge.unit_price) %></span>
+        <span class="flex items-center gap-1 shrink-0">
+          <%= vnd(charge.amount) %>
+          <% if operate && !booking.cancelled? %>
+            <%= button_to admin_booking_charge_path(booking, charge), method: :delete, class: "btn btn-ghost btn-xs btn-square text-error",
+                  aria: { label: "Bỏ #{charge.name}" }, form: { data: { turbo_confirm: "Bỏ #{charge.label}?" } } do %>
+              <%= render "shared/icon", name: "x" %>
+            <% end %>
+          <% end %>
+        </span>
+      </div>
+    <% end %>
+    <% if booking.discount %>
+      <div id="discount" class="flex justify-between gap-2 text-sm"><span class="min-w-0">Giảm giá · <%= booking.discount_reason %></span><span class="shrink-0">−<%= vnd(booking.discount) %></span></div>
+    <% end %>
+    <% if total && (booking.charges.any? || booking.discount) %>
+      <div class="flex justify-between text-sm font-medium"><span>Tổng</span><span><%= vnd(booking.total) %></span></div>
     <% end %>
     <% booking.payments.sort_by(&:created_at).each do |payment| %>
       <div id="<%= dom_id(payment) %>" class="flex justify-between items-center gap-2 text-sm">
@@ -43,6 +65,31 @@
       <% end %>
     </div>
 
+    <% if operate && !booking.cancelled? %>
+      <details id="them-dich-vu" class="mt-1">
+        <summary class="btn btn-sm btn-block">+ Thêm dịch vụ</summary>
+        <% if (services = place.services.sort_by(&:name)).any? %>
+          <%= form_with url: admin_booking_charges_path(booking), class: "flex gap-2 mt-2" do |form| %>
+            <%= form.select :service_id, services.map { [ "#{it.name} · #{vnd(it.price)}#{"/#{it.unit}" if it.unit}", it.id ] }, {}, class: "select flex-1 min-w-0", aria: { label: "Dịch vụ" } %>
+            <%= form.number_field :quantity, value: 1, min: 1, max: 999, class: "input w-16", aria: { label: "Số lượng" } %>
+            <%= form.submit "Thêm", class: "btn btn-primary" %>
+          <% end %>
+        <% end %>
+        <p class="text-sm opacity-70 mt-1"><%= "Chưa có dịch vụ nào. " if services.empty? %>Danh sách dịch vụ do chủ cơ sở sửa ở <%= manage ? link_to("trang homestay", admin_place_path(place.slug, anchor: "dich-vu"), class: "link") : "trang homestay" %>.</p>
+      </details>
+      <details id="giam-gia">
+        <summary class="btn btn-sm btn-block">Giảm giá</summary>
+        <%= form_with model: booking, url: discount_admin_booking_path(booking), method: :patch, class: "flex flex-col gap-2 mt-2" do |form| %>
+          <div class="flex gap-2">
+            <%= form.text_field :discount, value: (number_with_delimiter(booking.discount, delimiter: ".") if booking.discount), placeholder: "50k hoặc 10%",
+                  class: "input w-32", aria: { label: "Số tiền giảm" } %>
+            <%= form.text_field :discount_reason, maxlength: 200, placeholder: "Lý do", class: "input flex-1 min-w-0", aria: { label: "Lý do giảm giá" } %>
+          </div>
+          <p class="text-sm opacity-70">Giảm trên tiền phòng, nhập số tiền hoặc %.<%= " Nhân viên giảm tối đa #{Booking::STAFF_DISCOUNT_PERCENT}%." unless manage %> Xoá trống để bỏ giảm giá.</p>
+          <%= form.submit "Lưu giảm giá", class: "btn btn-primary btn-block" %>
+        <% end %>
+      </details>
+    <% end %>
     <% refund_only = booking.cancelled? %>
     <% if (allowed_to?(:operate, place) && !refund_only) || (manage && paid.positive?) %>
       <details id="ghi-nhan" class="mt-1">

@@ -5,7 +5,8 @@ class Booking < ApplicationRecord
   belongs_to :calendar_feed, optional: true
   # Saved on their own (Payment checks the balance), never along with the booking.
   has_many :payments, dependent: :destroy, autosave: false, validate: false
-  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note price weekend_price cancel_reason checked_in_at checked_out_at removed_from_feed_at declared_at],
+  has_many :charges, class_name: "BookingCharge", dependent: :destroy
+  has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note price weekend_price discount discount_reason cancel_reason checked_in_at checked_out_at removed_from_feed_at declared_at],
     meta: { place_id: ->(booking) { booking.room.place_id }, room_id: :room_id }
 
   after_commit { Vacancy.bust }
@@ -60,6 +61,15 @@ class Booking < ApplicationRecord
   validate :room_not_in_maintenance, if: -> { manual? && confirmed? && room && start_date && end_date &&
     (new_record? || will_save_change_to_start_date? || will_save_change_to_end_date? || will_save_change_to_room_id? || will_save_change_to_status?) }
   validate :guests_fit_room, if: -> { guests && room }
+  # Giảm giá (#140): an amount off the room, with a reason; set by Booking#apply_discount.
+  vnd_price :discount
+  normalizes :discount_reason, with: ->(value) { value.squish.presence }
+  validates :discount_reason, presence: true, length: { maximum: 200 }, if: -> { discount&.positive? }
+  validate :discount_within_room, if: -> { discount.is_a?(Integer) && discount.positive? && will_save_change_to_discount? }
+  before_save { self.discount, self.discount_reason = nil, nil unless discount&.positive? }
+  # Staff may take at most this share off the room (owners: up to the whole room).
+  STAFF_DISCOUNT_PERCENT = 10
+  attr_accessor :discount_cap
   validates :guest_name, length: { maximum: 100 }
   # Kept as typed (foreign guests: "+82 10 1234 5678"), but it must be dialable for the Gọi button.
   validate -> { errors.add(:guest_phone, "không hợp lệ: cần 8–15 chữ số") unless guest_phone.match?(/\A\+?[\d\s.\-()]+\z/) && guest_phone.count("0-9").between?(8, 15) },
@@ -108,9 +118,19 @@ class Booking < ApplicationRecord
     prices.sum unless prices.include?(nil)
   end
 
+  # The bill (#140): room + services − Giảm giá.
+  def total = room_total && room_total + charges.sum(&:amount) - discount.to_i
+
+  # Giảm giá typed as an amount ("50k") or a share of the room ("10%").
+  def discount_input=(value)
+    value = value.to_s.strip
+    percent = value[/\A(\d+(?:[.,]\d+)?)\s*%\z/, 1]
+    self.discount = percent && room_total ? (room_total * BigDecimal(percent.tr(",", ".")) / 100).round : value.presence
+  end
+
   # Saved payments minus refunds. OTA bookings are paid on the OTA: nothing is due here.
   def paid = payments.reject(&:new_record?).sum(&:signed_amount)
-  def due = (room_total - paid if manual? && room_total)
+  def due = (total - paid if manual? && total)
 
   # Chưa cọc: a direct booking not yet checked in with nothing paid (the calendar's amber bar, like the Zalo app).
   def awaiting_deposit? = manual? && !checked_in_at && !paid.positive?
@@ -259,6 +279,14 @@ class Booking < ApplicationRecord
       return unless in_maintenance?
       errors.add(:base, "Phòng bảo trì đến #{room.maintenance_until.strftime("%d/%m")} (#{room.maintenance_reason}). " \
         "Chọn ngày từ #{room.maintenance_until.next_day.strftime("%d/%m")} hoặc phòng khác.")
+    end
+
+    def discount_within_room
+      return errors.add(:discount, "cần có giá phòng trước") unless room_total
+      limit = discount_cap ? room_total * discount_cap / 100 : room_total
+      return if discount <= limit
+      errors.add(:discount, discount_cap ? "nhân viên giảm tối đa #{discount_cap}% tiền phòng (#{VndPrice.format(limit)})" :
+        "không được lớn hơn tiền phòng (#{VndPrice.format(limit)})")
     end
 
     def guests_fit_room

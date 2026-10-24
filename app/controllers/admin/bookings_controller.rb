@@ -1,6 +1,7 @@
 class Admin::BookingsController < Admin::BaseController
   before_action :set_place, only: %i[new create availability]
-  before_action :set_booking, only: %i[edit update]
+  before_action :set_booking, only: %i[edit update discount]
+  before_action -> { authorize!(:operate, @place) }, only: :discount
   before_action :set_any_booking, only: %i[check_in check_out no_show undo_check_in undo_check_out move declare]
   before_action -> { authorize!(:operate, @booking.room.place) }, only: %i[check_in check_out no_show move declare]
   before_action -> { authorize!(:manage, @booking.room.place) }, only: %i[undo_check_in undo_check_out]
@@ -40,6 +41,22 @@ class Admin::BookingsController < Admin::BaseController
       redirect_to back_to_calendar, notice: @booking.cancelled? ? "Đã huỷ đặt phòng.#{" Đã hoàn #{helpers.vnd(@refund.amount)}." if @refund}" : "Đã lưu đặt phòng."
     else
       render :edit, status: :unprocessable_entity
+    end
+  end
+
+  # Giảm giá (#140): only these two fields are checked, so a stay already in conflict can still get a discount.
+  def discount
+    @booking.discount_input = params.dig(:booking, :discount)
+    @booking.discount_reason = params.dig(:booking, :discount_reason)
+    @booking.discount_cap = Booking::STAFF_DISCOUNT_PERCENT unless allowed_to?(:manage, @place)
+    @booking.validate
+    problems = @booking.errors.full_messages_for(:discount) + @booking.errors.full_messages_for(:discount_reason)
+    if problems.any?
+      redirect_to edit_admin_booking_path(@booking, anchor: "thanh-toan"), alert: problems.to_sentence
+    else
+      @booking.save!(validate: false)
+      notice = @booking.discount ? "Đã giảm #{helpers.vnd(@booking.discount)}." : "Đã bỏ giảm giá."
+      redirect_to edit_admin_booking_path(@booking, anchor: "thanh-toan"), notice:
     end
   end
 

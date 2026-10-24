@@ -1,5 +1,7 @@
 class Place < ApplicationRecord
   has_many :rooms
+  has_many :services, dependent: :destroy
+  after_create { Service::DEFAULTS.each { |name, price, unit| services.create!(name:, price:, unit:) } }
   has_many :place_memberships, dependent: :destroy
   has_many :users, through: :place_memberships
 
