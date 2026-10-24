@@ -1,0 +1,49 @@
+<% content_for :title, "Tìm đặt phòng · hueni admin" %>
+<% many_places = @places.size > 1 %>
+
+<h1 class="text-xl font-semibold mb-3">Tìm đặt phòng</h1>
+
+<%= form_with url: admin_search_path, method: :get, class: "mb-4" do %>
+  <label class="input w-full">
+    <%= render "shared/icon", name: "search" %>
+    <%= search_field_tag :q, @query, placeholder: "Tên khách, số điện thoại hoặc mã DP-0004", autofocus: @query.empty?,
+          autocomplete: "off", enterkeyhint: "search", class: "grow", aria: { label: "Tìm đặt phòng" } %>
+  </label>
+<% end %>
+
+<% if @query.empty? %>
+  <p class="text-sm opacity-70">Gõ tên (có dấu hay không dấu đều được), số điện thoại hoặc mã đặt phòng rồi bấm Enter.</p>
+<% elsif [ @in_house, @upcoming, @past ].all?(&:empty?) %>
+  <section id="no_results" class="card bg-base-100 shadow-sm">
+    <div class="card-body p-4 gap-3 items-start">
+      <p>Không tìm thấy đặt phòng nào cho <b><%= @query %></b>.</p>
+      <div class="flex flex-wrap gap-2">
+        <% @places.each do |place| %>
+          <%= link_to "+ Đặt phòng mới#{" · #{place.name}" if many_places}", new_admin_place_booking_path(place.slug), class: "btn btn-primary btn-sm" %>
+        <% end %>
+        <%= link_to "Xoá tìm kiếm", admin_search_path, class: "btn btn-ghost btn-sm" %>
+      </div>
+    </div>
+  </section>
+<% else %>
+  <% { in_house: [ "Đang ở", @in_house ], upcoming: [ "Sắp đến", @upcoming ], past: [ "Đã qua và đã huỷ", @past ] }.each do |id, (label, bookings)| %>
+    <% next if bookings.empty? %>
+    <section id="<%= id %>" class="mb-4">
+      <h2 class="font-semibold mb-1"><%= label %> <span class="badge badge-sm badge-ghost"><%= bookings.size %></span></h2>
+      <div class="bg-base-100 rounded-box shadow-sm divide-y divide-base-200">
+        <% bookings.each do |booking| %>
+          <%= link_to booking.manual? ? edit_admin_booking_path(booking) : admin_place_calendar_path(booking.room.place.slug, from: booking.start_date.iso8601),
+                id: dom_id(booking, :search), class: "block px-4 py-3" do %>
+            <div class="font-semibold"><%= booking.label %><%= " · #{booking.guest_phone}" if booking.guest_phone %></div>
+            <div class="text-sm opacity-80"><%= "#{booking.code} · " if booking.code %>Phòng <%= booking.room.name %><%= " · #{booking.room.place.name}" if many_places %> · <%= stay_dates(booking) %></div>
+            <% badges = if booking.cancelled? then tag.span([ "Đã huỷ", booking.cancel_reason ].compact.join(" · "), class: "badge badge-soft badge-sm")
+                        elsif id == :past then (tag.span("Đã trả phòng", class: "badge badge-soft badge-sm") if booking.checked_out_at)
+                        else stay_badges(booking).presence
+                        end %>
+            <% if badges %><div class="flex flex-wrap gap-1 mt-1"><%= badges %></div><% end %>
+          <% end %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+<% end %>

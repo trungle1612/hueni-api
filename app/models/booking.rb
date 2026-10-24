@@ -156,6 +156,23 @@ class Booking < ApplicationRecord
   end
 
   # The day whose arrivals are still expected: yesterday until LATE_ARRIVAL_UNTIL, then today.
+  # Tìm đặt phòng (#143): the name with or without diacritics ("mai" finds "Chị Mái"), the phone in any format,
+  # or the code ("DP-0004", "dp4", "0004"). Matched in Ruby: SQLite can't fold Vietnamese letters.
+  def self.search(query)
+    text = search_fold(query)
+    digits = search_digits(query)
+    number = query[/\A\s*(?:dp)?[\s-]*(\d{1,6})\s*\z/i, 1]&.to_i
+    ids = pluck(:id, :guest_name, :guest_phone, :number).filter_map do |id, name, phone, code|
+      id if (text.size >= 2 && name && search_fold(name).include?(text)) ||
+        (digits.size >= 3 && phone && search_digits(phone).include?(digits)) || (number && code == number)
+    end
+    where(id: ids)
+  end
+
+  def self.search_fold(text) = I18n.transliterate(text.to_s).downcase.squish
+  # "+84 905 123 456" → "0905123456"
+  def self.search_digits(text) = text.to_s.gsub(/\D/, "").sub(/\A84(?=\d{9}\z)/, "0")
+
   def self.arrival_date = (Time.current - LATE_ARRIVAL_UNTIL.hours).to_date
 
   def can_check_in? = check_in_refusal.nil?
