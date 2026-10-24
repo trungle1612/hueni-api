@@ -28,6 +28,8 @@ class Admin::FolioTest < ActionDispatch::IntegrationTest
     post admin_booking_charges_path(@booking), params: { service_id: other.id }
     assert_response :not_found
 
+    post admin_booking_charges_path(@booking), params: { service_id: @water.id, quantity: "1" }
+    delete admin_booking_charge_path(@booking, @booking.charges.last)
     delete admin_booking_charge_path(@booking, @booking.charges.sole)
     assert_equal "Đã bỏ Nước suối × 2 chai.", flash[:notice]
     assert_equal 800_000, @booking.reload.total
@@ -38,7 +40,7 @@ class Admin::FolioTest < ActionDispatch::IntegrationTest
     assert_select "body", text: /Thêm dịch vụ.*Nước suối × 2 chai · 30.000 ₫ · DP-\d{4}/m
     assert_select "body", text: /Bỏ dịch vụ/
     get edit_admin_booking_path(@booking)
-    assert_select "#history", text: /Bỏ dịch vụ.*Thêm dịch vụ.*Đặt phòng/m
+    assert_select "#history", text: /Bỏ dịch vụ.*Thêm dịch vụ · Nước suối × 1 chai · 20.000 ₫.*Đặt phòng/m
   end
 
   test "Giảm giá: an amount or %, with a reason, never above the room; staff at most 10%" do

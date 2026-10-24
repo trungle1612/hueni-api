@@ -65,10 +65,12 @@ module Admin::ActivityHelper
   end
 
   private
-    # The record as it was right after this change (before it, for a destroy).
+    # The record as it was right after this change (before it, for a destroy). A create's object_changes leaves out
+    # attributes still at their column default (a charge's quantity 1), so those come from the defaults.
     def activity_after(version)
       return version.object.to_h if version.event == "destroy"
-      version.object.to_h.merge(version.object_changes.to_h.transform_values(&:last))
+      before = version.event == "create" ? version.item_type.safe_constantize&.column_defaults.to_h : version.object.to_h
+      before.merge(version.object_changes.to_h.transform_values(&:last))
     end
 
     def activity_dates(attrs) = [ attrs["start_date"], attrs["end_date"] ].map { Date.parse(it).strftime("%d/%m") }.join("–")
