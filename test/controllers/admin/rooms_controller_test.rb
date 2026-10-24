@@ -95,7 +95,7 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
   test "edits own room, price with separators, place_id ignored" do
     get edit_admin_room_path(rooms(:garden))
     assert_select "h1", "Phòng Garden"
-    assert_select "input[type=radio][name='room[active]'][value=true][checked]"
+    assert_select "input[type=radio][name='room[state]'][value=active][checked]"
 
     patch admin_room_path(rooms(:garden)), params: { room: { name: "Vườn", price: "350 000 ₫", place_id: places(:hiuhill).id } }
     rooms(:garden).reload
@@ -203,6 +203,26 @@ class Admin::RoomsControllerTest < ActionDispatch::IntegrationTest
     other = Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 2)
     patch maintenance_admin_room_path(other), params: { room: { maintenance_reason: "x", maintenance_until: "2026-10-07" } }
     assert_response :not_found
+  end
+
+  test "the room form picks Nhận khách, Bảo trì or Tạm ngưng; Phòng shows Bảo trì" do
+    travel_to Time.zone.local(2026, 10, 5, 12)
+    patch admin_room_path(rooms(:garden)), params: { room: { state: "maintenance", maintenance_reason: "", maintenance_until: "2026-10-07" } }
+    assert_response :unprocessable_entity
+    assert_select "#maintenance_reason_error", text: /không thể để trống/
+    assert_select "input[name='room[state]'][value=maintenance][checked]"
+
+    patch admin_room_path(rooms(:garden)), params: { room: { state: "maintenance", maintenance_reason: "Sơn lại", maintenance_until: "2026-10-07" } }
+    assert_equal [ "maintenance", true, "Sơn lại" ], rooms(:garden).reload.values_at(:housekeeping, :active, :maintenance_reason)
+    get admin_rooms_path
+    assert_select "#room_#{rooms(:garden).id} .badge", text: "Bảo trì đến 07/10"
+
+    patch admin_room_path(rooms(:garden)), params: { room: { state: "paused", maintenance_reason: "Sơn lại" } }
+    assert_equal [ "clean", false, nil ], rooms(:garden).reload.values_at(:housekeeping, :active, :maintenance_reason)
+
+    rooms(:garden).dirty!
+    patch admin_room_path(rooms(:garden)), params: { room: { state: "active" } }
+    assert_equal [ "dirty", true ], rooms(:garden).reload.values_at(:housekeeping, :active)
   end
 
   test "admins who aren't members can't mark a room clean" do

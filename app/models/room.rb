@@ -35,6 +35,16 @@ class Room < ApplicationRecord
 
   def maintenance_on?(date) = maintenance? && maintenance_until >= date
 
+  # Trạng thái on the room form: Nhận khách / Bảo trì / Tạm ngưng.
+  def state = maintenance? ? "maintenance" : (active? ? "active" : "paused")
+
+  def state=(value)
+    self.active = value != "paused"
+    if value == "maintenance" then self.housekeeping = "maintenance"
+    elsif maintenance? then self.housekeeping = "clean"
+    end
+  end
+
   # Daily: Bảo trì past its last day ends; the room needs cleaning before the next guest.
   def self.end_maintenance = maintenance.where(maintenance_until: ...Date.current).find_each { it.update!(housekeeping: "dirty") }
 

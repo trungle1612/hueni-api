@@ -63,7 +63,7 @@ class Admin::RoomsController < Admin::BaseController
     end
 
     def room_params
-      params.expect(room: [ :name, :max_guests, :price, :weekend_price, :active ])
+      params.expect(room: [ :name, :max_guests, :price, :weekend_price, :active, :state, :maintenance_reason, :maintenance_until ])
     end
 
     def price_notes
