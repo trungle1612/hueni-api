@@ -79,7 +79,7 @@ Rails.application.routes.draw do
   end
 
   # Zalo Mini App API (#119 C).
-  scope "app/v1", module: "mini_app/v1", as: "app_v1", defaults: { format: :json } do
+  scope "api/v1", module: "mini_app/v1", as: "api_v1", defaults: { format: :json } do
     resource :session, only: %i[create destroy]
     resource :registration, only: %i[show create update]
     resource :me, only: :show, controller: "me"
