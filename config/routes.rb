@@ -91,6 +91,8 @@ Rails.application.routes.draw do
         get :calendar
         get :availability
         get :services
+        get :report
+        post :search
       end
       resources :bookings, only: :create
     end
