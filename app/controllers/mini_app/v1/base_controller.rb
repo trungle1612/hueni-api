@@ -6,9 +6,11 @@ class MiniApp::V1::BaseController < ActionController::API
 
   before_action :allow_cors
   before_action :authenticate, except: :preflight
+  before_action :set_paper_trail_whodunnit, except: :preflight # after authenticate: the user, see user_for_paper_trail
 
   rescue_from Forbidden, with: -> { render json: { error: "forbidden", message: "Bạn không có quyền làm việc này." }, status: :forbidden }
   rescue_from ActiveRecord::RecordNotFound, with: -> { render json: { error: "not_found" }, status: :not_found }
+  rescue_from ActionController::ParameterMissing, with: -> { render json: { error: "bad_request", message: "Thiếu dữ liệu gửi lên." }, status: :bad_request }
 
   # CORS preflight for every /api/v1 path.
   def preflight = head(:no_content)
@@ -38,9 +40,23 @@ class MiniApp::V1::BaseController < ActionController::API
       nil
     end
 
+    # Each request reads or changes one homestay, @place.
+    def manage? = Current.user.allowed_to?(:manage, @place)
+
     # Serializer params: staff never get the nightly quote or the owner's room note (same as /admin).
-    # Each request reads one homestay, @place.
-    def serializer_params = { manage: Current.user.allowed_to?(:manage, @place) }
+    def serializer_params = { manage: manage? }
+
+    # Every change answers with the booking as it is now, like GET /bookings/:id.
+    def render_booking(booking, status: :ok)
+      booking = Booking.includes(:calendar_feed, :charges, payments: :user).find(booking.id)
+      render json: MiniApp::BookingDetailSerializer.new(booking, params: serializer_params), status:
+    end
+
+    # Validation errors and refusals: errors per field (base = not about one field), Vietnamese full messages.
+    def render_invalid(record)
+      render json: { error: "invalid", message: record.errors.full_messages.to_sentence, errors: record.errors.to_hash(true) },
+        status: :unprocessable_entity
+    end
 
     def allow_cors
       response.headers["Access-Control-Allow-Origin"] = "*"

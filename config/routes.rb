@@ -89,9 +89,31 @@ Rails.application.routes.draw do
         get :today
         get :board
         get :calendar
+        get :availability
+        get :services
+      end
+      resources :bookings, only: :create
+    end
+    resources :bookings, only: %i[show update] do
+      member do
+        post :check_in
+        post :check_out
+        post :no_show
+        post :undo_check_in
+        post :undo_check_out
+        post :move
+        post :declare
+        patch :discount
+      end
+      resources :payments, only: %i[create destroy]
+      resources :charges, only: %i[create destroy]
+    end
+    resources :rooms, only: [] do
+      member do
+        post :clean
+        patch :maintenance
       end
     end
-    resources :bookings, only: :show
     match "*path", to: "base#preflight", via: :options
   end
 

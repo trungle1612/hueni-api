@@ -37,26 +37,22 @@ class Admin::BookingsController < Admin::BaseController
   def update
     if @booking.checked_out_at
       redirect_to edit_admin_booking_path(@booking), alert: "Khách đã trả phòng, không sửa được đặt phòng."
-    elsif update_and_refund
-      redirect_to back_to_calendar, notice: @booking.cancelled? ? "Đã huỷ đặt phòng.#{" Đã hoàn #{helpers.vnd(@refund.amount)}." if @refund}" : "Đã lưu đặt phòng."
+    elsif @booking.update_and_refund(booking_params, refund_method)
+      refund = @booking.refund
+      redirect_to back_to_calendar, notice: @booking.cancelled? ? "Đã huỷ đặt phòng.#{" Đã hoàn #{helpers.vnd(refund.amount)}." if refund}" : "Đã lưu đặt phòng."
     else
       render :edit, status: :unprocessable_entity
     end
   end
 
-  # Giảm giá (#140): only these two fields are checked, so a stay already in conflict can still get a discount.
+  # Giảm giá (#140).
   def discount
-    @booking.discount_input = params.dig(:booking, :discount)
-    @booking.discount_reason = params.dig(:booking, :discount_reason)
-    @booking.discount_cap = Booking::STAFF_DISCOUNT_PERCENT unless allowed_to?(:manage, @place)
-    @booking.validate
-    problems = @booking.errors.full_messages_for(:discount) + @booking.errors.full_messages_for(:discount_reason)
-    if problems.any?
-      redirect_to edit_admin_booking_path(@booking, anchor: "thanh-toan"), alert: problems.to_sentence
-    else
-      @booking.save!(validate: false)
+    cap = Booking::STAFF_DISCOUNT_PERCENT unless allowed_to?(:manage, @place)
+    if @booking.apply_discount(params.dig(:booking, :discount), params.dig(:booking, :discount_reason), cap:)
       notice = @booking.discount ? "Đã giảm #{helpers.vnd(@booking.discount)}." : "Đã bỏ giảm giá."
       redirect_to edit_admin_booking_path(@booking, anchor: "thanh-toan"), notice:
+    else
+      redirect_to edit_admin_booking_path(@booking, anchor: "thanh-toan"), alert: @booking.errors.full_messages.to_sentence
     end
   end
 
@@ -65,7 +61,7 @@ class Admin::BookingsController < Admin::BaseController
     guests = params[:guests].presence&.to_i
     if guests.nil? && @booking.guests.nil?
       redirect_back_or_to admin_root_path, alert: "Nhập số khách khi nhận phòng"
-    elsif collecting_due { @booking.check_in(guests:) }
+    elsif @booking.collecting_due(params[:collect]) { @booking.check_in(guests:) }
       redirect_back_or_to admin_root_path, notice: "Đã nhận phòng: #{stay_label}#{money_note}"
     else
       redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
@@ -73,7 +69,7 @@ class Admin::BookingsController < Admin::BaseController
   end
 
   def check_out
-    if collecting_due { @booking.check_out }
+    if @booking.collecting_due(params[:collect]) { @booking.check_out }
       redirect_back_or_to admin_root_path, notice: "Đã trả phòng: #{stay_label}#{money_note}. Phòng chuyển sang chưa dọn."
     else
       redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence
@@ -139,31 +135,11 @@ class Admin::BookingsController < Admin::BaseController
     end
 
     # Cancelling with money paid asks what happens to it (#139): kept, or refunded in full (owners only).
-    def update_and_refund
-      refund_method = params[:refund_method].presence_in(Payment::METHODS.keys) if allowed_to?(:manage, @place)
-      Booking.transaction do
-        next false unless @booking.update_with_status(booking_params)
-        if refund_method && @booking.cancelled? && @booking.paid.positive?
-          @refund = @booking.payments.create!(kind: "refund", amount: @booking.paid, payment_method: refund_method, note: "Hoàn cọc", user: Current.user)
-        end
-        true
-      end
-    end
-
-    # "Thu X và nhận phòng" (collect=1) records what is due in cash with the check-in / check-out; else it stays owed.
-    def collecting_due
-      due = @booking.due
-      @collected = due if params[:collect] && due&.positive?
-      @owed = due if !@collected && due&.positive?
-      Booking.transaction do
-        @booking.payments.create!(amount: @collected, payment_method: "cash", user: Current.user) if @collected
-        yield || raise(ActiveRecord::Rollback)
-      end
-    end
+    def refund_method = (params[:refund_method].presence_in(Payment::METHODS.keys) if allowed_to?(:manage, @place))
 
     def money_note
-      if @collected then " · đã thu #{helpers.vnd(@collected)}"
-      elsif @owed then " · còn nợ #{helpers.vnd(@owed)}"
+      if @booking.collected then " · đã thu #{helpers.vnd(@booking.collected)}"
+      elsif @booking.owed then " · còn nợ #{helpers.vnd(@booking.owed)}"
       end
     end
 

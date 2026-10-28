@@ -192,6 +192,40 @@ class Booking < ApplicationRecord
     event ? aasm.fire!(event.name, to) : refuse("Không chuyển được sang trạng thái này")
   end
 
+  # The booking form's save (#139): cancelling with money paid refunds all of it as #refund when refund_method is
+  # given (owners only, the controller decides); without, it is kept.
+  def update_and_refund(attributes, refund_method)
+    transaction do
+      next false unless update_with_status(attributes)
+      @refund = payments.create!(kind: "refund", amount: paid, payment_method: refund_method, note: "Hoàn cọc", user: Current.user) if refund_method && cancelled? && paid.positive?
+      true
+    end
+  end
+
+  attr_reader :refund, :collected, :owed
+
+  # Thu X và nhận phòng (#149): with collect, what is due is paid in cash in the same transaction as the check-in /
+  # check-out in the block (#collected); without, it stays owed (#owed). Returns the block's result.
+  def collecting_due(collect)
+    amount = due if due&.positive?
+    @collected, @owed = collect ? [ amount, nil ] : [ nil, amount ]
+    transaction do
+      payments.create!(amount: collected, payment_method: "cash", user: Current.user) if collected
+      yield || raise(ActiveRecord::Rollback)
+    end || false
+  end
+
+  # Giảm giá (#140): only these two fields are checked, so a stay already in conflict can still get a discount.
+  # cap: STAFF_DISCOUNT_PERCENT for staff. Returns false with the reasons in errors[:discount] / errors[:discount_reason].
+  def apply_discount(input, reason, cap: nil)
+    self.discount_input = input
+    self.discount_reason = reason
+    self.discount_cap = cap
+    validate
+    (errors.attribute_names - %i[discount discount_reason]).each { errors.delete(it) }
+    errors.empty? && save!(validate: false)
+  end
+
   # The guest arrived. Returns false with the reason in errors[:base].
   # Records a fact, so it skips validations: a guest at the desk is checked in even if the booking conflicts
   # with an OTA booking or exceeds a lowered max_guests (the calendar shows the conflict).
