@@ -93,6 +93,7 @@ Rails.application.routes.draw do
         get :services
         get :report
         post :search
+        get :calendar_feeds
       end
       resources :bookings, only: :create
     end
@@ -115,6 +116,9 @@ Rails.application.routes.draw do
         post :clean
         patch :maintenance
       end
+    end
+    resources :calendar_feeds, only: [] do
+      post :sync, on: :member
     end
     match "*path", to: "base#preflight", via: :options
   end

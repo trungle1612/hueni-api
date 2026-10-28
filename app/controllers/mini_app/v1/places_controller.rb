@@ -11,11 +11,11 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
     render json: { rooms: MiniApp::RoomSerializer.new(ordered_rooms, params: serializer_params) }
   end
 
-  # Hôm nay, or Ngày mai with ?day=mai; Cần xử lý stays today's (Today).
+  # Hôm nay, or Ngày mai with ?day=mai; Cần xử lý stays today's (Today). feed_errors: Lỗi đồng bộ (n), OTA feeds failing now.
   def today
     today = Today.new(@place.rooms, tomorrow: params[:day] == "mai")
     preload(today.arrivals + today.departures + today.in_house)
-    render json: MiniApp::TodaySerializer.new(today, params: serializer_params)
+    render json: MiniApp::TodaySerializer.new(today, params: serializer_params).serializable_hash.merge(feed_errors: feeds.where.not(last_error: nil).count)
   end
 
   # RoomDay.for: each room's state today with the booking in it and the next one.
@@ -83,7 +83,15 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
     render json: sections.transform_values { MiniApp::BookingSerializer.new(it, params: serializer_params) }
   end
 
+  # Kênh OTA (#157): every room with its feeds, rooms with a failing feed first. Read-only; Đồng bộ ngay is per feed.
+  def calendar_feeds
+    rooms = @place.rooms.includes(:calendar_feeds).sort_by { [ it.calendar_feeds.any?(&:last_error) ? 0 : 1, it.name ] }
+    render json: { rooms: MiniApp::RoomFeedsSerializer.new(rooms) }
+  end
+
   private
+    def feeds = CalendarFeed.where(room: @place.rooms)
+
     def set_place
       @place = Current.user.accessible_places.find(params[:id])
     end

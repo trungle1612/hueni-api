@@ -37,6 +37,25 @@ class CalendarFeed < ApplicationRecord
 
   def provider_label = PROVIDER_LABELS.fetch(provider, "iCal")
 
+  # Why a sync failed, for people (the raw error stays in last_error for admins): gone = the OTA no longer serves the link,
+  # parse = not readable as an iCal feed, fetch = anything else, retried hourly.
+  ERROR_MESSAGES = {
+    "gone" => "Link iCal không còn dùng được. Lấy link mới trên Airbnb / Booking.com rồi thêm lại kênh.",
+    "parse" => "Link này không đọc được thành lịch iCal (.ics). Kiểm tra lại link.",
+    "fetch" => "Không tải được lịch lúc này. hueni tự thử lại mỗi giờ."
+  }.freeze
+
+  def self.error_kind(error)
+    case error.to_s
+    when /HTTP (401|403|404|410)\b/ then "gone"
+    when /not an iCalendar|larger than|public host|redirects/ then "parse"
+    else "fetch"
+    end
+  end
+
+  def error_kind = (self.class.error_kind(last_error) if last_error)
+  def error_message = (ERROR_MESSAGES[error_kind] if last_error)
+
   # Only the host is shown: the rest of the URL carries the OTA's access token.
   def url_host
     URI.parse(url).host
