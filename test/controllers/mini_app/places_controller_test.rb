@@ -21,19 +21,19 @@ class MiniApp::PlacesControllerTest < ActionDispatch::IntegrationTest
   def body = response.parsed_body
 
   test "rooms: owners get prices and the room note, staff do not" do
-    get_as @owner_token, rooms_api_v1_place_path("tomo-homestay")
+    get_as @owner_token, rooms_api_v1_place_path(places(:tomo))
     assert_response :success
     limdim = body["rooms"].find { it["id"] == rooms(:limdim).id }
     assert_equal({ "price" => 500_000, "weekend_price" => 600_000, "note" => "Chìa khoá ở quầy", "kind" => "Phòng đôi",
                    "amenities" => [ "Máy lạnh", "Ban công" ], "housekeeping" => "clean" }, limdim.slice("price", "weekend_price", "note", "kind", "amenities", "housekeeping"))
 
-    get_as @staff_token, rooms_api_v1_place_path("tomo-homestay")
+    get_as @staff_token, rooms_api_v1_place_path(places(:tomo))
     assert_response :success
     body["rooms"].each { assert_empty it.keys & %w[price weekend_price note] }
   end
 
   test "today: arrivals, guests in, OTA conflict; Ngày mai with ?day=mai" do
-    get_as @owner_token, today_api_v1_place_path("tomo-homestay")
+    get_as @owner_token, today_api_v1_place_path(places(:tomo))
     assert_response :success
     assert_equal [ @arriving.id ], body["arrivals"].pluck("id")
     assert_equal [ @staying.id ], body["in_house"].pluck("id")
@@ -41,7 +41,7 @@ class MiniApp::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "DP-0001", body["arrivals"].sole["code"]
     assert_equal [ [ "error", @arriving.id, "2026-10-21" ], [ "stay", @staying.id, nil ] ], body["issues"].map { it.values_at("kind", "booking_id", "date") }
 
-    get_as @staff_token, today_api_v1_place_path("tomo-homestay", day: "mai")
+    get_as @staff_token, today_api_v1_place_path(places(:tomo), day: "mai")
     assert_response :success
     assert_equal "2026-10-21", body["date"]
     assert_equal [ @ota.id ], body["arrivals"].pluck("id")
@@ -51,7 +51,7 @@ class MiniApp::PlacesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "board: each room's state today" do
-    get_as @staff_token, board_api_v1_place_path("tomo-homestay")
+    get_as @staff_token, board_api_v1_place_path(places(:tomo))
     assert_response :success
     days = body["days"].index_by { it.dig("room", "name") }
     assert_equal [ "arriving", @arriving.id, @ota.id ], days["Limdim"].values_at("state").push(days["Limdim"].dig("booking", "id"), days["Limdim"].dig("next", "id"))
@@ -60,7 +60,7 @@ class MiniApp::PlacesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "calendar: bookings in the range, conflicts, range capped" do
-    get_as @owner_token, calendar_api_v1_place_path("tomo-homestay", from: "2026-10-19", to: "2027-06-01")
+    get_as @owner_token, calendar_api_v1_place_path(places(:tomo), from: "2026-10-19", to: "2027-06-01")
     assert_response :success
     assert_equal [ "2026-10-19", "2026-12-20" ], body.values_at("from", "to")
     assert_equal [ @staying.id, @arriving.id, @ota.id ], body["bookings"].pluck("id")
@@ -89,14 +89,14 @@ class MiniApp::PlacesControllerTest < ActionDispatch::IntegrationTest
     other = places(:hiuhill).rooms.create!(name: "Đồi", max_guests: 2)
     booking = other.bookings.create!(start_date: "2026-10-20", end_date: "2026-10-21")
     %w[rooms today board calendar].each do |action|
-      get_as @owner_token, "/api/v1/places/hiuhill-homestay/#{action}"
+      get_as @owner_token, "/api/v1/places/#{places(:hiuhill).id}/#{action}"
       assert_response :not_found
     end
     get_as @staff_token, api_v1_booking_path(booking)
     assert_response :not_found
     assert_equal "not_found", body["error"]
 
-    get rooms_api_v1_place_path("tomo-homestay")
+    get rooms_api_v1_place_path(places(:tomo))
     assert_response :unauthorized
   end
 end

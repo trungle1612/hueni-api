@@ -52,7 +52,7 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
 
   private
     def set_place
-      @place = Current.user.accessible_places.find_by!(slug: params[:slug])
+      @place = Current.user.accessible_places.find(params[:id])
     end
 
     def ordered_rooms = @place.rooms.order(Arel.sql("floor IS NULL, floor"), active: :desc, name: :asc)

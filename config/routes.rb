@@ -83,7 +83,7 @@ Rails.application.routes.draw do
     resource :session, only: %i[create destroy]
     resource :registration, only: %i[show create update]
     resource :me, only: :show, controller: "me"
-    resources :places, only: [], param: :slug do
+    resources :places, only: [] do
       member do
         get :rooms
         get :today
