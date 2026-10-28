@@ -1,5 +1,5 @@
 # One homestay's rooms, Hôm nay, room board and calendar for the Mini App (#153). Owners and staff alike;
-# staff get no prices (see BaseController#room_json / #booking_json).
+# staff get no prices (see the serializers' params[:manage]).
 class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
   CALENDAR_DAYS = 14
   MAX_CALENDAR_DAYS = 62
@@ -8,31 +8,21 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
 
   # By floor (rooms without one last), switched-off rooms last within it, like the homestay page.
   def rooms
-    render json: { rooms: ordered_rooms.map { room_json(it) } }
+    render json: { rooms: MiniApp::RoomSerializer.new(ordered_rooms, params: serializer_params) }
   end
 
   # Hôm nay, or Ngày mai with ?day=mai; Cần xử lý stays today's (Today).
   def today
-    tomorrow = params[:day] == "mai"
-    today = Today.new(@place.rooms, tomorrow:)
-    preload(today.arrivals + today.departures + today.in_house + today.issues.map(&:booking))
-    render json: {
-      date: tomorrow ? Date.current.next_day : Date.current,
-      arrivals: today.arrivals.map { booking_json(it) },
-      departures: today.departures.map { booking_json(it) },
-      in_house: today.in_house.map { booking_json(it) },
-      dirty_rooms: today.dirty_rooms.map { room_json(it) },
-      issues: today.issues.map { { kind: it.kind, title: it.title, detail: it.detail, booking_id: it.booking.id, date: it.date } }
-    }
+    today = Today.new(@place.rooms, tomorrow: params[:day] == "mai")
+    preload(today.arrivals + today.departures + today.in_house)
+    render json: MiniApp::TodaySerializer.new(today, params: serializer_params)
   end
 
   # RoomDay.for: each room's state today with the booking in it and the next one.
   def board
     days = RoomDay.for(ordered_rooms)
     preload(days.flat_map { [ it.booking, it.next_booking ] }.compact)
-    render json: { date: Date.current, days: days.map { |day|
-      { room: room_json(day.room), state: day.state, booking: day.booking && booking_json(day.booking), next: day.next_booking && booking_json(day.next_booking) }
-    } }
+    render json: { date: Date.current, days: MiniApp::RoomDaySerializer.new(days, params: serializer_params) }
   end
 
   # Active rooms × [from, to) (default 14 days, at most 62), like /admin calendar: confirmed bookings in the range
@@ -46,8 +36,13 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
     conflicts = bookings.select(&:ical?).flat_map do |ical|
       bookings.select { it.manual? && it.room_id == ical.room_id && it.overlaps?(ical) }.map { { ota_id: ical.id, manual_id: it.id } }
     end
-    render json: { from:, to:, rooms: rooms.map { room_json(it) }, bookings: bookings.map { booking_json(it) }, conflicts:,
-                   maintenance_conflicts: bookings.select(&:in_maintenance?).map(&:id) }
+    render json: {
+      from:, to:,
+      rooms: MiniApp::RoomSerializer.new(rooms, params: serializer_params),
+      bookings: MiniApp::BookingSerializer.new(bookings, params: serializer_params),
+      conflicts:,
+      maintenance_conflicts: bookings.select(&:in_maintenance?).map(&:id)
+    }
   end
 
   private
@@ -57,6 +52,7 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
 
     def ordered_rooms = @place.rooms.order(Arel.sql("floor IS NULL, floor"), active: :desc, name: :asc)
 
+    # Today and RoomDay load the bookings; the serializer also reads their feed and payments.
     def preload(bookings)
       ActiveRecord::Associations::Preloader.new(records: bookings.uniq, associations: [ :calendar_feed, :payments ]).call
     end

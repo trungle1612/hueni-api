@@ -38,31 +38,9 @@ class MiniApp::V1::BaseController < ActionController::API
       nil
     end
 
-    # Staff never get the nightly quote or the owner's room note (same as /admin). Each request reads one homestay, @place.
-    def manage? = @manage.nil? ? (@manage = Current.user.allowed_to?(:manage, @place)) : @manage
-
-    # The Mini App's Room type. maintenance.until is the last blocked day (inclusive, Room#maintenance_on?).
-    def room_json(room)
-      json = room.slice(:id, :place_id, :name, :max_guests, :active, :housekeeping, :floor)
-      json[:kind] = Room::ROOM_TYPES[room.room_type]
-      json[:amenities] = room.amenities.map { Room::AMENITIES[it] }
-      json[:maintenance] = { reason: room.maintenance_reason, until: room.maintenance_until } if room.maintenance?
-      json.merge!(room.slice(:price, :weekend_price, :note)) if manage?
-      json
-    end
-
-    # The Mini App's Booking type. Callers preload :calendar_feed and :payments (awaiting_deposit reads payments).
-    def booking_json(booking)
-      json = booking.slice(:id, :room_id, :start_date, :end_date, :status, :source, :guest_name, :guest_phone, :guests, :note,
-        :cancel_reason, :checked_in_at, :checked_out_at, :declared_at, :removed_from_feed_at)
-      json[:code] = booking.code
-      json[:label] = booking.label
-      json[:provider] = booking.calendar_feed&.provider
-      json[:discount] = { amount: booking.discount, reason: booking.discount_reason } if booking.discount
-      json[:awaiting_deposit] = booking.awaiting_deposit?
-      json.merge!(booking.slice(:price, :weekend_price)) if manage?
-      json
-    end
+    # Serializer params: staff never get the nightly quote or the owner's room note (same as /admin).
+    # Each request reads one homestay, @place.
+    def serializer_params = { manage: Current.user.allowed_to?(:manage, @place) }
 
     def allow_cors
       response.headers["Access-Control-Allow-Origin"] = "*"
