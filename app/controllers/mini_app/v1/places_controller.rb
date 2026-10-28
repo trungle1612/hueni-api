@@ -63,9 +63,36 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
     render json: { services: MiniApp::ServiceSerializer.new(@place.services.order(:name)) }
   end
 
+  # Báo cáo, owners only: ?month=YYYY-MM (default this month) or ?period=7d. report.csv = Xuất CSV.
+  def report
+    authorize!(:manage, @place)
+    report = params[:period] == "7d" ? Report.week(@place) : Report.new(@place, month_param || Date.current)
+    if request.format.csv?
+      send_data report.to_csv, type: "text/csv; charset=utf-8", filename: "bao-cao-#{@place.slug}-#{report.first.iso8601}-#{report.last.iso8601}.csv"
+    else
+      render json: MiniApp::ReportSerializer.new(report, params: serializer_params)
+    end
+  end
+
+  # Tìm đặt phòng in this homestay: guest name (no diacritics needed), phone digits or DP code (Booking.search).
+  # q comes in the body so guest names never sit in a URL; it is filtered from the logs.
+  def search
+    query = params[:q].to_s.squish.first(50)
+    sections = query.empty? ? { in_house: [], upcoming: [], past: [] } :
+      Booking.where(room: @place.rooms).includes(:calendar_feed, :payments).search_sections(query, limit: Admin::SearchesController::LIMIT)
+    render json: sections.transform_values { MiniApp::BookingSerializer.new(it, params: serializer_params) }
+  end
+
   private
     def set_place
       @place = Current.user.accessible_places.find(params[:id])
+    end
+
+    # A YYYY-MM query param, or nil when missing or malformed.
+    def month_param
+      Date.strptime(params[:month].to_s, "%Y-%m") if params[:month].is_a?(String)
+    rescue Date::Error
+      nil
     end
 
     def ordered_rooms = @place.rooms.order(Arel.sql("floor IS NULL, floor"), active: :desc, name: :asc)

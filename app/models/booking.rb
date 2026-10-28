@@ -169,6 +169,15 @@ class Booking < ApplicationRecord
     where(id: ids)
   end
 
+  # Tìm đặt phòng's sections (#143): guests in, bookings still to come, and the rest newest first (at most `limit`).
+  def self.search_sections(query, limit: 30)
+    results = search(query).to_a
+    in_house = results.select(&:can_check_out?).sort_by(&:end_date)
+    upcoming = results.select { it.confirmed? && !it.checked_in_at && it.end_date > Date.current }.sort_by(&:start_date)
+    past = (results - in_house - upcoming).sort_by { [ -it.start_date.jd, -it.id ] }.first(limit)
+    { in_house:, upcoming:, past: }
+  end
+
   def self.search_fold(text) = I18n.transliterate(text.to_s).downcase.squish
   # "+84 905 123 456" → "0905123456"
   def self.search_digits(text) = text.to_s.gsub(/\D/, "").sub(/\A84(?=\d{9}\z)/, "0")
