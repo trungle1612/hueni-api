@@ -89,6 +89,13 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
     render json: { rooms: MiniApp::RoomFeedsSerializer.new(rooms) }
   end
 
+  # Hoạt động (#158), owners only: who changed what in this homestay, newest first, Activity::PER_PAGE at a time.
+  # next_before: pass as ?before= for the page below; null on the last page.
+  def activity
+    authorize!(:manage, @place)
+    render json: activity_page(PaperTrail::Version.where(place_id: @place.id))
+  end
+
   private
     def feeds = CalendarFeed.where(room: @place.rooms)
 
