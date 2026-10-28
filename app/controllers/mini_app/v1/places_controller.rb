@@ -45,6 +45,24 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
     }
   end
 
+  # The booking form's live "còn trống / trùng lịch" check: the same validations as saving (Booking#date_problems).
+  # booking_id: the booking being edited, so it does not clash with itself. free_room_ids: other rooms free those nights.
+  def availability
+    room = @place.rooms.find(params.expect(:room_id))
+    booking = Booking.new(room:, start_date: date_param(:start_date), end_date: date_param(:end_date), id: params[:booking_id].presence)
+    problems = booking.date_problems
+    free = if problems.any? && booking.start_date && booking.end_date&.after?(booking.start_date)
+      @place.rooms.where(active: true).where.not(id: room.id).order(:name)
+        .select { Booking.new(room: it, start_date: booking.start_date, end_date: booking.end_date).date_problems.empty? }
+    end
+    render json: { available: problems.empty?, problems:, free_room_ids: free.to_a.map(&:id) }
+  end
+
+  # Dịch vụ catalog, for adding services to a booking.
+  def services
+    render json: { services: MiniApp::ServiceSerializer.new(@place.services.order(:name)) }
+  end
+
   private
     def set_place
       @place = Current.user.accessible_places.find(params[:id])
