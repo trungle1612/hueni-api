@@ -3,11 +3,14 @@
 class MiniApp::V1::BookingsController < MiniApp::V1::BaseController
   before_action :set_place, only: :create
   before_action :set_booking, only: %i[update discount]
-  before_action :set_any_booking, only: %i[show check_in check_out no_show undo_check_in undo_check_out move declare]
+  before_action :set_any_booking, only: %i[show history check_in check_out no_show undo_check_in undo_check_out move declare]
   before_action -> { authorize!(:operate, @place) }, only: %i[discount check_in check_out no_show move declare]
-  before_action -> { authorize!(:manage, @place) }, only: %i[undo_check_in undo_check_out]
+  before_action -> { authorize!(:manage, @place) }, only: %i[history undo_check_in undo_check_out]
 
   def show = render_booking(@booking)
+
+  # Lịch sử (#158), owners only: this booking's changes, its payments and services included (Booking#history).
+  def history = render(json: activity_page(@booking.history))
 
   def create
     @booking = @place.rooms.find(params.expect(booking: [ :room_id ])[:room_id]).bookings.build(booking_params)

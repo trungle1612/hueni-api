@@ -72,6 +72,7 @@ Rails.application.routes.draw do
         post :move
         post :declare
         patch :discount
+        get :history
       end
       resources :payments, only: %i[create destroy]
       resources :charges, controller: "booking_charges", only: %i[create destroy]
@@ -94,6 +95,7 @@ Rails.application.routes.draw do
         get :report
         post :search
         get :calendar_feeds
+        get :activity
       end
       resources :bookings, only: :create
     end
@@ -107,6 +109,7 @@ Rails.application.routes.draw do
         post :move
         post :declare
         patch :discount
+        get :history
       end
       resources :payments, only: %i[create destroy]
       resources :charges, only: %i[create destroy]

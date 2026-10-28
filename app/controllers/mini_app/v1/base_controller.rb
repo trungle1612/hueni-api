@@ -52,6 +52,12 @@ class MiniApp::V1::BaseController < ActionController::API
       render json: MiniApp::BookingDetailSerializer.new(booking, params: serializer_params), status:
     end
 
+    # A page of Hoạt động / Lịch sử: { activities: [Activity::Line], next_before: }.
+    def activity_page(versions)
+      page = Activity.page(versions, params[:before])
+      { activities: MiniApp::ActivitySerializer.new(Activity.lines(page)), next_before: (page.last.id if page.size == Activity::PER_PAGE) }
+    end
+
     # Validation errors and refusals: errors per field (base = not about one field), Vietnamese full messages.
     def render_invalid(record)
       render json: { error: "invalid", message: record.errors.full_messages.to_sentence, errors: record.errors.to_hash(true) },
