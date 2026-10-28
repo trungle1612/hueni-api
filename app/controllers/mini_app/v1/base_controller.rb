@@ -1,4 +1,4 @@
-# Zalo Mini App API (#119 C): JSON under /app/v1 with a bearer token from POST /app/v1/session (#152).
+# Zalo Mini App API (#119 C): JSON under /api/v1 with a bearer token from POST /api/v1/session (#152).
 # Same access rules as /admin (see Admin::BaseController): look up through Current.user.accessible_*, then authorize!.
 # Any origin may call it: there are no cookies, only the token.
 class MiniApp::V1::BaseController < ActionController::API
@@ -10,7 +10,7 @@ class MiniApp::V1::BaseController < ActionController::API
   rescue_from Forbidden, with: -> { render json: { error: "forbidden", message: "Bạn không có quyền làm việc này." }, status: :forbidden }
   rescue_from ActiveRecord::RecordNotFound, with: -> { render json: { error: "not_found" }, status: :not_found }
 
-  # CORS preflight for every /app/v1 path.
+  # CORS preflight for every /api/v1 path.
   def preflight = head(:no_content)
 
   private
