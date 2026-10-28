@@ -32,6 +32,16 @@ class MiniApp::V1::BaseController < ActionController::API
       { user: { id: user.id, name: user.name }, places: places.map { { id: it.id, slug: it.slug, name: it.name, role: roles[it.id] } } }
     end
 
+    def date_param(key)
+      Date.iso8601(params[key].to_s)
+    rescue Date::Error
+      nil
+    end
+
+    # Serializer params: staff never get the nightly quote or the owner's room note (same as /admin).
+    # Each request reads one homestay, @place.
+    def serializer_params = { manage: Current.user.allowed_to?(:manage, @place) }
+
     def allow_cors
       response.headers["Access-Control-Allow-Origin"] = "*"
       response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-Registration-Token"

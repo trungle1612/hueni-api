@@ -5,10 +5,11 @@ class Today
   # booking: the row to open; date: the day a calendar link should start at (OTA conflicts only).
   Issue = Data.define(:kind, :title, :detail, :booking, :date)
 
-  attr_reader :arrivals, :departures, :in_house, :dirty_rooms, :issues
+  # date: the day the lists are for (today, or tomorrow for Ngày mai).
+  attr_reader :date, :arrivals, :departures, :in_house, :dirty_rooms, :issues
 
   def initialize(rooms, tomorrow: false)
-    today = Date.current
+    today = @date = Date.current
     bookings = Booking.where(room_id: rooms.select(:id)).includes(:calendar_feed, room: :place).order(:start_date, :id)
     @departures = bookings.in_house.where(end_date: ..today).to_a
     @dirty_rooms = rooms.dirty.includes(:place).order(:name).to_a
@@ -17,7 +18,7 @@ class Today
     @issues = conflicts(bookings) + dirty_arrivals + undeclared
     return unless tomorrow
 
-    tomorrow = today.next_day
+    tomorrow = @date = today.next_day
     @arrivals = bookings.blocking.not_checked_in.where(start_date: tomorrow).to_a
     @departures = bookings.blocking.where(checked_out_at: nil, end_date: tomorrow).to_a
     @dirty_rooms = @departures.map(&:room).uniq.sort_by(&:name)

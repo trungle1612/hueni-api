@@ -72,3 +72,5 @@ gem "aasm", "~> 6.0"
 
 gem "omniauth-zalo2", "~> 0.2.0"
 gem "omniauth-rails_csrf_protection", "~> 2.0"
+
+gem "alba", "~> 4.0"

@@ -83,6 +83,15 @@ Rails.application.routes.draw do
     resource :session, only: %i[create destroy]
     resource :registration, only: %i[show create update]
     resource :me, only: :show, controller: "me"
+    resources :places, only: [] do
+      member do
+        get :rooms
+        get :today
+        get :board
+        get :calendar
+      end
+    end
+    resources :bookings, only: :show
     match "*path", to: "base#preflight", via: :options
   end
 
