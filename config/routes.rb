@@ -99,6 +99,11 @@ Rails.application.routes.draw do
         get :members
         patch :commissions
         patch :bank
+        get :shift, to: "shifts#show"
+        post "shift/close", to: "shifts#close", as: :close_shift
+        post :cash_expenses, to: "shifts#create_expense"
+        get :housekeeping, to: "cleanings#index"
+        post :guests, to: "guests#index"
       end
       resources :bookings, only: :create
       resources :rooms, only: :create
@@ -118,6 +123,14 @@ Rails.application.routes.draw do
         post :approve
         post :reject
       end
+      resources :groups, only: :create
+    end
+    resources :groups, only: %i[show update] do
+      member do
+        post :check_in
+        post :payments
+      end
+      resources :bookings, only: %i[create update], controller: "group_bookings"
     end
     resources :bookings, only: %i[show update] do
       member do
@@ -134,14 +147,22 @@ Rails.application.routes.draw do
       resources :payments, only: %i[create destroy]
       resources :charges, only: %i[create destroy]
       resources :refund_requests, only: :create
+      resource :guest, only: %i[show update]
     end
     resources :rooms, only: %i[update destroy] do
       member do
         post :clean
         patch :maintenance
+        patch :damage, to: "cleanings#damage"
+      end
+      resource :cleaning, only: :update do
+        post :finish
+        post :undo
       end
     end
     resources :services, only: %i[update destroy]
+    patch "cash_expenses/:id", to: "shifts#update_expense", as: :cash_expense
+    delete "cash_expenses/:id", to: "shifts#destroy_expense"
     resources :calendar_feeds, only: [] do
       post :sync, on: :member
     end

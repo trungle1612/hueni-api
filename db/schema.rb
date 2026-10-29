@@ -61,7 +61,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
     t.integer "number"
     t.integer "discount"
     t.string "discount_reason"
+    t.integer "group_id"
+    t.boolean "pays_own", default: false, null: false
     t.index ["calendar_feed_id", "uid"], name: "index_bookings_on_calendar_feed_id_and_uid", unique: true
+    t.index ["group_id"], name: "index_bookings_on_group_id"
     t.index ["room_id", "start_date", "end_date"], name: "index_bookings_on_room_id_and_start_date_and_end_date"
     t.check_constraint "checked_out_at IS NULL OR checked_in_at IS NOT NULL", name: "bookings_checkout_after_checkin"
     t.check_constraint "end_date > start_date", name: "bookings_dates_order"
@@ -80,6 +83,61 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
     t.datetime "updated_at", null: false
     t.index ["room_id", "url"], name: "index_calendar_feeds_on_room_id_and_url", unique: true
     t.check_constraint "provider IN ('airbnb', 'booking', 'agoda', 'other')", name: "calendar_feeds_provider_values"
+  end
+
+  create_table "cash_expenses", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.integer "user_id"
+    t.integer "amount", null: false
+    t.string "reason", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id"], name: "index_cash_expenses_on_place_id"
+    t.index ["user_id"], name: "index_cash_expenses_on_user_id"
+    t.check_constraint "amount > 0", name: "cash_expenses_amount_positive"
+  end
+
+  create_table "cleaning_tasks", force: :cascade do |t|
+    t.integer "room_id", null: false
+    t.date "date", null: false
+    t.integer "assignee_id"
+    t.json "checks", default: [], null: false
+    t.datetime "started_at"
+    t.datetime "done_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assignee_id"], name: "index_cleaning_tasks_on_assignee_id"
+    t.index ["room_id", "date"], name: "index_cleaning_tasks_on_room_id_and_date"
+    t.index ["room_id"], name: "index_cleaning_tasks_on_room_id"
+  end
+
+  create_table "groups", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.integer "number", null: false
+    t.string "name", null: false
+    t.string "contact"
+    t.string "phone"
+    t.string "origin"
+    t.integer "discount_pct", default: 0, null: false
+    t.string "bill", default: "one", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id", "number"], name: "index_groups_on_place_id_and_number", unique: true
+    t.index ["place_id"], name: "index_groups_on_place_id"
+    t.check_constraint "bill IN ('one', 'split')", name: "groups_bill_values"
+    t.check_constraint "discount_pct BETWEEN 0 AND 100", name: "groups_discount_pct_range"
+  end
+
+  create_table "guests", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.string "key", null: false
+    t.string "name"
+    t.text "note"
+    t.string "flag"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id", "key"], name: "index_guests_on_place_id_and_key", unique: true
+    t.index ["place_id"], name: "index_guests_on_place_id"
   end
 
   create_table "payments", force: :cascade do |t|
@@ -129,6 +187,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
     t.string "bank_name"
     t.string "bank_account"
     t.string "bank_holder"
+    t.integer "last_group_number", default: 0, null: false
     t.index ["slug"], name: "index_places_on_slug", unique: true
   end
 
@@ -191,6 +250,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
     t.integer "floor"
     t.json "amenities", default: [], null: false
     t.text "note"
+    t.string "damage_note"
     t.index ["place_id", "name"], name: "index_rooms_on_place_id_and_name", unique: true
     t.check_constraint "housekeeping IN ('clean', 'dirty', 'maintenance')", name: "rooms_housekeeping_values"
     t.check_constraint "room_type IN ('single', 'double', 'family', 'dorm', 'studio', 'villa')", name: "rooms_room_type_values"
@@ -215,6 +275,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["user_id"], name: "index_sessions_on_user_id"
+  end
+
+  create_table "shift_closes", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.integer "user_id"
+    t.integer "handed_to_id"
+    t.integer "opening", null: false
+    t.integer "expected", null: false
+    t.integer "counted", null: false
+    t.json "denominations"
+    t.integer "keep", null: false
+    t.string "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["handed_to_id"], name: "index_shift_closes_on_handed_to_id"
+    t.index ["place_id", "created_at"], name: "index_shift_closes_on_place_id_and_created_at"
+    t.index ["place_id"], name: "index_shift_closes_on_place_id"
+    t.index ["user_id"], name: "index_shift_closes_on_user_id"
+    t.check_constraint "counted >= 0 AND keep >= 0 AND keep <= counted", name: "shift_closes_amounts"
   end
 
   create_table "sync_runs", force: :cascade do |t|
@@ -264,8 +343,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
   add_foreign_key "booking_charges", "bookings"
   add_foreign_key "booking_charges", "users"
   add_foreign_key "bookings", "calendar_feeds"
+  add_foreign_key "bookings", "groups"
   add_foreign_key "bookings", "rooms"
   add_foreign_key "calendar_feeds", "rooms"
+  add_foreign_key "cash_expenses", "places"
+  add_foreign_key "cash_expenses", "users"
+  add_foreign_key "cleaning_tasks", "rooms"
+  add_foreign_key "cleaning_tasks", "users", column: "assignee_id"
+  add_foreign_key "groups", "places"
+  add_foreign_key "guests", "places"
   add_foreign_key "payments", "bookings"
   add_foreign_key "payments", "users"
   add_foreign_key "place_memberships", "places"
@@ -280,5 +366,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
   add_foreign_key "rooms", "places"
   add_foreign_key "services", "places"
   add_foreign_key "sessions", "users"
+  add_foreign_key "shift_closes", "places"
+  add_foreign_key "shift_closes", "users"
+  add_foreign_key "shift_closes", "users", column: "handed_to_id"
   add_foreign_key "sync_runs", "calendar_feeds", on_delete: :cascade
 end

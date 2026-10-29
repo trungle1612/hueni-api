@@ -1,6 +1,10 @@
 class Place < ApplicationRecord
   has_many :rooms
   has_many :services, dependent: :destroy
+  has_many :cash_expenses, dependent: :destroy
+  has_many :shift_closes, dependent: :destroy
+  has_many :guests, dependent: :destroy
+  has_many :groups, dependent: :destroy
   # The starting catalog is not someone's change: kept out of Hoạt động.
   after_create { PaperTrail.request(enabled: false) { Service::DEFAULTS.each { |name, price, unit| services.create!(name:, price:, unit:) } } }
   has_many :place_memberships, dependent: :destroy
@@ -34,6 +38,12 @@ class Place < ApplicationRecord
   def next_booking_number!
     Place.where(id:).update_all("last_booking_number = last_booking_number + 1")
     Place.where(id:).pick(:last_booking_number)
+  end
+
+  # Group codes DOAN-0001 (#164), the same way.
+  def next_group_number!
+    Place.where(id:).update_all("last_group_number = last_group_number + 1")
+    Place.where(id:).pick(:last_group_number)
   end
 
   # Upserts places from hueni's homestay.json "places" array, keyed by slug. Never deletes.
