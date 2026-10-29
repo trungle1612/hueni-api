@@ -1,6 +1,7 @@
 class Place < ApplicationRecord
   has_many :rooms
   has_many :services, dependent: :destroy
+  has_many :guests, dependent: :destroy
   has_many :groups, dependent: :destroy
   # The starting catalog is not someone's change: kept out of Hoạt động.
   after_create { PaperTrail.request(enabled: false) { Service::DEFAULTS.each { |name, price, unit| services.create!(name:, price:, unit:) } } }

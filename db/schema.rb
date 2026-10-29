@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_29_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_29_200000) do
   create_table "api_tokens", force: :cascade do |t|
     t.integer "user_id", null: false
     t.string "token_digest", null: false
@@ -100,6 +100,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_100000) do
     t.index ["place_id"], name: "index_groups_on_place_id"
     t.check_constraint "bill IN ('one', 'split')", name: "groups_bill_values"
     t.check_constraint "discount_pct BETWEEN 0 AND 100", name: "groups_discount_pct_range"
+  end
+
+  create_table "guests", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.string "key", null: false
+    t.string "name"
+    t.text "note"
+    t.string "flag"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id", "key"], name: "index_guests_on_place_id_and_key", unique: true
+    t.index ["place_id"], name: "index_guests_on_place_id"
   end
 
   create_table "payments", force: :cascade do |t|
@@ -267,6 +279,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_100000) do
   add_foreign_key "bookings", "rooms"
   add_foreign_key "calendar_feeds", "rooms"
   add_foreign_key "groups", "places"
+  add_foreign_key "guests", "places"
   add_foreign_key "payments", "bookings"
   add_foreign_key "payments", "users"
   add_foreign_key "place_memberships", "places"
