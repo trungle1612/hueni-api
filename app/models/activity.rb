@@ -157,6 +157,7 @@ class Activity
         return [ :clean, changes.key?("housekeeping") ? "Xong bảo trì" : "Hết hạn bảo trì, cần dọn" ]
       end
       return [ :clean, "Dọn xong" ] if changes.keys == [ "housekeeping" ]
+      return changes["damage_note"][1] ? [ :error, "Báo hỏng / thiếu đồ", changes["damage_note"][1] ] : [ :ok, "Đã xử lý đồ hỏng" ] if changes.keys == [ "damage_note" ]
       return [ :room, changes["active"][1] ? "Nhận khách lại" : "Tạm ngưng phòng" ] if changes.keys == [ "active" ]
       parts = []
       parts << "đổi tên #{changes["name"][0]} → #{changes["name"][1]}" if changes.key?("name")

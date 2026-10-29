@@ -2,7 +2,7 @@
 class MiniApp::RoomSerializer
   include Alba::Resource
 
-  attributes :id, :place_id, :name, :max_guests, :active, :housekeeping, :floor
+  attributes :id, :place_id, :name, :max_guests, :active, :housekeeping, :floor, :damage_note
   # Labels to show (kind, amenities) and the keys a room form sends back (room_type, amenity_keys).
   attributes :room_type
   attribute(:kind) { Room::ROOM_TYPES[it.room_type] }

@@ -4,8 +4,9 @@ class Room < ApplicationRecord
   belongs_to :place
   has_many :bookings
   has_many :calendar_feeds, dependent: :destroy
+  has_many :cleaning_tasks, dependent: :destroy
   # Becoming dirty is part of check-out, so only "dọn xong" (→ clean) and Bảo trì are logged.
-  has_paper_trail on: %i[create update destroy], only: [ :name, :max_guests, :price, :weekend_price, :active, :maintenance_reason, :maintenance_until, :floor, :room_type, :amenities, :note,
+  has_paper_trail on: %i[create update destroy], only: [ :name, :max_guests, :price, :weekend_price, :active, :maintenance_reason, :maintenance_until, :floor, :room_type, :amenities, :note, :damage_note,
     { housekeeping: ->(room) { !room.dirty? } } ],
     meta: { place_id: :place_id, room_id: :id }
 
@@ -30,6 +31,9 @@ class Room < ApplicationRecord
   normalizes :note, with: ->(value) { value.strip.presence }
   validates :floor, numericality: { only_integer: true, in: 0..200 }, allow_nil: true
   validates :note, length: { maximum: 1000 }
+  # Báo hỏng hoặc thiếu đồ (#166): shown until cleared; blocks nothing, the owner sets Bảo trì for that.
+  normalizes :damage_note, with: ->(value) { value.squish.presence }
+  validates :damage_note, length: { maximum: 200 }
   # Xoá phòng (#122): only a room that never had a booking (one added by mistake), so history and Báo cáo stay whole.
   before_destroy prepend: true do
     next unless bookings.exists?
