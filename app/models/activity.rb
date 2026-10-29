@@ -49,6 +49,10 @@ class Activity
       in [ "Service", "create" ] then [ :ok, "Thêm vào danh sách dịch vụ", activity_service(after) ]
       in [ "Service", "destroy" ] then [ :cancel, "Xoá khỏi danh sách dịch vụ", activity_service(after) ]
       in [ "Service", "update" ] then [ :edit, "Sửa dịch vụ", activity_service_changes(changes, after) ]
+      in [ "CashExpense", "create" ] then [ :cancel, "Chi tiền mặt", "#{vnd(after["amount"])} · #{after["reason"]}" ]
+      in [ "CashExpense", "update" ] then [ :edit, "Sửa khoản chi", "#{vnd(after["amount"])} · #{after["reason"]}" ]
+      in [ "CashExpense", "destroy" ] then [ :cancel, "Xoá khoản chi", "#{vnd(after["amount"])} · #{after["reason"]}" ]
+      in [ "ShiftClose", "create" ] then activity_shift_close(after)
       in [ "CalendarFeed", "update" ] then after["last_error"].present? ? [ :error, "Đồng bộ lỗi", CalendarFeed::ERROR_MESSAGES.fetch(CalendarFeed.error_kind(after["last_error"])) ] : [ :ok, "Đồng bộ lại được" ]
       else [ :edit, "Thay đổi" ]
       end
@@ -93,6 +97,13 @@ class Activity
       parts << "giá #{vnd(changes["price"][0])} → #{vnd(changes["price"][1])}" if changes.key?("price")
       parts << "đơn vị #{activity_value(changes["unit"][0])} → #{activity_value(changes["unit"][1])}" if changes.key?("unit")
       [ (after["name"] unless changes.key?("name")), parts.join(", ") ].compact.join(": ")
+    end
+
+    # Chốt ca (#167): a difference is an error line with the note.
+    def activity_shift_close(after)
+      difference = after["counted"] - after["expected"]
+      return [ :ok, "Chốt ca", "Khớp #{vnd(after["counted"])} · để lại két #{vnd(after["keep"])}" ] if difference.zero?
+      [ :error, "Chốt ca lệch", "#{difference.negative? ? "Thiếu" : "Thừa"} #{vnd(difference.abs)} · #{after["note"]}" ]
     end
 
     def activity_code(after) = Booking.where(id: after["booking_id"]).pick(:number)&.then { format("DP-%04d", it) }

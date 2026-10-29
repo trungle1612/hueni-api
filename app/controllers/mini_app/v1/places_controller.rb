@@ -36,7 +36,8 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
   def today
     today = Today.new(@place.rooms, tomorrow: params[:day] == "mai")
     preload(today.arrivals + today.departures + today.in_house)
-    render json: MiniApp::TodaySerializer.new(today, params: serializer_params).serializable_hash.merge(feed_errors: feeds.where.not(last_error: nil).count)
+    render json: MiniApp::TodaySerializer.new(today, params: serializer_params).serializable_hash.merge(feed_errors: feeds.where.not(last_error: nil).count,
+      cash_differences: (cash_differences if manage?))
   end
 
   # RoomDay.for: each room's state today with the booking in it and the next one.
@@ -118,6 +119,12 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
   end
 
   private
+    # Giao ca lệch (#167), owners only: today's closes whose count differs from the app.
+    def cash_differences
+      @place.shift_closes.with_difference.where(created_at: Date.current.all_day).includes(:user).order(:created_at)
+        .map { { id: it.id, at: it.created_at, by: it.user&.name, expected: it.expected, counted: it.counted, difference: it.difference, note: it.note } }
+    end
+
     def render_place = render(json: MiniApp::PlaceSerializer.new(@place, params: { **serializer_params, role: Current.user.role_at(@place) }))
 
     def feeds = CalendarFeed.where(room: @place.rooms)

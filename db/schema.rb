@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_29_400000) do
   create_table "api_tokens", force: :cascade do |t|
     t.integer "user_id", null: false
     t.string "token_digest", null: false
@@ -80,6 +80,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
     t.datetime "updated_at", null: false
     t.index ["room_id", "url"], name: "index_calendar_feeds_on_room_id_and_url", unique: true
     t.check_constraint "provider IN ('airbnb', 'booking', 'agoda', 'other')", name: "calendar_feeds_provider_values"
+  end
+
+  create_table "cash_expenses", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.integer "user_id"
+    t.integer "amount", null: false
+    t.string "reason", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id"], name: "index_cash_expenses_on_place_id"
+    t.index ["user_id"], name: "index_cash_expenses_on_user_id"
+    t.check_constraint "amount > 0", name: "cash_expenses_amount_positive"
   end
 
   create_table "payments", force: :cascade do |t|
@@ -195,6 +207,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
+  create_table "shift_closes", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.integer "user_id"
+    t.integer "handed_to_id"
+    t.integer "opening", null: false
+    t.integer "expected", null: false
+    t.integer "counted", null: false
+    t.json "denominations"
+    t.integer "keep", null: false
+    t.string "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["handed_to_id"], name: "index_shift_closes_on_handed_to_id"
+    t.index ["place_id", "created_at"], name: "index_shift_closes_on_place_id_and_created_at"
+    t.index ["place_id"], name: "index_shift_closes_on_place_id"
+    t.index ["user_id"], name: "index_shift_closes_on_user_id"
+    t.check_constraint "counted >= 0 AND keep >= 0 AND keep <= counted", name: "shift_closes_amounts"
+  end
+
   create_table "sync_runs", force: :cascade do |t|
     t.integer "calendar_feed_id", null: false
     t.string "trigger", null: false
@@ -244,6 +275,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
   add_foreign_key "bookings", "calendar_feeds"
   add_foreign_key "bookings", "rooms"
   add_foreign_key "calendar_feeds", "rooms"
+  add_foreign_key "cash_expenses", "places"
+  add_foreign_key "cash_expenses", "users"
   add_foreign_key "payments", "bookings"
   add_foreign_key "payments", "users"
   add_foreign_key "place_memberships", "places"
@@ -254,5 +287,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
   add_foreign_key "rooms", "places"
   add_foreign_key "services", "places"
   add_foreign_key "sessions", "users"
+  add_foreign_key "shift_closes", "places"
+  add_foreign_key "shift_closes", "users"
+  add_foreign_key "shift_closes", "users", column: "handed_to_id"
   add_foreign_key "sync_runs", "calendar_feeds", on_delete: :cascade
 end
