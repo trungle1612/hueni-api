@@ -100,10 +100,19 @@ Rails.application.routes.draw do
         patch :commissions
         patch :bank
         get :housekeeping, to: "cleanings#index"
+        post :guests, to: "guests#index"
       end
       resources :bookings, only: :create
       resources :rooms, only: :create
       resources :services, only: :create
+      resources :groups, only: :create
+    end
+    resources :groups, only: %i[show update] do
+      member do
+        post :check_in
+        post :payments
+      end
+      resources :bookings, only: %i[create update], controller: "group_bookings"
     end
     resources :bookings, only: %i[show update] do
       member do
@@ -119,6 +128,7 @@ Rails.application.routes.draw do
       end
       resources :payments, only: %i[create destroy]
       resources :charges, only: %i[create destroy]
+      resource :guest, only: %i[show update]
     end
     resources :rooms, only: %i[update destroy] do
       member do
