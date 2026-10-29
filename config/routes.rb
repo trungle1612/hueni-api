@@ -99,6 +99,7 @@ Rails.application.routes.draw do
         get :members
         patch :commissions
         patch :bank
+        get :housekeeping, to: "cleanings#index"
       end
       resources :bookings, only: :create
       resources :rooms, only: :create
@@ -123,6 +124,11 @@ Rails.application.routes.draw do
       member do
         post :clean
         patch :maintenance
+        patch :damage, to: "cleanings#damage"
+      end
+      resource :cleaning, only: :update do
+        post :finish
+        post :undo
       end
     end
     resources :services, only: %i[update destroy]

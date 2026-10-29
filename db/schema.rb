@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_29_300000) do
   create_table "api_tokens", force: :cascade do |t|
     t.integer "user_id", null: false
     t.string "token_digest", null: false
@@ -80,6 +80,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
     t.datetime "updated_at", null: false
     t.index ["room_id", "url"], name: "index_calendar_feeds_on_room_id_and_url", unique: true
     t.check_constraint "provider IN ('airbnb', 'booking', 'agoda', 'other')", name: "calendar_feeds_provider_values"
+  end
+
+  create_table "cleaning_tasks", force: :cascade do |t|
+    t.integer "room_id", null: false
+    t.date "date", null: false
+    t.integer "assignee_id"
+    t.json "checks", default: [], null: false
+    t.datetime "started_at"
+    t.datetime "done_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assignee_id"], name: "index_cleaning_tasks_on_assignee_id"
+    t.index ["room_id", "date"], name: "index_cleaning_tasks_on_room_id_and_date"
+    t.index ["room_id"], name: "index_cleaning_tasks_on_room_id"
   end
 
   create_table "payments", force: :cascade do |t|
@@ -169,6 +183,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
     t.integer "floor"
     t.json "amenities", default: [], null: false
     t.text "note"
+    t.string "damage_note"
     t.index ["place_id", "name"], name: "index_rooms_on_place_id_and_name", unique: true
     t.check_constraint "housekeeping IN ('clean', 'dirty', 'maintenance')", name: "rooms_housekeeping_values"
     t.check_constraint "room_type IN ('single', 'double', 'family', 'dorm', 'studio', 'villa')", name: "rooms_room_type_values"
@@ -244,6 +259,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
   add_foreign_key "bookings", "calendar_feeds"
   add_foreign_key "bookings", "rooms"
   add_foreign_key "calendar_feeds", "rooms"
+  add_foreign_key "cleaning_tasks", "rooms"
+  add_foreign_key "cleaning_tasks", "users", column: "assignee_id"
   add_foreign_key "payments", "bookings"
   add_foreign_key "payments", "users"
   add_foreign_key "place_memberships", "places"
