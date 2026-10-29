@@ -27,11 +27,14 @@ class MiniApp::V1::BaseController < ActionController::API
 
     def user_for_paper_trail = Current.user&.id
 
-    # The Mini App's Place type: { id, slug, name, role }.
+    # The Mini App's Place type: { id, slug, name, role, permissions } (permissions: Quyền thêm, all of them for owners).
     def me_json(user)
       places = user.accessible_places.order(:name).to_a
-      roles = user.place_memberships.to_h { [ it.place_id, it.role ] }
-      { user: { id: user.id, name: user.name }, places: places.map { { id: it.id, slug: it.slug, name: it.name, role: roles[it.id] } } }
+      memberships = user.place_memberships.unlocked.index_by(&:place_id)
+      { user: { id: user.id, name: user.name }, places: places.map { |place|
+        membership = memberships[place.id]
+        { id: place.id, slug: place.slug, name: place.name, role: membership.role, permissions: PlaceMembership::PERMISSIONS.keys.select { membership.allows?(it) } }
+      } }
     end
 
     def date_param(key)

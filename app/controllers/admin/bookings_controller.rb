@@ -1,7 +1,7 @@
 class Admin::BookingsController < Admin::BaseController
   before_action :set_place, only: %i[new create availability]
   before_action :set_booking, only: %i[edit update discount]
-  before_action -> { authorize!(:operate, @place) }, only: :discount
+  before_action -> { authorize!(:discount, @place) }, only: :discount
   before_action :set_any_booking, only: %i[check_in check_out no_show undo_check_in undo_check_out move declare]
   before_action -> { authorize!(:operate, @booking.room.place) }, only: %i[check_in check_out no_show move declare]
   before_action -> { authorize!(:manage, @booking.room.place) }, only: %i[undo_check_in undo_check_out]
@@ -135,7 +135,7 @@ class Admin::BookingsController < Admin::BaseController
     end
 
     # Cancelling with money paid asks what happens to it (#139): kept, or refunded in full (owners only).
-    def refund_method = (params[:refund_method].presence_in(Payment::METHODS.keys) if allowed_to?(:manage, @place))
+    def refund_method = (params[:refund_method].presence_in(Payment::METHODS.keys) if allowed_to?(:refund, @place))
 
     def money_note
       if @booking.collected then " · đã thu #{helpers.vnd(@booking.collected)}"

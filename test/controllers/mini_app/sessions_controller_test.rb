@@ -24,7 +24,7 @@ class MiniApp::SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :created
     token = response.parsed_body["token"]
     assert_equal 32, token.size
-    assert_equal({ "id" => places(:tomo).id, "slug" => "tomo-homestay", "name" => places(:tomo).name, "role" => "owner" }, response.parsed_body["places"].sole)
+    assert_equal({ "id" => places(:tomo).id, "slug" => "tomo-homestay", "name" => places(:tomo).name, "role" => "owner", "permissions" => %w[discount refund report] }, response.parsed_body["places"].sole)
     assert_not ApiToken.exists?(token_digest: token) # only the digest is kept
     assert_equal "*", response.headers["Access-Control-Allow-Origin"]
 

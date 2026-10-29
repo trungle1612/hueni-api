@@ -24,7 +24,7 @@ class MiniApp::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     as :owner, activity_api_v1_place_path(places(:tomo))
     assert_response :success
     lines = body["activities"]
-    assert_equal [ "Dọn xong", "Thu tiền", "Đặt phòng", "Sửa phòng" ], lines.pluck("action")
+    assert_equal [ "Dọn xong", "Thu tiền", "Đặt phòng", "Thêm thành viên", "Sửa phòng" ], lines.pluck("action")
     assert_equal [ "Hệ thống", "giá chưa có → 500.000 ₫" ], lines.last.values_at("actor", "detail") # the setup's price, no user
     assert_equal({ "kind" => "clean", "actor" => "Chị Lan", "room_name" => "Garden", "detail" => nil }, lines.first.slice("kind", "actor", "room_name", "detail"))
     assert_equal "300.000 ₫ · Chuyển khoản · #{@booking.code}", lines.second["detail"]
@@ -40,7 +40,7 @@ class MiniApp::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_equal body["activities"].last["id"], next_before
 
     as :owner, activity_api_v1_place_path(places(:tomo), before: next_before)
-    assert_equal [ "Dọn xong", "Thu tiền", "Đặt phòng", "Sửa phòng" ], body["activities"].pluck("action")
+    assert_equal [ "Dọn xong", "Thu tiền", "Đặt phòng", "Thêm thành viên", "Sửa phòng" ], body["activities"].pluck("action")
     assert_nil body["next_before"]
 
     as :owner, activity_api_v1_place_path(places(:tomo), before: "x")

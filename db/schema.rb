@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
   create_table "api_tokens", force: :cascade do |t|
     t.integer "user_id", null: false
     t.string "token_digest", null: false
@@ -104,6 +104,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "role", default: "owner", null: false
+    t.json "permissions", default: ["discount"], null: false
+    t.datetime "locked_at"
     t.index ["place_id"], name: "index_place_memberships_on_place_id"
     t.index ["user_id", "place_id"], name: "index_place_memberships_on_user_id_and_place_id", unique: true
     t.check_constraint "role IN ('owner', 'staff')", name: "place_memberships_role_values"
@@ -128,6 +130,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
     t.string "bank_account"
     t.string "bank_holder"
     t.index ["slug"], name: "index_places_on_slug", unique: true
+  end
+
+  create_table "refund_requests", force: :cascade do |t|
+    t.integer "booking_id", null: false
+    t.integer "requested_by_id"
+    t.integer "decided_by_id"
+    t.integer "payment_id"
+    t.integer "amount", null: false
+    t.string "payment_method", null: false
+    t.string "note"
+    t.string "status", default: "pending", null: false
+    t.datetime "decided_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["booking_id"], name: "index_refund_requests_on_booking_id"
+    t.index ["decided_by_id"], name: "index_refund_requests_on_decided_by_id"
+    t.index ["payment_id"], name: "index_refund_requests_on_payment_id"
+    t.index ["requested_by_id"], name: "index_refund_requests_on_requested_by_id"
+    t.check_constraint "amount > 0", name: "refund_requests_amount_positive"
+    t.check_constraint "status IN ('pending', 'approved', 'rejected')", name: "refund_requests_status_values"
   end
 
   create_table "registration_requests", force: :cascade do |t|
@@ -248,6 +270,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_600000) do
   add_foreign_key "payments", "users"
   add_foreign_key "place_memberships", "places"
   add_foreign_key "place_memberships", "users"
+  add_foreign_key "refund_requests", "bookings"
+  add_foreign_key "refund_requests", "payments", on_delete: :nullify
+  add_foreign_key "refund_requests", "users", column: "decided_by_id"
+  add_foreign_key "refund_requests", "users", column: "requested_by_id"
   add_foreign_key "registration_requests", "places"
   add_foreign_key "registration_requests", "users"
   add_foreign_key "registration_requests", "users", column: "decided_by_id"

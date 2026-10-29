@@ -7,7 +7,7 @@ class Admin::PaymentsController < Admin::BaseController
 
   def create
     payment = @booking.payments.build(params.expect(payment: %i[amount payment_method kind note]).merge(user: Current.user))
-    authorize!(payment.refund? ? :manage : :operate, @place)
+    authorize!(payment.refund? ? :refund : :operate, @place)
     if payment.save
       back notice: "#{payment.refund? ? "Đã hoàn" : "Đã thu"} #{helpers.vnd(payment.amount)} · #{payment.method_label}."
     else

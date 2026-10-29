@@ -9,7 +9,7 @@ class Admin::ReportsController < Admin::BaseController
 
   def show
     @place = Current.user.accessible_places.find_by!(slug: params[:place_slug])
-    authorize!(:manage, @place)
+    authorize!(:report, @place)
     @places = owned_places
     @report = params[:period] == "7d" ? Report.week(@place) : Report.new(@place, month_param || Date.current)
     respond_to do |format|

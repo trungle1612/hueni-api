@@ -103,6 +103,21 @@ Rails.application.routes.draw do
       resources :bookings, only: :create
       resources :rooms, only: :create
       resources :services, only: :create
+      resources :memberships, only: %i[index create]
+      resources :refund_requests, only: :index
+    end
+    resources :memberships, only: %i[update destroy] do
+      member do
+        post :lock
+        post :unlock
+        post :setup_link
+      end
+    end
+    resources :refund_requests, only: [] do
+      member do
+        post :approve
+        post :reject
+      end
     end
     resources :bookings, only: %i[show update] do
       member do
@@ -118,6 +133,7 @@ Rails.application.routes.draw do
       end
       resources :payments, only: %i[create destroy]
       resources :charges, only: %i[create destroy]
+      resources :refund_requests, only: :create
     end
     resources :rooms, only: %i[update destroy] do
       member do

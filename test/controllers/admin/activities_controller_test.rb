@@ -25,7 +25,8 @@ class Admin::ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", "Hoạt động"
     assert_select "h3", "Hôm nay"
     rows = css_select("[id^=version_]")
-    assert_equal 2, rows.size
+    assert_equal 3, rows.size # + adding Em Hằng as a member (#168)
+    assert_match "Thêm thành viên · Em Hằng · Nhân viên", rows[2].text.squish
     assert_equal "Phòng Limdim Đặt phòng · 12/10–14/10 Airbnb 14:05", rows[0].text.squish
     assert_equal "Phòng Garden Đặt phòng · Chị Mai 05/10–07/10 Em Hằng 14:05", rows[1].text.squish
     assert_no_match "Không phải của tôi", response.body

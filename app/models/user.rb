@@ -49,21 +49,27 @@ class User < ApplicationRecord
   # The single access rule for admin code: look records up only through these.
   # Out-of-scope `find` raises RecordNotFound, which Rails renders as 404.
   # Homestay data belongs to its members, admins included: an admin runs accounts, not homestays (#85).
-  def accessible_places = Place.where(id: place_memberships.select(:place_id))
+  def accessible_places = Place.where(id: place_memberships.unlocked.select(:place_id))
   def accessible_rooms = Room.where(place_id: accessible_places.select(:id))
   def accessible_calendar_feeds = CalendarFeed.where(room_id: accessible_rooms.select(:id))
   def accessible_bookings = Booking.where(room_id: accessible_rooms.select(:id))
 
+  # The membership that counts at this homestay: none when locked (#168).
+  def membership_at(place) = place_memberships.unlocked.find_by(place:)
+
   # "owner" | "staff" | nil at this homestay.
-  def role_at(place) = place_memberships.find_by(place:)&.role
+  def role_at(place) = membership_at(place)&.role
 
   # The one authorization rule, shaped like Pundit / Action Policy so a later switch is mechanical.
   # Scoping (accessible_*) still decides what you can see at all.
   def allowed_to?(action, place)
+    membership = membership_at(place)
     case action
-    when :manage then role_at(place) == "owner"
+    when :manage then membership&.owner? || false
     # Front-desk work (check-in/out, no-show, room move, lưu trú, cleaning): owners and staff.
-    when :operate then role_at(place).present?
+    when :operate then membership.present?
+    # Quyền thêm (#168, ADR-001): owners, or staff given that right at this homestay.
+    when :discount, :refund, :report then membership&.allows?(action) || false
     else raise ArgumentError, "unknown action #{action.inspect}"
     end
   end
