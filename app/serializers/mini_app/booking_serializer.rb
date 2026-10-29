@@ -3,7 +3,7 @@
 class MiniApp::BookingSerializer
   include Alba::Resource
 
-  attributes :id, :code, :label, :room_id, :start_date, :end_date, :status, :source,
+  attributes :id, :code, :label, :room_id, :group_id, :pays_own, :start_date, :end_date, :status, :source,
     :guest_name, :guest_phone, :guests, :note, :cancel_reason,
     :checked_in_at, :checked_out_at, :declared_at, :removed_from_feed_at
   attribute(:provider) { it.calendar_feed&.provider }
