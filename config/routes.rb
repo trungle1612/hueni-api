@@ -108,6 +108,7 @@ Rails.application.routes.draw do
       resources :bookings, only: :create
       resources :rooms, only: :create
       resources :services, only: :create
+      resources :groups, only: :create
       resources :memberships, only: %i[index create]
       resources :refund_requests, only: :index
     end
@@ -123,7 +124,6 @@ Rails.application.routes.draw do
         post :approve
         post :reject
       end
-      resources :groups, only: :create
     end
     resources :groups, only: %i[show update] do
       member do
