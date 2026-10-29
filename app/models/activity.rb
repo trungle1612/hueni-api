@@ -108,6 +108,8 @@ class Activity
       difference = after["counted"] - after["expected"]
       return [ :ok, "Chốt ca", "Khớp #{vnd(after["counted"])} · để lại két #{vnd(after["keep"])}" ] if difference.zero?
       [ :error, "Chốt ca lệch", "#{difference.negative? ? "Thiếu" : "Thừa"} #{vnd(difference.abs)} · #{after["note"]}" ]
+    end
+
     # Đặt phòng theo đoàn (#164): "DOAN-0001 Đoàn Sao Mai", plus what changed.
     def activity_group(after, changes = {})
       parts = []
