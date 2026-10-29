@@ -74,6 +74,23 @@ class Room < ApplicationRecord
 
   def weekend_price_below_price? = weekend_price && price && weekend_price < price
 
+  # What the owner should know after saving (#120, #122): upcoming bookings keep their quoted price; a weekend price below
+  # the weekday one; stays with more guests than a lowered Số khách tối đa (the room still saves).
+  def change_notes
+    notes = []
+    if saved_change_to_price? || saved_change_to_weekend_price?
+      kept = upcoming_bookings.count
+      notes << "#{kept} đặt phòng sắp tới giữ giá cũ." if kept.positive?
+      notes << "Giá thứ 6, thứ 7 đang thấp hơn ngày thường, kiểm tra lại nếu không cố ý." if weekend_price_below_price?
+    end
+    if saved_change_to_max_guests?
+      upcoming_bookings.where(guests: (max_guests + 1)..).order(:start_date).each do
+        notes << "Đặt phòng #{it.start_date.strftime("%d/%m")}–#{it.end_date.strftime("%d/%m")} có #{it.guests} khách, nhiều hơn tối đa #{max_guests}."
+      end
+    end
+    notes
+  end
+
   private
     def photo_urls_are_http_urls
       valid = photo_urls.is_a?(Array) && photo_urls.all? { it.is_a?(String) && it.match?(%r{\Ahttps?://\S+\z}) }

@@ -84,7 +84,7 @@ Rails.application.routes.draw do
     resource :session, only: %i[create destroy]
     resource :registration, only: %i[show create update]
     resource :me, only: :show, controller: "me"
-    resources :places, only: [] do
+    resources :places, only: :show do
       member do
         get :rooms
         get :today
@@ -96,8 +96,13 @@ Rails.application.routes.draw do
         post :search
         get :calendar_feeds
         get :activity
+        get :members
+        patch :commissions
+        patch :bank
       end
       resources :bookings, only: :create
+      resources :rooms, only: :create
+      resources :services, only: :create
     end
     resources :bookings, only: %i[show update] do
       member do
@@ -114,12 +119,13 @@ Rails.application.routes.draw do
       resources :payments, only: %i[create destroy]
       resources :charges, only: %i[create destroy]
     end
-    resources :rooms, only: [] do
+    resources :rooms, only: %i[update destroy] do
       member do
         post :clean
         patch :maintenance
       end
     end
+    resources :services, only: %i[update destroy]
     resources :calendar_feeds, only: [] do
       post :sync, on: :member
     end

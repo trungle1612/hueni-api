@@ -30,7 +30,7 @@ class Admin::RoomsController < Admin::BaseController
 
   def update
     if @room.update(room_params)
-      redirect_to admin_rooms_path(anchor: @place.slug), notice: [ "Đã lưu phòng #{@room.name}.", *price_notes, *capacity_notes ].join(" ")
+      redirect_to admin_rooms_path(anchor: @place.slug), notice: [ "Đã lưu phòng #{@room.name}.", *@room.change_notes ].join(" ")
     else
       render :edit, status: :unprocessable_entity
     end
@@ -73,20 +73,5 @@ class Admin::RoomsController < Admin::BaseController
     def room_params
       params.expect(room: [ :name, :max_guests, :price, :weekend_price, :active, :state, :maintenance_reason, :maintenance_until,
         :floor, :room_type, :note, amenities: [] ])
-    end
-
-    def price_notes
-      return [] unless @room.saved_change_to_price? || @room.saved_change_to_weekend_price?
-      kept = @room.upcoming_bookings.count
-      [ ("#{kept} đặt phòng sắp tới giữ giá cũ." if kept.positive?),
-        ("Giá thứ 6, thứ 7 đang thấp hơn ngày thường, kiểm tra lại nếu không cố ý." if @room.weekend_price_below_price?) ].compact
-    end
-
-    # Lowering Số khách tối đa still saves; upcoming stays with more guests are named so the owner can fix them.
-    def capacity_notes
-      return [] unless @room.saved_change_to_max_guests?
-      @room.upcoming_bookings.where(guests: (@room.max_guests + 1)..).order(:start_date).map do
-        "Đặt phòng #{helpers.stay_dates(it)} có #{it.guests} khách, nhiều hơn tối đa #{@room.max_guests}."
-      end
     end
 end
