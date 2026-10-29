@@ -99,6 +99,9 @@ Rails.application.routes.draw do
         get :members
         patch :commissions
         patch :bank
+        get :shift, to: "shifts#show"
+        post "shift/close", to: "shifts#close", as: :close_shift
+        post :cash_expenses, to: "shifts#create_expense"
         get :housekeeping, to: "cleanings#index"
         post :guests, to: "guests#index"
       end
@@ -142,6 +145,8 @@ Rails.application.routes.draw do
       end
     end
     resources :services, only: %i[update destroy]
+    patch "cash_expenses/:id", to: "shifts#update_expense", as: :cash_expense
+    delete "cash_expenses/:id", to: "shifts#destroy_expense"
     resources :calendar_feeds, only: [] do
       post :sync, on: :member
     end

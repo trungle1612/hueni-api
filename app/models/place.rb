@@ -1,6 +1,8 @@
 class Place < ApplicationRecord
   has_many :rooms
   has_many :services, dependent: :destroy
+  has_many :cash_expenses, dependent: :destroy
+  has_many :shift_closes, dependent: :destroy
   has_many :guests, dependent: :destroy
   has_many :groups, dependent: :destroy
   # The starting catalog is not someone's change: kept out of Hoạt động.

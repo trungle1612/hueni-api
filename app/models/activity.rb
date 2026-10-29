@@ -49,6 +49,10 @@ class Activity
       in [ "Service", "create" ] then [ :ok, "Thêm vào danh sách dịch vụ", activity_service(after) ]
       in [ "Service", "destroy" ] then [ :cancel, "Xoá khỏi danh sách dịch vụ", activity_service(after) ]
       in [ "Service", "update" ] then [ :edit, "Sửa dịch vụ", activity_service_changes(changes, after) ]
+      in [ "CashExpense", "create" ] then [ :cancel, "Chi tiền mặt", "#{vnd(after["amount"])} · #{after["reason"]}" ]
+      in [ "CashExpense", "update" ] then [ :edit, "Sửa khoản chi", "#{vnd(after["amount"])} · #{after["reason"]}" ]
+      in [ "CashExpense", "destroy" ] then [ :cancel, "Xoá khoản chi", "#{vnd(after["amount"])} · #{after["reason"]}" ]
+      in [ "ShiftClose", "create" ] then activity_shift_close(after)
       in [ "Guest", "create" | "update" ]
         after["flag"] ? [ :error, "Đánh dấu khách cần lưu ý", [ after["name"], after["flag"] ].compact.join(" · ") ] : [ :ok, "Bỏ đánh dấu khách", after["name"] ]
       in [ "Group", "create" ] then [ :booking, "Tạo đoàn", activity_group(after) ]
@@ -97,6 +101,13 @@ class Activity
       parts << "giá #{vnd(changes["price"][0])} → #{vnd(changes["price"][1])}" if changes.key?("price")
       parts << "đơn vị #{activity_value(changes["unit"][0])} → #{activity_value(changes["unit"][1])}" if changes.key?("unit")
       [ (after["name"] unless changes.key?("name")), parts.join(", ") ].compact.join(": ")
+    end
+
+    # Chốt ca (#167): a difference is an error line with the note.
+    def activity_shift_close(after)
+      difference = after["counted"] - after["expected"]
+      return [ :ok, "Chốt ca", "Khớp #{vnd(after["counted"])} · để lại két #{vnd(after["keep"])}" ] if difference.zero?
+      [ :error, "Chốt ca lệch", "#{difference.negative? ? "Thiếu" : "Thừa"} #{vnd(difference.abs)} · #{after["note"]}" ]
     end
 
     # Đặt phòng theo đoàn (#164): "DOAN-0001 Đoàn Sao Mai", plus what changed.
