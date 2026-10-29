@@ -53,6 +53,10 @@ class Activity
       in [ "CashExpense", "update" ] then [ :edit, "Sửa khoản chi", "#{vnd(after["amount"])} · #{after["reason"]}" ]
       in [ "CashExpense", "destroy" ] then [ :cancel, "Xoá khoản chi", "#{vnd(after["amount"])} · #{after["reason"]}" ]
       in [ "ShiftClose", "create" ] then activity_shift_close(after)
+      in [ "Guest", "create" | "update" ]
+        after["flag"] ? [ :error, "Đánh dấu khách cần lưu ý", [ after["name"], after["flag"] ].compact.join(" · ") ] : [ :ok, "Bỏ đánh dấu khách", after["name"] ]
+      in [ "Group", "create" ] then [ :booking, "Tạo đoàn", activity_group(after) ]
+      in [ "Group", "update" ] then [ :edit, "Sửa đoàn", activity_group(after, changes) ]
       in [ "CalendarFeed", "update" ] then after["last_error"].present? ? [ :error, "Đồng bộ lỗi", CalendarFeed::ERROR_MESSAGES.fetch(CalendarFeed.error_kind(after["last_error"])) ] : [ :ok, "Đồng bộ lại được" ]
       else [ :edit, "Thay đổi" ]
       end
@@ -104,6 +108,15 @@ class Activity
       difference = after["counted"] - after["expected"]
       return [ :ok, "Chốt ca", "Khớp #{vnd(after["counted"])} · để lại két #{vnd(after["keep"])}" ] if difference.zero?
       [ :error, "Chốt ca lệch", "#{difference.negative? ? "Thiếu" : "Thừa"} #{vnd(difference.abs)} · #{after["note"]}" ]
+    # Đặt phòng theo đoàn (#164): "DOAN-0001 Đoàn Sao Mai", plus what changed.
+    def activity_group(after, changes = {})
+      parts = []
+      parts << "đổi tên #{changes["name"][0]} → #{changes["name"][1]}" if changes.key?("name")
+      { "contact" => "trưởng đoàn", "phone" => "SĐT", "origin" => "nguồn" }.each do |attr, label|
+        parts << "#{label}: #{activity_value(changes[attr][0])} → #{activity_value(changes[attr][1])}" if changes.key?(attr)
+      end
+      parts << (after["bill"] == "split" ? "tách hoá đơn theo phòng" : "một hoá đơn cho đoàn") if changes.key?("bill")
+      [ "#{format("DOAN-%04d", after["number"].to_i)} #{after["name"]}", parts.join(", ").presence ].compact.join(": ")
     end
 
     def activity_code(after) = Booking.where(id: after["booking_id"]).pick(:number)&.then { format("DP-%04d", it) }
@@ -136,6 +149,7 @@ class Activity
         parts << "#{label}: #{activity_value(changes[attr][0])} → #{activity_value(changes[attr][1])}" if changes.key?(attr)
       end
       parts << "sửa ghi chú" if changes.key?("note")
+      parts << (after["pays_own"] ? "khách tự trả" : "tính vào đoàn") if changes.key?("pays_own")
       parts << "đã cọc #{vnd(changes["deposit"][0]) || "—"} → #{vnd(changes["deposit"][1]) || "—"}" if changes.key?("deposit")
       parts << "giảm giá #{vnd(changes["discount"][0]) || "—"} → #{vnd(changes["discount"][1]) || "—"}#{" (#{after["discount_reason"]})" if after["discount_reason"]}" if changes.key?("discount")
       { "price" => "giá", "weekend_price" => "giá T6–T7" }.each do |attr, label|
@@ -152,6 +166,7 @@ class Activity
         return [ :clean, changes.key?("housekeeping") ? "Xong bảo trì" : "Hết hạn bảo trì, cần dọn" ]
       end
       return [ :clean, "Dọn xong" ] if changes.keys == [ "housekeeping" ]
+      return changes["damage_note"][1] ? [ :error, "Báo hỏng / thiếu đồ", changes["damage_note"][1] ] : [ :ok, "Đã xử lý đồ hỏng" ] if changes.keys == [ "damage_note" ]
       return [ :room, changes["active"][1] ? "Nhận khách lại" : "Tạm ngưng phòng" ] if changes.keys == [ "active" ]
       parts = []
       parts << "đổi tên #{changes["name"][0]} → #{changes["name"][1]}" if changes.key?("name")
