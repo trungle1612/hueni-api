@@ -6,6 +6,27 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
 
   before_action :set_place
 
+  # The homestay's settings: bank account, and the OTA commissions for owners.
+  def show = render_place
+
+  # Hoa hồng OTA (#125), owners only: { place: { commissions: { airbnb: 15, booking: "15,5", agoda: "" } } }, blank = not set.
+  def commissions
+    authorize!(:manage, @place)
+    @place.update(commissions: params.expect(place: [ commissions: Place::COMMISSION_PROVIDERS ])[:commissions]) ? render_place : render_invalid(@place)
+  end
+
+  # Tài khoản chuyển khoản (#139), owners only.
+  def bank
+    authorize!(:manage, @place)
+    @place.update(params.expect(place: %i[bank_name bank_account bank_holder])) ? render_place : render_invalid(@place)
+  end
+
+  # Members for assignee / next-shift pickers: name and role only, never phones. Owners first.
+  def members
+    memberships = @place.place_memberships.includes(:user).sort_by { [ it.owner? ? 0 : 1, it.user.name ] }
+    render json: { members: memberships.map { { id: it.user_id, name: it.user.name, role: it.role } } }
+  end
+
   # By floor (rooms without one last), switched-off rooms last within it, like the homestay page.
   def rooms
     render json: { rooms: MiniApp::RoomSerializer.new(ordered_rooms, params: serializer_params) }
@@ -97,6 +118,8 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
   end
 
   private
+    def render_place = render(json: MiniApp::PlaceSerializer.new(@place, params: { **serializer_params, role: Current.user.role_at(@place) }))
+
     def feeds = CalendarFeed.where(room: @place.rooms)
 
     def set_place
