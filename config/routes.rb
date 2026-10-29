@@ -103,6 +103,14 @@ Rails.application.routes.draw do
       resources :bookings, only: :create
       resources :rooms, only: :create
       resources :services, only: :create
+      resources :groups, only: :create
+    end
+    resources :groups, only: %i[show update] do
+      member do
+        post :check_in
+        post :payments
+      end
+      resources :bookings, only: %i[create update], controller: "group_bookings"
     end
     resources :bookings, only: %i[show update] do
       member do
