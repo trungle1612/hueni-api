@@ -85,9 +85,9 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
     render json: { services: MiniApp::ServiceSerializer.new(@place.services.order(:name)) }
   end
 
-  # Báo cáo, owners only: ?month=YYYY-MM (default this month) or ?period=7d. report.csv = Xuất CSV.
+  # Báo cáo, owners and staff with the report right (#168): ?month=YYYY-MM (default this month) or ?period=7d. report.csv = Xuất CSV.
   def report
-    authorize!(:manage, @place)
+    authorize!(:report, @place)
     report = params[:period] == "7d" ? Report.week(@place) : Report.new(@place, month_param || Date.current)
     if request.format.csv?
       send_data report.to_csv, type: "text/csv; charset=utf-8", filename: "bao-cao-#{@place.slug}-#{report.first.iso8601}-#{report.last.iso8601}.csv"
@@ -112,10 +112,10 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
   end
 
   # Hoạt động (#158), owners only: who changed what in this homestay, newest first, Activity::PER_PAGE at a time.
-  # next_before: pass as ?before= for the page below; null on the last page.
+  # next_before: pass as ?before= for the page below; null on the last page. ?filter=cancel | price | money (#168).
   def activity
     authorize!(:manage, @place)
-    render json: activity_page(PaperTrail::Version.where(place_id: @place.id))
+    render json: activity_page(Activity.filter(PaperTrail::Version.where(place_id: @place.id), params[:filter]))
   end
 
   private

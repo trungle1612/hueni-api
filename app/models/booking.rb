@@ -7,6 +7,7 @@ class Booking < ApplicationRecord
   # Saved on their own (Payment checks the balance), never along with the booking.
   has_many :payments, dependent: :destroy, autosave: false, validate: false
   has_many :charges, class_name: "BookingCharge", dependent: :destroy
+  has_many :refund_requests, dependent: :destroy
   has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note price weekend_price discount discount_reason cancel_reason checked_in_at checked_out_at removed_from_feed_at declared_at group_id pays_own],
     meta: { place_id: ->(booking) { booking.room.place_id }, room_id: :room_id }
 

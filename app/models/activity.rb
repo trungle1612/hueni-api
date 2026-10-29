@@ -13,6 +13,16 @@ class Activity
   def self.entry(version) = new.activity_entry(version)
 
   PER_PAGE = 50
+
+  # Nhật ký filters (#168): Huỷ · Giá · Tiền, in SQL so paging still works.
+  FILTERS = {
+    "cancel" => "item_type = 'Booking' AND (event = 'destroy' OR json_extract(object_changes, '$.status[1]') = 'cancelled')",
+    "price" => "(item_type IN ('Room', 'Booking') AND event = 'update' AND (json_extract(object_changes, '$.price') IS NOT NULL " \
+      "OR json_extract(object_changes, '$.weekend_price') IS NOT NULL OR json_extract(object_changes, '$.discount') IS NOT NULL)) OR item_type = 'Service'",
+    "money" => "item_type IN ('Payment', 'RefundRequest', 'CashExpense', 'ShiftClose', 'BookingCharge')"
+  }.freeze
+
+  def self.filter(versions, name) = FILTERS[name] ? versions.where(FILTERS[name]) : versions
   Line = Data.define(:id, :at, :kind, :action, :detail, :actor, :room_id, :room_name)
 
   # Newest first, PER_PAGE at a time: before = the last id of the page above (a param, ignored unless a positive integer).
@@ -49,6 +59,10 @@ class Activity
       in [ "Service", "create" ] then [ :ok, "Thêm vào danh sách dịch vụ", activity_service(after) ]
       in [ "Service", "destroy" ] then [ :cancel, "Xoá khỏi danh sách dịch vụ", activity_service(after) ]
       in [ "Service", "update" ] then [ :edit, "Sửa dịch vụ", activity_service_changes(changes, after) ]
+      in [ "PlaceMembership", _ ] then activity_membership(version, changes, after)
+      in [ "RefundRequest", "create" ] then [ :edit, "Xin hoàn tiền", activity_refund_request(after) ]
+      in [ "RefundRequest", "update" ]
+        after["status"] == "approved" ? [ :ok, "Duyệt hoàn tiền", activity_refund_request(after) ] : [ :cancel, "Từ chối hoàn tiền", activity_refund_request(after) ]
       in [ "CashExpense", "create" ] then [ :cancel, "Chi tiền mặt", "#{vnd(after["amount"])} · #{after["reason"]}" ]
       in [ "CashExpense", "update" ] then [ :edit, "Sửa khoản chi", "#{vnd(after["amount"])} · #{after["reason"]}" ]
       in [ "CashExpense", "destroy" ] then [ :cancel, "Xoá khoản chi", "#{vnd(after["amount"])} · #{after["reason"]}" ]
@@ -103,6 +117,28 @@ class Activity
       [ (after["name"] unless changes.key?("name")), parts.join(", ") ].compact.join(": ")
     end
 
+    # Nhân viên (#168): who, and the role / rights / lock that changed.
+    def activity_membership(version, changes, after)
+      name = User.where(id: after["user_id"]).pick(:name)
+      role = PlaceMembership::ROLE_LABELS[after["role"]]
+      case version.event
+      when "create" then [ :ok, "Thêm thành viên", "#{name} · #{role}" ]
+      when "destroy" then [ :cancel, "Xoá thành viên", "#{name} · #{role}" ]
+      else
+        if changes.key?("locked_at") then after["locked_at"] ? [ :cancel, "Khoá tài khoản", name ] : [ :ok, "Mở khoá tài khoản", name ]
+        else
+          parts = []
+          parts << "#{PlaceMembership::ROLE_LABELS[changes["role"][0]]} → #{role}" if changes.key?("role")
+          if changes.key?("permissions")
+            before, now = changes["permissions"].map { Array(it) }
+            parts += (now - before).map { "+ #{PlaceMembership::PERMISSIONS[it]}" } + (before - now).map { "− #{PlaceMembership::PERMISSIONS[it]}" }
+          end
+          [ :edit, "Đổi quyền", "#{name}: #{parts.join(", ")}" ]
+        end
+      end
+    end
+
+    def activity_refund_request(after) = [ vnd(after["amount"]), Payment::METHODS[after["payment_method"]], activity_code(after) ].compact.join(" · ")
     # Chốt ca (#167): a difference is an error line with the note.
     def activity_shift_close(after)
       difference = after["counted"] - after["expected"]

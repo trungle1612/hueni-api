@@ -17,18 +17,19 @@ class MiniApp::V1::BookingsController < MiniApp::V1::BaseController
     @booking.save ? render_booking(@booking, status: :created) : render_invalid(@booking)
   end
 
-  # Edit, or cancel with status "cancelled" + cancel_reason; refund_method refunds what was paid (owners only).
+  # Edit, or cancel with status "cancelled" + cancel_reason; refund_method refunds what was paid (owners, or staff with the refund right).
   def update
     if @booking.checked_out_at
       @booking.errors.add(:base, "Khách đã trả phòng, không sửa được đặt phòng.")
       render_invalid(@booking)
     else
-      respond @booking.update_and_refund(booking_params, (params[:refund_method].presence_in(Payment::METHODS.keys) if manage?))
+      respond @booking.update_and_refund(booking_params, (params[:refund_method].presence_in(Payment::METHODS.keys) if Current.user.allowed_to?(:refund, @place)))
     end
   end
 
-  # Giảm giá: "50k" or "10%"; staff at most Booking::STAFF_DISCOUNT_PERCENT. Blank removes it.
+  # Giảm giá: "50k" or "10%"; staff need the discount right and give at most Booking::STAFF_DISCOUNT_PERCENT. Blank removes it.
   def discount
+    authorize!(:discount, @place)
     cap = Booking::STAFF_DISCOUNT_PERCENT unless manage?
     respond @booking.apply_discount(params.dig(:booking, :discount), params.dig(:booking, :discount_reason), cap:)
   end
