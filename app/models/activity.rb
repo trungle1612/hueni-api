@@ -49,6 +49,8 @@ class Activity
       in [ "Service", "create" ] then [ :ok, "Thêm vào danh sách dịch vụ", activity_service(after) ]
       in [ "Service", "destroy" ] then [ :cancel, "Xoá khỏi danh sách dịch vụ", activity_service(after) ]
       in [ "Service", "update" ] then [ :edit, "Sửa dịch vụ", activity_service_changes(changes, after) ]
+      in [ "Guest", "create" | "update" ]
+        after["flag"] ? [ :error, "Đánh dấu khách cần lưu ý", [ after["name"], after["flag"] ].compact.join(" · ") ] : [ :ok, "Bỏ đánh dấu khách", after["name"] ]
       in [ "CalendarFeed", "update" ] then after["last_error"].present? ? [ :error, "Đồng bộ lỗi", CalendarFeed::ERROR_MESSAGES.fetch(CalendarFeed.error_kind(after["last_error"])) ] : [ :ok, "Đồng bộ lại được" ]
       else [ :edit, "Thay đổi" ]
       end

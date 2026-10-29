@@ -99,6 +99,7 @@ Rails.application.routes.draw do
         get :members
         patch :commissions
         patch :bank
+        post :guests, to: "guests#index"
       end
       resources :bookings, only: :create
       resources :rooms, only: :create
@@ -118,6 +119,7 @@ Rails.application.routes.draw do
       end
       resources :payments, only: %i[create destroy]
       resources :charges, only: %i[create destroy]
+      resource :guest, only: %i[show update]
     end
     resources :rooms, only: %i[update destroy] do
       member do
