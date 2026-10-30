@@ -99,6 +99,7 @@ Rails.application.routes.draw do
         get :members
         patch :commissions
         patch :bank
+        patch :booking_site
         patch :rules
         get :seasons
         get :surcharges
@@ -178,5 +179,9 @@ Rails.application.routes.draw do
 
   namespace :v1 do
     get "vacancy", to: "vacancy#show"
+    get "places/:slug/booking_site", to: "booking_site#show", as: :booking_site
+    post "places/:slug/bookings", to: "booking_site#create", as: :booking_site_bookings
+    get "bookings/:token", to: "booking_site#status", as: :booking_site_status
+    match "*path", to: "base#preflight", via: :options
   end
 end

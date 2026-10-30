@@ -41,6 +41,51 @@ class Place < ApplicationRecord
 
   def bank? = bank_name.present? && bank_account.present?
 
+  # Trang đặt phòng riêng (#172), owner-set: Cọc trước %, Giữ phòng chờ cọc, Hạn đặt trong ngày (same-day arrivals until this hour).
+  SITE_DEPOSIT_PERCENTS = [ 0, 30, 50, 100 ].freeze
+  SITE_HOLD_MINUTES = [ 15, 30, 120 ].freeze
+  SITE_CUTOFF_HOURS = [ 18, 20, 22 ].freeze
+  validates :site_deposit_percent, inclusion: { in: SITE_DEPOSIT_PERCENTS }
+  validates :site_hold_minutes, inclusion: { in: SITE_HOLD_MINUTES }
+  validates :site_cutoff_hour, inclusion: { in: SITE_CUTOFF_HOURS }
+  validate -> { errors.add(:site_hidden_room_types, "không hợp lệ") unless site_hidden_room_types.is_a?(Array) && (site_hidden_room_types - Room::ROOM_TYPES.keys).empty? }
+  validate -> { errors.add(:site_open, "cần ít nhất một loại phòng hiển thị") if site_room_types.empty? }, if: :site_open
+  validate -> { errors.add(:site_open, "cần tài khoản chuyển khoản để nhận cọc") unless bank? }, if: -> { site_open && site_deposit_percent.positive? }
+
+  SITE_MAX_NIGHTS = 30
+  SITE_FULL = "Hết phòng loại này trong những ngày đã chọn"
+
+  # A guest's request from the booking page: the first free switched-on room of that type (by name) for those dates,
+  # held for site_hold_minutes when a deposit is asked. Returns the booking, saved or with errors. Errors never come
+  # from the room checks: those name the booking in the way, another guest's.
+  def book_online(room_type: nil, **fields)
+    attrs = fields.slice(:start_date, :end_date, :guests, :guest_name, :guest_phone, :note).merge(online: true)
+    booking = Booking.new(attrs).tap(&:validate)
+    booking.errors.delete(:base)
+    booking.errors.delete(:room)
+    booking.errors.add(:base, "Homestay đang tạm ngưng nhận đặt phòng online") unless site_open
+    booking.errors.add(:base, "Loại phòng này không nhận đặt online") unless room_type.in?(site_room_types)
+    booking.errors.add(:guest_name, :blank) if booking.guest_name.blank?
+    booking.errors.add(:guest_phone, :blank) if booking.guest_phone.blank?
+    booking.errors.add(:guests, :blank) unless booking.guests&.positive?
+    if (from = booking.start_date) && (to = booking.end_date)
+      booking.errors.add(:start_date, "đã qua") if from < Date.current
+      booking.errors.add(:start_date, "hôm nay chỉ nhận đặt đến #{site_cutoff_hour}:00") if from == Date.current && Time.current.hour >= site_cutoff_hour
+      booking.errors.add(:end_date, "tối đa #{SITE_MAX_NIGHTS} đêm") if to - from > SITE_MAX_NIGHTS
+    end
+    return booking if booking.errors.any?
+
+    fitting = rooms.where(active: true, room_type:).where(max_guests: booking.guests..).order(:name)
+    return booking.tap { it.errors.add(:guests, "nhiều hơn sức chứa của loại phòng này") } if fitting.none?
+    booking = fitting.map { Booking.new(room: it, **attrs) }.find(&:valid?)
+    return Booking.new(attrs).tap { it.errors.add(:base, SITE_FULL) } unless booking
+    booking.hold_expires_at = site_hold_minutes.minutes.from_now if site_deposit_percent.positive?
+    booking.save || booking.tap { it.errors.clear; it.errors.add(:base, SITE_FULL) }
+    booking
+  end
+
+  # Room types offered online: those of switched-on rooms, minus the hidden ones. Rooms without a type are not offered.
+  def site_room_types = rooms.where(active: true).where.not(room_type: nil).distinct.pluck(:room_type) - site_hidden_room_types.to_a
   # Chính sách huỷ (#163): shown to guests (booking page, confirmation); refunds stay the owner's call.
   CANCEL_POLICIES = {
     "flex" => [ "Linh hoạt", "Huỷ miễn phí trước 24 giờ. Sau đó mất cọc." ],

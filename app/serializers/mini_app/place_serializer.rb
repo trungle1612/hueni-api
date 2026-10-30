@@ -9,4 +9,9 @@ class MiniApp::PlaceSerializer
   attributes :long_stay
   attribute(:cancel_policy) { { key: it.cancel_policy, label: Place::CANCEL_POLICIES[it.cancel_policy][0], text: Place::CANCEL_POLICIES[it.cancel_policy][1] } }
   attributes :commissions, if: proc { params[:manage] }
+  # Trang đặt phòng riêng (#172), owners only.
+  attribute(:booking_site, if: proc { params[:manage] }) do
+    { open: it.site_open, deposit_percent: it.site_deposit_percent, hidden_room_types: it.site_hidden_room_types,
+      hold_minutes: it.site_hold_minutes, cutoff_hour: it.site_cutoff_hour, room_types: it.site_room_types }
+  end
 end

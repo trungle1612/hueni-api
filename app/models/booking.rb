@@ -100,6 +100,27 @@ class Booking < ApplicationRecord
   }
   scope :not_checked_in, -> { where(checked_in_at: nil) }
 
+  # Trang đặt phòng riêng (#172): an online booking with a deposit to pay is held until hold_expires_at. It blocks the
+  # room like any booking; money in (Payment) or a check-in ends the hold, otherwise expire_holds cancels it.
+  HOLD_EXPIRED_REASON = "Hết hạn giữ chỗ"
+  scope :held, -> { confirmed.where.not(hold_expires_at: nil) }
+
+  def self.expire_holds
+    held.where(hold_expires_at: ..Time.current).includes(:payments).find_each do |booking|
+      next booking.update_columns(hold_expires_at: nil) if booking.payments.any?(&:payment?) || booking.checked_in_at
+      booking.cancel_reason = HOLD_EXPIRED_REASON
+      booking.cancel!
+    end
+  end
+
+  def held? = confirmed? && hold_expires_at.present?
+
+  # The deposit an online guest is asked for: the homestay's Cọc trước % of the bill, rounded up to 1.000 ₫.
+  def site_deposit
+    percent = room.place.site_deposit_percent
+    total && percent.positive? ? (total * percent / 100r).ceil(-3) : 0
+  end
+
   # The last night this booking holds is the one before this date.
   def occupied_until
     if checked_out_at then [ end_date, checked_out_at.to_date ].min

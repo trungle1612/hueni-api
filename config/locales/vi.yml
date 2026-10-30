@@ -17,6 +17,11 @@ vi:
         bank_name: Ngân hàng
         bank_account: Số tài khoản
         bank_holder: Chủ tài khoản
+        site_open: Nhận đặt phòng online
+        site_deposit_percent: Mức cọc
+        site_hidden_room_types: Loại phòng ẩn
+        site_hold_minutes: Thời gian giữ phòng
+        site_cutoff_hour: Hạn đặt trong ngày
         cancel_policy: Chính sách huỷ
       season:
         name: Tên mùa

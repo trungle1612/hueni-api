@@ -16,6 +16,8 @@ class Payment < ApplicationRecord
   normalizes :note, with: ->(value) { value.strip.presence }
   validates :note, length: { maximum: 200 }
   validate :within_balance, on: :create
+  # Trang đặt phòng riêng (#172): money in ends an online booking's hold.
+  after_create { booking.update_columns(hold_expires_at: nil) if payment? && booking.hold_expires_at }
 
   def signed_amount = refund? ? -amount : amount
   def method_label = METHODS[payment_method]

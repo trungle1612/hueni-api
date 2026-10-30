@@ -1,11 +1,14 @@
 # The activity log (#46) in words: one paper_trail version → { kind:, action:, detail: } in Vietnamese, plus who did it
 # and in which room. The admin's Hoạt động / Lịch sử (Admin::ActivityHelper) and the Mini App (#158) both read it.
 class Activity
+  # whodunnit of bookings a guest made on the homestay's booking page (#172).
+  SITE = "site"
+
   # whodunnit => who: a user's name, an OTA ("airbnb" → "Airbnb"), or "Hệ thống" (console, seeds, unknown).
   def self.actors(versions)
     whodunnits = versions.map(&:whodunnit).uniq
     users = User.where(id: whodunnits.grep(/\A\d+\z/)).to_h { [ it.id.to_s, it.name ] }
-    whodunnits.to_h { [ it, users[it] || CalendarFeed::PROVIDER_LABELS[it] || "Hệ thống" ] }
+    whodunnits.to_h { [ it, users[it] || CalendarFeed::PROVIDER_LABELS[it] || ("Khách đặt online" if it == SITE) || "Hệ thống" ] }
   end
 
   def self.room_names(versions) = Room.where(id: versions.map(&:room_id).uniq).to_h { [ it.id, it.name ] }
