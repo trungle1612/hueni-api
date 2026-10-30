@@ -5,7 +5,7 @@ gem "rails", "~> 8.1.4"
 # Vietnamese translations for built-in Rails messages
 gem "rails-i18n", "~> 8.1"
 # Parse OTA iCal feeds (Airbnb, Booking.com)
-gem "icalendar", "~> 2.12"
+gem "icalendar", "~> 2.13"
 gem "paper_trail", "~> 17.0"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
