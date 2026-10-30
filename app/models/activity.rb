@@ -18,7 +18,7 @@ class Activity
   FILTERS = {
     "cancel" => "item_type = 'Booking' AND (event = 'destroy' OR json_extract(object_changes, '$.status[1]') = 'cancelled')",
     "price" => "(item_type IN ('Room', 'Booking') AND event = 'update' AND (json_extract(object_changes, '$.price') IS NOT NULL " \
-      "OR json_extract(object_changes, '$.weekend_price') IS NOT NULL OR json_extract(object_changes, '$.discount') IS NOT NULL)) OR item_type = 'Service'",
+      "OR json_extract(object_changes, '$.weekend_price') IS NOT NULL OR json_extract(object_changes, '$.discount') IS NOT NULL)) OR item_type IN ('Service', 'Season', 'Surcharge')",
     "money" => "item_type IN ('Payment', 'RefundRequest', 'CashExpense', 'ShiftClose', 'BookingCharge')"
   }.freeze
 
@@ -59,6 +59,12 @@ class Activity
       in [ "Service", "create" ] then [ :ok, "Thêm vào danh sách dịch vụ", activity_service(after) ]
       in [ "Service", "destroy" ] then [ :cancel, "Xoá khỏi danh sách dịch vụ", activity_service(after) ]
       in [ "Service", "update" ] then [ :edit, "Sửa dịch vụ", activity_service_changes(changes, after) ]
+      in [ "Season", "create" ] then [ :ok, "Thêm mùa", activity_season(after) ]
+      in [ "Season", "update" ] then [ :edit, "Sửa mùa", activity_season(after) ]
+      in [ "Season", "destroy" ] then [ :cancel, "Xoá mùa", activity_season(after) ]
+      in [ "Surcharge", "create" ] then [ :ok, "Thêm phụ thu", activity_service(after) ]
+      in [ "Surcharge", "update" ] then [ :edit, "Sửa phụ thu", activity_service_changes(changes, after) ]
+      in [ "Surcharge", "destroy" ] then [ :cancel, "Xoá phụ thu", activity_service(after) ]
       in [ "PlaceMembership", _ ] then activity_membership(version, changes, after)
       in [ "RefundRequest", "create" ] then [ :edit, "Xin hoàn tiền", activity_refund_request(after) ]
       in [ "RefundRequest", "update" ]
@@ -108,6 +114,8 @@ class Activity
     end
 
     def activity_service(attrs) = "#{attrs["name"]} · #{vnd(attrs["price"])}#{"/#{attrs["unit"]}" if attrs["unit"]}"
+
+    def activity_season(attrs) = "#{attrs["name"]} #{activity_dates(attrs)} · +#{attrs["percent"]}%"
 
     def activity_service_changes(changes, after)
       parts = []

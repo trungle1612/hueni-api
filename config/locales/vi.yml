@@ -17,6 +17,16 @@ vi:
         bank_name: Ngân hàng
         bank_account: Số tài khoản
         bank_holder: Chủ tài khoản
+        cancel_policy: Chính sách huỷ
+      season:
+        name: Tên mùa
+        from: Từ ngày
+        to: Đến ngày
+        pct: Phần trăm
+      surcharge:
+        name: Tên phụ thu
+        price: Giá
+        unit: Đơn vị
       room:
         name: Tên phòng
         max_guests: Số khách tối đa

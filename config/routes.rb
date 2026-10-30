@@ -99,6 +99,9 @@ Rails.application.routes.draw do
         get :members
         patch :commissions
         patch :bank
+        patch :rules
+        get :seasons
+        get :surcharges
         get :shift, to: "shifts#show"
         post "shift/close", to: "shifts#close", as: :close_shift
         post :cash_expenses, to: "shifts#create_expense"
@@ -108,6 +111,8 @@ Rails.application.routes.draw do
       resources :bookings, only: :create
       resources :rooms, only: :create
       resources :services, only: :create
+      resources :seasons, only: :create
+      resources :surcharges, only: :create
       resources :groups, only: :create
       resources :memberships, only: %i[index create]
       resources :refund_requests, only: :index
@@ -161,6 +166,8 @@ Rails.application.routes.draw do
       end
     end
     resources :services, only: %i[update destroy]
+    resources :seasons, only: %i[update destroy]
+    resources :surcharges, only: %i[update destroy]
     patch "cash_expenses/:id", to: "shifts#update_expense", as: :cash_expense
     delete "cash_expenses/:id", to: "shifts#destroy_expense"
     resources :calendar_feeds, only: [] do

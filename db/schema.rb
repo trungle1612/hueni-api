@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_30_100000) do
   create_table "api_tokens", force: :cascade do |t|
     t.integer "user_id", null: false
     t.string "token_digest", null: false
@@ -63,6 +63,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
     t.string "discount_reason"
     t.integer "group_id"
     t.boolean "pays_own", default: false, null: false
+    t.json "season_percents"
+    t.boolean "long_stay", default: false, null: false
     t.index ["calendar_feed_id", "uid"], name: "index_bookings_on_calendar_feed_id_and_uid", unique: true
     t.index ["group_id"], name: "index_bookings_on_group_id"
     t.index ["room_id", "start_date", "end_date"], name: "index_bookings_on_room_id_and_start_date_and_end_date"
@@ -188,7 +190,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
     t.string "bank_account"
     t.string "bank_holder"
     t.integer "last_group_number", default: 0, null: false
+    t.boolean "long_stay", default: false, null: false
+    t.string "cancel_policy", default: "flex", null: false
     t.index ["slug"], name: "index_places_on_slug", unique: true
+    t.check_constraint "cancel_policy IN ('flex', 'mid', 'strict')", name: "places_cancel_policy"
   end
 
   create_table "refund_requests", force: :cascade do |t|
@@ -256,6 +261,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
     t.check_constraint "room_type IN ('single', 'double', 'family', 'dorm', 'studio', 'villa')", name: "rooms_room_type_values"
   end
 
+  create_table "seasons", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.string "name", null: false
+    t.date "start_date", null: false
+    t.date "end_date", null: false
+    t.integer "percent", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id"], name: "index_seasons_on_place_id"
+    t.check_constraint "end_date >= start_date", name: "seasons_dates_ordered"
+    t.check_constraint "percent > 0", name: "seasons_percent_positive"
+  end
+
   create_table "services", force: :cascade do |t|
     t.integer "place_id", null: false
     t.string "name", null: false
@@ -294,6 +312,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
     t.index ["place_id"], name: "index_shift_closes_on_place_id"
     t.index ["user_id"], name: "index_shift_closes_on_user_id"
     t.check_constraint "counted >= 0 AND keep >= 0 AND keep <= counted", name: "shift_closes_amounts"
+  end
+
+  create_table "surcharges", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.string "name", null: false
+    t.integer "price", null: false
+    t.string "unit"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id", "name"], name: "index_surcharges_on_place_id_and_name", unique: true
+    t.index ["place_id"], name: "index_surcharges_on_place_id"
+    t.check_constraint "price >= 0", name: "surcharges_price_non_negative"
   end
 
   create_table "sync_runs", force: :cascade do |t|
@@ -364,10 +394,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
   add_foreign_key "registration_requests", "users"
   add_foreign_key "registration_requests", "users", column: "decided_by_id"
   add_foreign_key "rooms", "places"
+  add_foreign_key "seasons", "places"
   add_foreign_key "services", "places"
   add_foreign_key "sessions", "users"
   add_foreign_key "shift_closes", "places"
   add_foreign_key "shift_closes", "users"
   add_foreign_key "shift_closes", "users", column: "handed_to_id"
+  add_foreign_key "surcharges", "places"
   add_foreign_key "sync_runs", "calendar_feeds", on_delete: :cascade
 end
