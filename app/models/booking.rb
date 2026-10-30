@@ -25,6 +25,11 @@ class Booking < ApplicationRecord
   before_create { self.price, self.weekend_price = room.price, room.weekend_price if price.nil? && room }
   # Booking code DP-0142 (#124): next number of the homestay, manual and iCal alike. Kept on a room move (same homestay).
   before_create { self.number = room.place.next_booking_number! if room }
+  # Giá theo mùa (#163): each night keeps the season % it was booked at; Ở dài ngày is the homestay's setting at booking time.
+  before_save :snapshot_season_percents, if: -> { start_date && end_date && (new_record? || will_save_change_to_start_date? || will_save_change_to_end_date?) }
+  before_create { self.long_stay = room.place.long_stay if room }
+  LONG_STAY_NIGHTS = 7
+  LONG_STAY_PERCENT = 10
 
   # Blank form fields stay nil, so saving the form unchanged logs no "— → —" change.
   normalizes :guest_name, :guest_phone, :note, with: ->(value) { value.strip.presence }
@@ -107,12 +112,23 @@ class Booking < ApplicationRecord
   def code = number && format("DP-%04d", number)
   def label = guest_name.presence || note.presence || (ical? ? calendar_feed&.provider_label || "iCal" : "Khách")
   def overlaps?(other) = start_date < other.occupied_until && other.start_date < occupied_until
-  # One night's price: Friday and Saturday nights use the weekend price. Unquoted bookings (the room had no price
-  # then) use the room's current prices; nil = unpriced.
+  # One night's price: Friday and Saturday nights use the weekend price, plus the night's season % and minus Ở dài ngày
+  # (#163), rounded to 1.000 ₫. Unquoted bookings (the room had no price then) use the room's current prices; nil = unpriced.
   def price_on(date)
     weekday, weekend = price ? [ price, weekend_price ] : [ room.price, room.weekend_price ]
-    (weekend if date.friday? || date.saturday?) || weekday
+    base = (weekend if date.friday? || date.saturday?) || weekday
+    season, long_stay = season_percent_on(date), long_stay_applies? ? LONG_STAY_PERCENT : 0
+    return base if base.nil? || (season.zero? && long_stay.zero?)
+    Rational(base * (100 + season) * (100 - long_stay), 10_000).round(-3)
   end
+
+  # A night's season % is fixed when the night is first booked (season_percents keeps the non-zero ones), so a season
+  # added or changed later leaves booked nights alone; nights booked before any season stay at 0.
+  def season_percent_on(date)
+    season_percents.to_h[date.iso8601] || (booked_before?(date) ? 0 : room&.place&.season_percent_on(date).to_i)
+  end
+
+  def long_stay_applies? = (new_record? ? room&.place&.long_stay : long_stay) && start_date && end_date && end_date - start_date >= LONG_STAY_NIGHTS
   # Thanh toán (#139): every booked night at its price; nil while a night has no price.
   def room_total
     return unless room && start_date && end_date
@@ -333,6 +349,12 @@ class Booking < ApplicationRecord
   end
 
   private
+    def booked_before?(date) = persisted? && start_date_in_database && (start_date_in_database...end_date_in_database).cover?(date)
+
+    def snapshot_season_percents
+      self.season_percents = (start_date...end_date).to_h { [ it.iso8601, season_percent_on(it) ] }.reject { |_, percent| percent.zero? }.presence
+    end
+
     # Names the first booking in the way and the nights both want, so the owner knows what to fix.
     def room_is_free
       return if occupied_until <= start_date
