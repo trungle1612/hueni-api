@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_30_200000) do
   create_table "api_tokens", force: :cascade do |t|
     t.integer "user_id", null: false
     t.string "token_digest", null: false
@@ -63,8 +63,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
     t.string "discount_reason"
     t.integer "group_id"
     t.boolean "pays_own", default: false, null: false
+    t.boolean "online", default: false, null: false
+    t.datetime "hold_expires_at"
     t.index ["calendar_feed_id", "uid"], name: "index_bookings_on_calendar_feed_id_and_uid", unique: true
     t.index ["group_id"], name: "index_bookings_on_group_id"
+    t.index ["hold_expires_at"], name: "index_bookings_on_hold_expires_at"
     t.index ["room_id", "start_date", "end_date"], name: "index_bookings_on_room_id_and_start_date_and_end_date"
     t.check_constraint "checked_out_at IS NULL OR checked_in_at IS NOT NULL", name: "bookings_checkout_after_checkin"
     t.check_constraint "end_date > start_date", name: "bookings_dates_order"
@@ -188,6 +191,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_500000) do
     t.string "bank_account"
     t.string "bank_holder"
     t.integer "last_group_number", default: 0, null: false
+    t.boolean "site_open", default: false, null: false
+    t.integer "site_deposit_percent", default: 30, null: false
+    t.json "site_hidden_room_types", default: [], null: false
+    t.integer "site_hold_minutes", default: 30, null: false
+    t.integer "site_cutoff_hour", default: 20, null: false
     t.index ["slug"], name: "index_places_on_slug", unique: true
   end
 

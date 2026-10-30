@@ -21,6 +21,13 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
     @place.update(params.expect(place: %i[bank_name bank_account bank_holder])) ? render_place : render_invalid(@place)
   end
 
+  # Trang đặt phòng riêng (#172), owners only: { booking_site: { open, deposit_percent, hidden_room_types: [], hold_minutes, cutoff_hour } }.
+  def booking_site
+    authorize!(:manage, @place)
+    site = params.expect(booking_site: [ :open, :deposit_percent, :hold_minutes, :cutoff_hour, hidden_room_types: [] ])
+    @place.update(site.to_h.transform_keys { "site_#{it}" }) ? render_place : render_invalid(@place)
+  end
+
   # Members for assignee / next-shift pickers: name and role only, never phones. Owners first.
   def members
     memberships = @place.place_memberships.includes(:user).sort_by { [ it.owner? ? 0 : 1, it.user.name ] }
