@@ -188,6 +188,41 @@ class BookingTest < ActiveSupport::TestCase
     assert_equal 300_000, unquoted.reload.price_on(Date.new(2026, 11, 1))
   end
 
+  test "a season raises new bookings on its nights only, the higher % when seasons overlap, rounded to 1.000 ₫" do
+    rooms(:garden).update!(price: 333_000)
+    places(:tomo).seasons.create!(name: "Lễ", from: "2026-11-02", to: "2026-11-03", pct: 30)
+    places(:tomo).seasons.create!(name: "Mùa thu", from: "2026-11-01", to: "2026-11-02", pct: 10)
+    booking = build(start_date: "2026-11-01", end_date: "2026-11-05").tap(&:save!) # Sun–Wed nights
+
+    assert_equal [ 366_000, 433_000, 433_000, 333_000 ], (booking.start_date...booking.end_date).map { booking.price_on(it) }
+    assert_equal 1_565_000, booking.room_total
+  end
+
+  test "a booked night keeps its season %: later season changes leave it alone, nights added later take today's" do
+    rooms(:garden).update!(price: 400_000)
+    season = places(:tomo).seasons.create!(name: "Tết", from: "2026-11-03", to: "2026-11-10", pct: 50)
+    booking = build(start_date: "2026-11-02", end_date: "2026-11-04").tap(&:save!)
+    season.update!(from: "2026-11-01", pct: 20)
+
+    assert_equal [ 400_000, 600_000 ], [ booking.reload.price_on(Date.new(2026, 11, 2)), booking.price_on(Date.new(2026, 11, 3)) ]
+    booking.update!(end_date: "2026-11-05")
+    assert_equal [ 400_000, 600_000, 480_000 ], (booking.start_date...booking.end_date).map { booking.reload.price_on(it) }
+    assert_equal({ "2026-11-03" => 50, "2026-11-04" => 20 }, booking.season_percents)
+  end
+
+  test "Ở dài ngày: 7 nights or more take 10% off when the homestay had it on at booking time" do
+    rooms(:garden).update!(price: 400_000)
+    short = build(start_date: "2026-11-01", end_date: "2026-11-07").tap(&:save!) # Sun–Fri nights, weekdays only
+    rooms(:garden).place.update!(long_stay: true)
+    long = build(start_date: "2026-11-09", end_date: "2026-11-16").tap(&:save!)
+    rooms(:garden).place.update!(long_stay: false)
+
+    assert_equal 400_000, short.price_on(Date.new(2026, 11, 2))
+    assert_equal [ 360_000, 2_520_000 ], [ long.reload.price_on(Date.new(2026, 11, 10)), long.room_total ]
+    long.update!(end_date: "2026-11-15")
+    assert_equal 400_000, long.price_on(Date.new(2026, 11, 10))
+  end
+
   test "Bảo trì blocks new bookings, check-in and moves into the room; a booking made before it can still be edited" do
     travel_to Time.zone.local(2026, 10, 1, 12)
     before = build(start_date: "2026-10-02", end_date: "2026-10-03").tap(&:save!) # garden

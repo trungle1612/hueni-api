@@ -22,6 +22,16 @@ vi:
         site_hidden_room_types: Loại phòng ẩn
         site_hold_minutes: Thời gian giữ phòng
         site_cutoff_hour: Hạn đặt trong ngày
+        cancel_policy: Chính sách huỷ
+      season:
+        name: Tên mùa
+        from: Từ ngày
+        to: Đến ngày
+        pct: Phần trăm
+      surcharge:
+        name: Tên phụ thu
+        price: Giá
+        unit: Đơn vị
       room:
         name: Tên phòng
         max_guests: Số khách tối đa

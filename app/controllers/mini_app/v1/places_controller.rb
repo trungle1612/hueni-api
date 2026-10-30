@@ -28,6 +28,23 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
     @place.update(site.to_h.transform_keys { "site_#{it}" }) ? render_place : render_invalid(@place)
   end
 
+  # Ở dài ngày and Chính sách huỷ (#163), owners only: { place: { long_stay: true, cancel_policy: "mid" } }.
+  def rules
+    authorize!(:manage, @place)
+    @place.update(params.expect(place: %i[long_stay cancel_policy])) ? render_place : render_invalid(@place)
+  end
+
+  # Mùa và ngày lễ (#163), owners only, by start date.
+  def seasons
+    authorize!(:manage, @place)
+    render json: { seasons: MiniApp::SeasonSerializer.new(@place.seasons.order(:start_date, :id)) }
+  end
+
+  # Phụ thu theo khách (#163), staff too.
+  def surcharges
+    render json: { surcharges: MiniApp::SurchargeSerializer.new(@place.surcharges.order(:id)) }
+  end
+
   # Members for assignee / next-shift pickers: name and role only, never phones. Owners first.
   def members
     memberships = @place.place_memberships.includes(:user).sort_by { [ it.owner? ? 0 : 1, it.user.name ] }

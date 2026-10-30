@@ -1,12 +1,19 @@
 class Place < ApplicationRecord
   has_many :rooms
   has_many :services, dependent: :destroy
+  has_many :seasons, dependent: :destroy
+  has_many :surcharges, dependent: :destroy
   has_many :cash_expenses, dependent: :destroy
   has_many :shift_closes, dependent: :destroy
   has_many :guests, dependent: :destroy
   has_many :groups, dependent: :destroy
   # The starting catalog is not someone's change: kept out of Hoạt động.
-  after_create { PaperTrail.request(enabled: false) { Service::DEFAULTS.each { |name, price, unit| services.create!(name:, price:, unit:) } } }
+  after_create do
+    PaperTrail.request(enabled: false) do
+      Service::DEFAULTS.each { |name, price, unit| services.create!(name:, price:, unit:) }
+      Surcharge::DEFAULTS.each { |name, price, unit| surcharges.create!(name:, price:, unit:) }
+    end
+  end
   has_many :place_memberships, dependent: :destroy
   has_many :users, through: :place_memberships
 
@@ -79,6 +86,16 @@ class Place < ApplicationRecord
 
   # Room types offered online: those of switched-on rooms, minus the hidden ones. Rooms without a type are not offered.
   def site_room_types = rooms.where(active: true).where.not(room_type: nil).distinct.pluck(:room_type) - site_hidden_room_types.to_a
+  # Chính sách huỷ (#163): shown to guests (booking page, confirmation); refunds stay the owner's call.
+  CANCEL_POLICIES = {
+    "flex" => [ "Linh hoạt", "Huỷ miễn phí trước 24 giờ. Sau đó mất cọc." ],
+    "mid" => [ "Vừa phải", "Huỷ miễn phí trước 3 ngày. Sau đó mất cọc. Không đến: tính 1 đêm." ],
+    "strict" => [ "Không hoàn", "Không hoàn cọc dù huỷ lúc nào." ]
+  }.freeze
+  validates :cancel_policy, inclusion: { in: CANCEL_POLICIES.keys }
+
+  # Mùa (#163): the highest season % covering the night, 0 outside every season.
+  def season_percent_on(date) = seasons.covering(date).maximum(:percent).to_i
 
   # Booking codes (#124): one UPDATE, so two bookings saved at once never share a number.
   def next_booking_number!
