@@ -24,4 +24,17 @@ class RegistrationTest < ApplicationSystemTestCase
     log_in_with_zalo "zalo-hoa"
     assert_text "Hiu Hill Homestay"
   end
+
+  test "the admin filters the homestay list to correct a misspelled name" do
+    places(:hiuhill).update!(name: "Hiu Hill Đồi Thông")
+    registration = RegistrationRequest.create!(zalo_id: "zalo-lan", name: "Lan", phone_number: "0905999888", place_name: "Hieu Hil")
+    users(:admin).update!(zalo_id: "zalo-trung")
+    log_in_with_zalo "zalo-trung"
+    visit admin_registration_request_path(registration)
+    fill_in "Tìm homestay…", with: "doi thong"
+    assert_equal [ "— Chưa có trên hueni —", "Hiu Hill Đồi Thông" ], all("#registration_request_place_id option").map(&:text)
+    select "Hiu Hill Đồi Thông", from: "Homestay"
+    click_button "Lưu"
+    assert_text "Người đăng ký gõ: \"Hieu Hil\""
+  end
 end
