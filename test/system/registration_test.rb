@@ -31,8 +31,12 @@ class RegistrationTest < ApplicationSystemTestCase
     users(:admin).update!(zalo_id: "zalo-trung")
     log_in_with_zalo "zalo-trung"
     visit admin_registration_request_path(registration)
-    fill_in "Tìm homestay…", with: "doi thong"
-    assert_equal [ "— Chưa có trên hueni —", "Hiu Hill Đồi Thông" ], all("#registration_request_place_id option").map(&:text)
+    options = -> { all("#registration_request_place_id option").map(&:text) }
+    assert_equal [ "— Chưa có trên hueni —", "Hiu Hill Đồi Thông" ], options.call # prefilled with "Hieu Hil"
+    fill_in "Tìm homestay…", with: "tomo hose"
+    assert_equal [ "— Chưa có trên hueni —", "tomo homestay" ], options.call
+    fill_in "Tìm homestay…", with: "Doi Thng"
+    assert_equal [ "— Chưa có trên hueni —", "Hiu Hill Đồi Thông" ], options.call
     select "Hiu Hill Đồi Thông", from: "Homestay"
     click_button "Lưu"
     assert_text "Người đăng ký gõ: \"Hieu Hil\""
