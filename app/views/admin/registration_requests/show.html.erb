@@ -73,7 +73,8 @@
   </section>
 
   <% if @registration.pending? %>
-    <%= form_with model: [ :admin, @registration ], id: "decide", class: "card bg-base-100 shadow-sm" do |form| %>
+    <%= form_with model: [ :admin, @registration ], id: "decide", class: "card bg-base-100 shadow-sm",
+          data: { controller: "autosubmit" } do |form| %>
       <div class="card-body p-4 gap-3">
         <h2 class="font-semibold">Bước 2 · Quyết định</h2>
 
@@ -86,7 +87,7 @@
                      value="<%= @registration.place_name unless place %>"
                      data-option-filter-target="input" data-action="input->option-filter#filter">
               <%= form.select :place_id, @places.map { [ it.name, it.id ] }, { include_blank: "— Chưa có trên hueni —" },
-                    class: "select w-full", data: { option_filter_target: "select" } %>
+                    class: "select w-full", data: { option_filter_target: "select", action: "autosubmit#submit" } %>
             </div>
             <div>
               <%= form.label :admin_note, note_needed ? "Ghi chú: đã xác minh thế nào? (bắt buộc khi duyệt)" : "Ghi chú (chỉ admin thấy)",

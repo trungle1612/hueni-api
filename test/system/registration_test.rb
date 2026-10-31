@@ -38,7 +38,7 @@ class RegistrationTest < ApplicationSystemTestCase
     fill_in "Tìm homestay…", with: "Doi Thng"
     assert_equal [ "— Chưa có trên hueni —", "Hiu Hill Đồi Thông" ], options.call
     select "Hiu Hill Đồi Thông", from: "Homestay"
-    click_button "Lưu"
-    assert_text "Người đăng ký gõ: \"Hieu Hil\""
+    assert_text "Người đăng ký gõ: \"Hieu Hil\"" # saved on change, no Lưu
+    assert_button "Tạo tài khoản chủ Hiu Hill Đồi Thông"
   end
 end
