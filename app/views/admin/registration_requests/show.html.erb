@@ -84,6 +84,7 @@
             <div data-controller="option-filter" class="flex flex-col gap-1">
               <%= form.label :place_id, "Homestay", class: "font-medium" %>
               <input type="search" placeholder="Tìm homestay…" aria-label="Tìm homestay" class="input w-full"
+                     value="<%= @registration.place_name unless place %>"
                      data-option-filter-target="input" data-action="input->option-filter#filter">
               <%= form.select :place_id, @places.map { [ it.name, it.id ] }, { include_blank: "— Chưa có trên hueni —" },
                     class: "select w-full", data: { option_filter_target: "select", action: "autosubmit#submit" } %>
