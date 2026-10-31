@@ -34,7 +34,7 @@ class RegistrationTest < ApplicationSystemTestCase
     fill_in "Tìm homestay…", with: "doi thong"
     assert_equal [ "— Chưa có trên hueni —", "Hiu Hill Đồi Thông" ], all("#registration_request_place_id option").map(&:text)
     select "Hiu Hill Đồi Thông", from: "Homestay"
-    click_button "Lưu"
-    assert_text "Người đăng ký gõ: \"Hieu Hil\""
+    assert_text "Người đăng ký gõ: \"Hieu Hil\"" # saved on change, no Lưu
+    assert_button "Tạo tài khoản chủ Hiu Hill Đồi Thông"
   end
 end
