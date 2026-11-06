@@ -6,6 +6,7 @@ class MiniApp::V1::RegistrationsController < MiniApp::V1::BaseController
 
   skip_before_action :authenticate
   before_action :require_registration_token
+  before_action -> { render_terms_required if params.dig(:registration, :terms_version).blank? }, only: %i[create update]
   rate_limit to: 10, within: 3.minutes, only: %i[create update],
     with: -> { render json: { error: "rate_limited", message: "Thử lại sau ít phút." }, status: :too_many_requests }
 
@@ -49,7 +50,9 @@ class MiniApp::V1::RegistrationsController < MiniApp::V1::BaseController
 
     def latest_request = RegistrationRequest.where(zalo_id: @zalo[:id]).order(:id).last
 
-    def registration_params = params.expect(registration: %i[name phone_number place_name maps_url])
+    def registration_params
+      params.expect(registration: %i[name phone_number place_name maps_url terms_version]).merge(terms_accepted_at: Time.current)
+    end
 
     def save(registration, status)
       registration.place = RegistrationRequest.matching_place(registration.place_name)

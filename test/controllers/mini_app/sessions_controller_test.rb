@@ -70,6 +70,30 @@ class MiniApp::SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
+  test "a linked user accepts the terms (again) for themselves only; GET /me returns the version (#206)" do
+    token = users(:owner).api_tokens.create!.token
+    get api_v1_me_path, headers: bearer(token)
+    assert_nil response.parsed_body.dig("user", "terms_version")
+
+    post terms_api_v1_me_path, params: { version: "" }, headers: bearer(token), as: :json
+    assert_response :unprocessable_entity
+    assert_equal "terms_required", response.parsed_body["error"]
+    post terms_api_v1_me_path, params: { version: "x" * 21 }, headers: bearer(token), as: :json
+    assert_response :unprocessable_entity
+    assert_equal "invalid", response.parsed_body["error"]
+
+    post terms_api_v1_me_path, params: { version: "2026-11-04", user_id: users(:admin).id }, headers: bearer(token), as: :json
+    assert_response :no_content
+    assert_equal "2026-11-04", users(:owner).reload.terms_version
+    assert users(:owner).terms_accepted_at
+    assert_nil users(:admin).reload.terms_version
+    get api_v1_me_path, headers: bearer(token)
+    assert_equal "2026-11-04", response.parsed_body.dig("user", "terms_version")
+
+    post terms_api_v1_me_path, params: { version: "2026-11-04" }, as: :json
+    assert_response :unauthorized
+  end
+
   test "CORS preflight answers without a token" do
     process :options, "/api/v1/me", headers: { "Origin" => "https://h5.zdn.vn", "Access-Control-Request-Method" => "GET" }
     assert_response :no_content
@@ -83,14 +107,22 @@ class MiniApp::SessionsControllerTest < ActionDispatch::IntegrationTest
       .with(headers: { "access_token" => "zmp-na", "code" => "phone-code", "secret_key" => "test-secret" })
       .to_return(body: { data: { number: "84987654321" }, error: 0 }.to_json)
     post api_v1_session_path, params: { access_token: "zmp-na", phone_token: "phone-code" }, as: :json
+    assert_response :unprocessable_entity
+    assert_equal "terms_required", response.parsed_body["error"]
+    assert_nil staff.reload.zalo_id
+
+    travel_to Time.zone.local(2026, 11, 5, 9, 30) do
+      post api_v1_session_path, params: { access_token: "zmp-na", phone_token: "phone-code", terms_version: "2026-11-04" }, as: :json
+    end
     assert_response :created
-    assert_equal "zalo-na", staff.reload.zalo_id
+    assert_equal "2026-11-04", response.parsed_body.dig("user", "terms_version")
+    assert_equal [ "zalo-na", "2026-11-04", Time.zone.local(2026, 11, 5, 9, 30) ], staff.reload.values_at(:zalo_id, :terms_version, :terms_accepted_at)
 
     users(:admin).update!(phone_number: "0911222333")
     zalo_me("zmp-x", { id: "zalo-x", name: "X" })
     stub_request(:get, "https://graph.zalo.me/v2.0/me/info").with(headers: { "code" => "admin-code" })
       .to_return(body: { data: { number: "84911222333" } }.to_json)
-    post api_v1_session_path, params: { access_token: "zmp-x", phone_token: "admin-code" }, as: :json
+    post api_v1_session_path, params: { access_token: "zmp-x", phone_token: "admin-code", terms_version: "2026-11-04" }, as: :json
     assert_response :forbidden
     assert_nil users(:admin).reload.zalo_id
   end
@@ -104,6 +136,12 @@ class MiniApp::SessionsControllerTest < ActionDispatch::IntegrationTest
     headers = { "X-Registration-Token" => response.parsed_body["registration_token"] }
 
     form = { name: "Chị Hạnh", phone_number: "0933 111 222", place_name: "Nhà Hạnh", maps_url: "" }
+    post api_v1_registration_path, params: { registration: form }, headers:, as: :json
+    assert_response :unprocessable_entity
+    assert_equal "terms_required", response.parsed_body["error"]
+    assert_equal 0, RegistrationRequest.count
+
+    form[:terms_version] = "2026-11-04"
     assert_enqueued_jobs 1, only: NotifyRegistrationJob do
       post api_v1_registration_path, params: { registration: form }, headers:, as: :json
     end
@@ -111,9 +149,14 @@ class MiniApp::SessionsControllerTest < ActionDispatch::IntegrationTest
     request = RegistrationRequest.sole
     assert_equal [ "zalo-new", "Chị Hạnh", place, "0933111222" ], [ request.zalo_id, request.zalo_name, request.place, request.phone_number ]
     assert_equal "pending", response.parsed_body.dig("registration", "status")
+    assert_equal "2026-11-04", request.terms_version
+    assert request.terms_accepted_at
 
     post api_v1_registration_path, params: { registration: form }, headers:, as: :json
     assert_response :conflict
+    patch api_v1_registration_path, params: { registration: form.except(:terms_version).merge(name: "Hạnh") }, headers:, as: :json
+    assert_response :unprocessable_entity
+    assert_equal "Chị Hạnh", request.reload.name
     patch api_v1_registration_path, params: { registration: form.merge(phone_number: "12") }, headers:, as: :json
     assert_response :unprocessable_entity
     assert_match "10 số", response.parsed_body.dig("errors", "phone_number").sole
@@ -129,6 +172,7 @@ class MiniApp::SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "registered", response.parsed_body["error"]
     post api_v1_session_path, params: { access_token: "zmp-new" }, as: :json
     assert_response :created
+    assert_equal "2026-11-04", response.parsed_body.dig("user", "terms_version") # copied on approval
 
     get api_v1_registration_path, headers: { "X-Registration-Token" => "forged" }, as: :json
     assert_response :unauthorized

@@ -4,6 +4,7 @@
 <% if (link = flash[:setup_link]) %><%= render "admin/members/setup_link", user: @user, link: %><% end %>
 
 <%= render "form", user: @user %>
+<div class="mt-2"><%= render "terms", record: @user %></div>
 
 <% if @user != Current.user %>
   <div class="card bg-base-100 shadow-sm mt-4">

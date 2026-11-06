@@ -84,6 +84,21 @@ class Admin::RegistrationRequestsControllerTest < ActionDispatch::IntegrationTes
     assert_equal [ "approved", "Đã gọi" ], [ @registration.reload.status, @registration.admin_note ]
   end
 
+  test "the consent from the Mini App shows on the request and moves to the new account (#206)" do
+    get admin_registration_request_path(@registration)
+    assert_select "#terms", /chưa ghi nhận đồng ý/
+
+    @registration.update!(terms_version: "2026-11-04", terms_accepted_at: Time.zone.local(2026, 11, 5, 9, 30), admin_note: "Đã gọi")
+    get admin_registration_request_path(@registration)
+    assert_select "#terms", /đồng ý bản 2026-11-04 lúc 09:30 05\/11\/2026/
+
+    assert @registration.approve!(by: users(:admin))
+    user = @registration.user
+    assert_equal [ "2026-11-04", @registration.terms_accepted_at ], [ user.terms_version, user.terms_accepted_at ]
+    get edit_admin_user_path(user)
+    assert_select "#terms", /đồng ý bản 2026-11-04 lúc 09:30 05\/11\/2026/
+  end
+
   test "choosing an owned homestay and approving fails and creates nothing" do
     assert_no_difference -> { User.count } do
       patch approve_admin_registration_request_path(@registration), params: choose(place: places(:tomo)).merge(called: "1")

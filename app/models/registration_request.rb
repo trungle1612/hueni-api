@@ -15,6 +15,7 @@ class RegistrationRequest < ApplicationRecord
   validates :zalo_id, :name, :place_name, presence: true
   validates :name, :place_name, length: { maximum: 100 }
   validates :maps_url, length: { maximum: 500 }
+  validates :terms_version, length: { maximum: 20 }
   validates :phone_number, presence: true, format: { with: /\A0\d{9}\z/, allow_blank: true, message: "cần đủ 10 số, ví dụ 0912 345 678" }
   validates :maps_url, format: { with: %r{\Ahttps?://\S+\z}i, allow_blank: true }
   validate :phone_number_free, if: :will_save_change_to_phone_number?
@@ -41,7 +42,7 @@ class RegistrationRequest < ApplicationRecord
       return refuse("#{place.name} vừa có chủ. Không tạo tài khoản.") if place_owners.any?
       return refuse("Không có SĐT trên hueni để gọi: ghi cách đã xác minh vào Ghi chú.") if !verifiable? && admin_note.blank?
 
-      new_user = User.create!(name:, phone_number:, zalo_id:, role: "user", password: User.unknown_password)
+      new_user = User.create!(name:, phone_number:, zalo_id:, terms_version:, terms_accepted_at:, role: "user", password: User.unknown_password)
       new_user.place_memberships.create!(place:, role: "owner") if place
       update!(status: "approved", user: new_user, decided_by: by, decided_at: Time.current)
     end

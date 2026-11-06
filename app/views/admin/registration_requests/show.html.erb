@@ -69,6 +69,7 @@
         <% if @registration.pending? %><span class="badge badge-soft badge-warning badge-sm">chưa xác minh</span><% end %>
       </div>
       <div class="text-sm opacity-70">Gửi lúc <%= @registration.created_at.strftime("%H:%M %d/%m/%Y") %></div>
+      <%= render "admin/users/terms", record: @registration %>
     </div>
   </section>
 
