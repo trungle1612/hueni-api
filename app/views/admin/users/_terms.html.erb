@@ -1,0 +1,5 @@
+<%# Consent recorded by the Mini App (#206), read-only. %>
+<div id="terms" class="text-sm opacity-70">
+  Điều khoản + Chính sách bảo mật:
+  <%= record.terms_version ? "đồng ý bản #{record.terms_version} lúc #{record.terms_accepted_at.strftime("%H:%M %d/%m/%Y")}" : "chưa ghi nhận đồng ý" %>
+</div>

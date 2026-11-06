@@ -31,10 +31,15 @@ class MiniApp::V1::BaseController < ActionController::API
     def me_json(user)
       places = user.accessible_places.order(:name).to_a
       memberships = user.place_memberships.unlocked.index_by(&:place_id)
-      { user: { id: user.id, name: user.name }, places: places.map { |place|
+      { user: { id: user.id, name: user.name, terms_version: user.terms_version }, places: places.map { |place|
         membership = memberships[place.id]
         { id: place.id, slug: place.slug, name: place.name, role: membership.role, permissions: PlaceMembership::PERMISSIONS.keys.select { membership.allows?(it) } }
       } }
+    end
+
+    # Consent to Điều khoản + Chính sách bảo mật (#206): required where the user links or registers.
+    def render_terms_required
+      render json: { error: "terms_required", message: "Bạn cần đồng ý Điều khoản và Chính sách bảo mật." }, status: :unprocessable_entity
     end
 
     def date_param(key)

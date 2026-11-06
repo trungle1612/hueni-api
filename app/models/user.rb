@@ -16,6 +16,7 @@ class User < ApplicationRecord
   validates :phone_number, presence: true, uniqueness: true, format: { with: /\A0\d{9}\z/, allow_blank: true }
   validates :password, length: { minimum: 8 }, allow_nil: true
   validates :zalo_id, uniqueness: true, allow_nil: true
+  validates :terms_version, length: { maximum: 20 }
 
   # One-time link (sent over Zalo): admins choose a password, everyone else links their Zalo (#97).
   # Any password change, including the new placeholder when Zalo gets linked, invalidates every earlier link.
@@ -38,10 +39,10 @@ class User < ApplicationRecord
 
   # #98: the phone number on a Zalo account (verified by Zalo) links an owner or staff member who has no Zalo yet.
   # `normalizes` turns Zalo's 84… / +84… into our 0…. Never admins. The web login and the Mini App (#152) both use it.
-  def self.link_zalo_by_phone(phone, zalo_id)
+  def self.link_zalo_by_phone(phone, zalo_id, **attributes)
     return if phone.blank? || zalo_id.blank?
     user = User.user.find_by(phone_number: phone, zalo_id: nil)
-    user if user&.update(zalo_id:)
+    user if user&.update(zalo_id:, **attributes)
   end
 
   def initial = name.to_s.first.to_s.upcase

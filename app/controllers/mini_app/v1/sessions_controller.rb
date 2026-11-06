@@ -11,8 +11,12 @@ class MiniApp::V1::SessionsController < MiniApp::V1::BaseController
     zalo = ZaloIdentity.me(access_token)
     return render json: { error: "zalo_rejected", message: "Zalo chưa xác nhận được tài khoản. Thử lại." }, status: :unauthorized unless zalo
 
-    user = User.find_by(zalo_id: zalo[:id]) ||
-      (User.link_zalo_by_phone(ZaloIdentity.phone(access_token, params[:phone_token].to_s), zalo[:id]) if params[:phone_token].present?)
+    user = User.find_by(zalo_id: zalo[:id])
+    if user.nil? && params[:phone_token].present?
+      return render_terms_required if params[:terms_version].blank?
+      user = User.link_zalo_by_phone(ZaloIdentity.phone(access_token, params[:phone_token].to_s), zalo[:id],
+        terms_version: params[:terms_version], terms_accepted_at: Time.current)
+    end
     return not_registered(zalo) unless user
 
     api_token = user.api_tokens.create!(user_agent: request.user_agent.to_s.first(255).presence)
