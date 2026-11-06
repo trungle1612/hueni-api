@@ -66,7 +66,7 @@ group :test do
   gem "webmock"
 end
 
-gem "tailwindcss-rails", "~> 4.6"
+gem "tailwindcss-rails", "~> 4.7"
 
 gem "aasm", "~> 6.0"
 
