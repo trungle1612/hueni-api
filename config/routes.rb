@@ -43,6 +43,7 @@ Rails.application.routes.draw do
       resources :members, only: %i[new create edit update destroy] do
         post :setup_link, on: :member
       end
+      resources :invites, only: %i[create destroy]
     end
     resources :rooms, only: %i[index edit update destroy] do
       post :clean, on: :member
