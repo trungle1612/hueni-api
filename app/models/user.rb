@@ -13,8 +13,8 @@ class User < ApplicationRecord
   enum :role, { admin: "admin", user: "user" }, validate: true
 
   validates :name, presence: true
-  validates :phone_number, presence: true, unless: :deleted?
-  validates :phone_number, uniqueness: true, format: { with: /\A0\d{9}\z/, allow_blank: true }
+  validates :phone_number, presence: true, if: :phone_required?
+  validates :phone_number, uniqueness: { allow_nil: true }, format: { with: /\A0\d{9}\z/, allow_blank: true }
   validates :password, length: { minimum: 8 }, allow_nil: true
   validates :zalo_id, uniqueness: true, allow_nil: true
   validates :terms_version, length: { maximum: 20 }
@@ -24,6 +24,9 @@ class User < ApplicationRecord
   generates_token_for :password_setup, expires_in: 7.days do
     password_salt.last(10)
   end
+
+  # Joined with a mã mời (#211): Zalo only, no phone. Everyone else (and anyone who once had one) keeps a phone.
+  def phone_required? = !deleted? && (new_record? ? zalo_id.nil? : !phone_number_in_database.nil?)
 
   # Placeholder password nobody knows: the account stays locked until it's set through the link.
   def self.unknown_password = SecureRandom.base58(24)
