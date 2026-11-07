@@ -9,7 +9,6 @@ class Admin::PlacesController < Admin::BaseController
     @vacancy_left = Vacancy.cached[:places].dig(@place.slug, :left)
     @feed_errors = CalendarFeed.where(room: @place.rooms).where.not(last_error: nil).count
     @memberships = @place.place_memberships.includes(:user).sort_by { [ it.owner? ? 0 : 1, it.user.name ] } if allowed_to?(:manage, @place)
-    @invites = @place.invites.usable.order(:id) if @memberships
   end
 
   # Đồng bộ tất cả (#125): queued, since each link may take up to CalendarFeed::TIMEOUT seconds.

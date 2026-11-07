@@ -43,7 +43,6 @@ Rails.application.routes.draw do
       resources :members, only: %i[new create edit update destroy] do
         post :setup_link, on: :member
       end
-      resources :invites, only: %i[create destroy]
     end
     resources :rooms, only: %i[index edit update destroy] do
       post :clean, on: :member
@@ -51,7 +50,7 @@ Rails.application.routes.draw do
       resources :calendar_feeds, only: :create
     end
     resources :sync_runs, only: :index, path: "dong-bo"
-    resources :invites, only: :index, path: "ma-moi"
+    resources :invites, only: %i[index create destroy], path: "ma-moi"
     resources :users, only: %i[index new create edit update] do
       post :reset_password, on: :member
     end
@@ -120,10 +119,8 @@ Rails.application.routes.draw do
       resources :surcharges, only: :create
       resources :groups, only: :create
       resources :memberships, only: %i[index create]
-      resources :invites, only: %i[index create]
       resources :refund_requests, only: :index
     end
-    resources :invites, only: :destroy
     resources :memberships, only: %i[update destroy] do
       member do
         post :lock

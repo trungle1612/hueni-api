@@ -10,13 +10,13 @@ module ApplicationHelper
     if Current.user&.place_memberships&.exists?(role: "owner")
       items << { label: "Phòng", icon: "bed", path: admin_rooms_path, active: controller_name == "rooms" }
       items << { label: "Báo cáo", icon: "chart", path: admin_report_path, active: controller_name == "reports" }
-      items << { label: "Mã mời", icon: "key", path: admin_invites_path, active: controller_name == "invites" }
     end
     if Current.user&.admin?
       pending = RegistrationRequest.pending.count
       items << { label: "Người dùng", count: pending, icon: "users", path: admin_users_path,
                  active: controller_name.in?(%w[users registration_requests]) }
       items << { label: "Đồng bộ", icon: "activity", path: admin_sync_runs_path, active: controller_name == "sync_runs" }
+      items << { label: "Mã mời", icon: "key", path: admin_invites_path, active: controller_name == "invites" }
     end
     items
   end

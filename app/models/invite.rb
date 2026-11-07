@@ -1,6 +1,6 @@
 # Mã mời (#211): an unknown Zalo account that enters a valid code in the Mini App gets an account and a membership
 # at the code's homestay with its role (MiniApp::V1::SessionsController). Each sign-up uses it once, up to max_uses,
-# until expires_at. Owners make staff codes (MiniApp::V1::InvitesController); owner codes are admin-only (invites:create).
+# until expires_at. Only admins make and revoke codes (Admin::InvitesController, menu Mã mời, or invites:create).
 class Invite < ApplicationRecord
   # Easy to read out and type: no 0/O, 1/I/L.
   ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789".chars.freeze

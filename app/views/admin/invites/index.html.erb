@@ -1,13 +1,52 @@
 <% content_for :title, "Mã mời · hueni admin" %>
 
 <h1 class="text-xl font-semibold">Mã mời</h1>
-<p class="text-sm opacity-70 mb-4">Thêm nhân viên không cần số điện thoại: gửi mã qua Zalo, họ nhập mã khi đăng nhập Mini App hueni.</p>
+<p class="text-sm opacity-70 mb-4">Gửi mã qua Zalo; người dùng Zalo mới nhập mã khi đăng nhập Mini App hueni và vào homestay với vai trò của mã.</p>
 
-<div class="flex flex-col gap-6">
-  <% @places.each do |place| %>
-    <section id="<%= place.slug %>">
-      <h2 class="text-lg font-semibold"><%= place.name %></h2>
-      <%= render "admin/invites/place", place:, invites: @invites.fetch(place.id, []), title: false %>
-    </section>
+<%= form_with scope: :invite, url: admin_invites_path, class: "card bg-base-100 shadow-sm mb-6" do |form| %>
+  <div class="card-body p-4 gap-3">
+    <div>
+      <%= form.label :place_id, "Homestay", class: "label text-sm mb-1" %>
+      <%= form.select :place_id, @places.map { [ it.name, it.id ] }, { include_blank: "Chọn homestay" }, required: true, class: "select w-full" %>
+    </div>
+    <div class="grid grid-cols-3 gap-2">
+      <div>
+        <%= form.label :role, "Vai trò", class: "label text-sm mb-1" %>
+        <%= form.select :role, PlaceMembership::ROLE_LABELS.invert, { selected: "staff" }, class: "select w-full" %>
+      </div>
+      <div>
+        <%= form.label :max_uses, "Số lần", class: "label text-sm mb-1" %>
+        <%= form.number_field :max_uses, value: 1, min: 1, max: 20, required: true, class: "input w-full" %>
+      </div>
+      <div>
+        <%= form.label :days, "Số ngày", class: "label text-sm mb-1" %>
+        <%= form.number_field :days, value: 7, min: 1, max: 30, required: true, class: "input w-full" %>
+      </div>
+    </div>
+    <%= form.submit "Tạo mã mời", class: "btn btn-primary btn-block" %>
+  </div>
+<% end %>
+
+<section id="invites">
+  <h2 class="font-semibold mb-2">Mã còn dùng được</h2>
+  <% if @invites.any? %>
+    <ul class="list bg-base-100 rounded-box shadow-sm">
+      <% @invites.each do |invite| %>
+        <li id="<%= dom_id(invite) %>" class="list-row items-center">
+          <div class="list-col-grow min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-mono font-semibold select-all"><%= invite.display_code %></span>
+              <span class="badge badge-soft badge-sm <%= invite.owner? ? "badge-primary" : "badge-info" %>"><%= PlaceMembership::ROLE_LABELS.fetch(invite.role) %></span>
+            </div>
+            <div class="text-sm"><%= invite.place.name %></div>
+            <div class="text-xs opacity-60">Còn <%= invite.max_uses - invite.uses_count %> lần · hết hạn <%= l(invite.expires_at, format: "%d/%m %H:%M") %></div>
+          </div>
+          <%= button_to "Thu hồi", admin_invite_path(invite), method: :delete, class: "btn btn-ghost btn-sm text-error",
+                form: { data: { turbo_confirm: "Thu hồi mã #{invite.display_code}? Mã này sẽ không dùng được nữa." } } %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="text-sm opacity-70">Chưa có mã nào.</p>
   <% end %>
-</div>
+</section>

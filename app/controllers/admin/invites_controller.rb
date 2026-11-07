@@ -1,34 +1,26 @@
-# Mã mời (#211), owners only, like the Mini App: staff codes, 7 days, one use. Menu Mã mời lists every homestay
-# you own; the homestay page shows the same card under Thành viên.
-# Admins (members of the homestay, #85) also pick the role, uses and days: owner codes for Zalo review.
+# Mã mời (#211), admins only (like Người dùng): a code for any homestay, with its role, uses and days.
+# Whoever enters it in the Mini App with an unknown Zalo joins that homestay (Invite.redeem).
 class Admin::InvitesController < Admin::BaseController
-  before_action :set_place, except: :index
-  before_action -> { authorize!(:manage, @place) }, except: :index
+  before_action :require_admin
 
   def index
-    @places = owned_places
-    raise Forbidden if @places.none?
-    @invites = Invite.usable.where(place: @places).order(:id).group_by(&:place_id)
+    @invites = Invite.usable.includes(:place).order(:id)
+    @places = Place.order(:name)
   end
 
   def create
-    attrs = Current.user.admin? ? params.expect(invite: %i[role max_uses days]) : {}
-    invite = @place.invites.build(role: attrs[:role].presence || "staff", max_uses: attrs[:max_uses].presence || 1,
-      expires_at: (attrs[:days].presence || 7).to_i.clamp(1, 30).days.from_now, created_by: Current.user)
+    attrs = params.expect(invite: %i[place_id role max_uses days])
+    invite = Place.find(attrs[:place_id]).invites.build(role: attrs[:role], max_uses: attrs[:max_uses],
+      expires_at: attrs[:days].to_i.clamp(1, 30).days.from_now, created_by: Current.user) # admins assign every homestay
     if invite.save
-      redirect_back_or_to admin_place_path(@place.slug, anchor: "members"), notice: "Đã tạo mã mời #{invite.display_code}."
+      redirect_to admin_invites_path, notice: "Đã tạo mã mời #{invite.display_code} cho #{invite.place.name}."
     else
-      redirect_back_or_to admin_place_path(@place.slug, anchor: "members"), alert: invite.errors.full_messages.to_sentence
+      redirect_to admin_invites_path, alert: invite.errors.full_messages.to_sentence
     end
   end
 
   def destroy
-    @place.invites.find(params[:id]).destroy!
-    redirect_back_or_to admin_place_path(@place.slug, anchor: "members"), notice: "Đã thu hồi mã mời."
+    Invite.find(params[:id]).destroy!
+    redirect_to admin_invites_path, notice: "Đã thu hồi mã mời."
   end
-
-  private
-    def set_place
-      @place = Current.user.accessible_places.find_by!(slug: params[:place_slug])
-    end
 end
