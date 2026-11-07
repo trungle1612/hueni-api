@@ -4,7 +4,7 @@ class Admin::UsersController < Admin::BaseController
   before_action :set_user, only: %i[edit update reset_password]
 
   def index
-    @users = User.includes(place_memberships: :place).order(:role, :name)
+    @users = User.not_deleted.includes(place_memberships: :place).order(:role, :name)
     @registrations = RegistrationRequest.includes(:place, :decided_by).order(created_at: :desc)
   end
 

@@ -94,6 +94,56 @@ class MiniApp::SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
+  test "Xoá tài khoản (#192): only my own; logins, Zalo link and memberships go; the homestay keeps its bookings and Hoạt động" do
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123", zalo_id: "zalo-na", terms_version: "2026-11-04")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    booking = bookings(:limdim_confirmed)
+    PaperTrail.request(whodunnit: staff.id.to_s) { booking.update!(note: "Khách đến muộn") }
+    payment = booking.payments.create!(amount: 100_000, payment_method: "cash", kind: "payment", user: staff)
+    token = staff.api_tokens.create!.token
+    owner_token = users(:owner).api_tokens.create!.token
+
+    delete api_v1_me_path, params: { user_id: users(:owner).id }, headers: bearer(token), as: :json
+    assert_response :no_content
+    get api_v1_me_path, headers: bearer(token)
+    assert_response :unauthorized
+
+    staff.reload
+    assert_equal [ User::DELETED_NAME, nil, nil, nil ], staff.values_at(:name, :phone_number, :zalo_id, :terms_version)
+    assert staff.deleted?
+    assert_empty staff.place_memberships
+    assert_equal users(:owner).name, users(:owner).reload.name # never anyone else
+
+    zalo_me("zmp-na", { id: "zalo-na", name: "Na" })
+    post api_v1_session_path, params: { access_token: "zmp-na" }, as: :json
+    assert_equal "not_registered", response.parsed_body["error"]
+
+    assert booking.reload.persisted?
+    assert_equal staff, payment.reload.user
+    get activity_api_v1_place_path(places(:tomo)), headers: bearer(owner_token)
+    assert_response :success
+    assert_includes response.parsed_body["activities"].map { it["actor"] }, User::DELETED_NAME
+  end
+
+  test "Xoá tài khoản (#192): the last owner takes the bookings and the staff with them; the homestay and its rooms stay" do
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    booking = bookings(:limdim_confirmed)
+    booking.payments.create!(amount: 100_000, payment_method: "cash", kind: "payment")
+    places(:hiuhill).place_memberships.create!(user: staff, role: "owner")
+    places(:hiuhill).place_memberships.create!(user: users(:owner), role: "owner")
+
+    delete api_v1_me_path, headers: bearer(users(:owner).api_tokens.create!.token)
+    assert_response :no_content
+
+    assert_not Booking.exists?(booking.id)
+    assert_empty Payment.where(booking_id: booking.id)
+    assert_empty PaperTrail::Version.where(item_type: "Booking", item_id: booking.id)
+    assert_empty places(:tomo).place_memberships.reload
+    assert_equal 2, places(:tomo).rooms.count
+    assert_equal [ staff ], places(:hiuhill).users.reload # not the last owner there: only the membership goes
+  end
+
   test "CORS preflight answers without a token" do
     process :options, "/api/v1/me", headers: { "Origin" => "https://h5.zdn.vn", "Access-Control-Request-Method" => "GET" }
     assert_response :no_content

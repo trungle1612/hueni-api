@@ -83,7 +83,7 @@ Rails.application.routes.draw do
   scope "api/v1", module: "mini_app/v1", as: "api_v1", defaults: { format: :json } do
     resource :session, only: %i[create destroy]
     resource :registration, only: %i[show create update]
-    resource :me, only: :show, controller: "me" do
+    resource :me, only: %i[show destroy], controller: "me" do
       post :terms
     end
     resources :places, only: :show do

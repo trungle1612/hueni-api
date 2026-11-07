@@ -41,6 +41,23 @@ class Place < ApplicationRecord
 
   def bank? = bank_name.present? && bank_account.present?
 
+  # The last owner deleted their account (#192): bookings with their money, guest notes, groups and their history go,
+  # with every membership here. The homestay (hueni's copy), its rooms, feeds and settings stay for a new owner.
+  def clear_for_deleted_owner!
+    bookings = Booking.where(room_id: rooms.select(:id))
+    transaction do
+      RefundRequest.where(booking: bookings).delete_all
+      Payment.where(booking: bookings).delete_all
+      BookingCharge.where(booking: bookings).delete_all
+      bookings.delete_all
+      groups.delete_all
+      guests.delete_all
+      PaperTrail::Version.where(place_id: id, item_type: %w[Booking Payment BookingCharge RefundRequest Group Guest]).delete_all
+      place_memberships.delete_all
+    end
+    Vacancy.bust
+  end
+
   # Trang đặt phòng riêng (#172), owner-set: Cọc trước %, Giữ phòng chờ cọc, Hạn đặt trong ngày (same-day arrivals until this hour).
   SITE_DEPOSIT_PERCENTS = [ 0, 30, 50, 100 ].freeze
   SITE_HOLD_MINUTES = [ 15, 30, 120 ].freeze
