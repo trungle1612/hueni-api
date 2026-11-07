@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_06_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_07_100000) do
   create_table "api_tokens", force: :cascade do |t|
     t.integer "user_id", null: false
     t.string "token_digest", null: false
@@ -352,7 +352,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_100000) do
   end
 
   create_table "users", force: :cascade do |t|
-    t.string "phone_number", null: false
+    t.string "phone_number"
     t.string "password_digest", null: false
     t.string "name", null: false
     t.string "role", default: "user", null: false
@@ -361,6 +361,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_100000) do
     t.string "zalo_id"
     t.string "terms_version"
     t.datetime "terms_accepted_at"
+    t.datetime "deleted_at"
     t.index ["phone_number"], name: "index_users_on_phone_number", unique: true
     t.index ["zalo_id"], name: "index_users_on_zalo_id", unique: true
     t.check_constraint "role IN ('admin', 'user')", name: "users_role_values"

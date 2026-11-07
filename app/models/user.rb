@@ -13,7 +13,8 @@ class User < ApplicationRecord
   enum :role, { admin: "admin", user: "user" }, validate: true
 
   validates :name, presence: true
-  validates :phone_number, presence: true, uniqueness: true, format: { with: /\A0\d{9}\z/, allow_blank: true }
+  validates :phone_number, presence: true, unless: :deleted?
+  validates :phone_number, uniqueness: true, format: { with: /\A0\d{9}\z/, allow_blank: true }
   validates :password, length: { minimum: 8 }, allow_nil: true
   validates :zalo_id, uniqueness: true, allow_nil: true
   validates :terms_version, length: { maximum: 20 }
@@ -46,6 +47,28 @@ class User < ApplicationRecord
   end
 
   def initial = name.to_s.first.to_s.upcase
+
+  DELETED_NAME = "Người dùng đã xoá"
+  scope :not_deleted, -> { where(deleted_at: nil) }
+  def deleted? = deleted_at.present?
+
+  # Xoá tài khoản (#192, Zalo DPA): personal fields, the Zalo link, logins and memberships go; the row stays,
+  # anonymised, so payments, shifts and Hoạt động still resolve. At a homestay where they are the last owner
+  # the guest data goes too and the staff leave with them (Place#clear_for_deleted_owner!); the homestay and its rooms stay.
+  def delete_account!
+    transaction do
+      places.merge(PlaceMembership.owner).each do |place|
+        place.clear_for_deleted_owner! unless place.place_memberships.owner.where.not(user_id: id).exists?
+      end
+      place_memberships.reload.each(&:destroy!)
+      RegistrationRequest.where(user_id: id).delete_all
+      RegistrationRequest.where(zalo_id:).delete_all if zalo_id
+      sessions.destroy_all
+      api_tokens.delete_all
+      update!(name: DELETED_NAME, phone_number: nil, zalo_id: nil, password: User.unknown_password,
+        terms_version: nil, terms_accepted_at: nil, deleted_at: Time.current)
+    end
+  end
 
   # The single access rule for admin code: look records up only through these.
   # Out-of-scope `find` raises RecordNotFound, which Rails renders as 404.
