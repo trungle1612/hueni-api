@@ -118,8 +118,10 @@ Rails.application.routes.draw do
       resources :surcharges, only: :create
       resources :groups, only: :create
       resources :memberships, only: %i[index create]
+      resources :invites, only: %i[index create]
       resources :refund_requests, only: :index
     end
+    resources :invites, only: :destroy
     resources :memberships, only: %i[update destroy] do
       member do
         post :lock

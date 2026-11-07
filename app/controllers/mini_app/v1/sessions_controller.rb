@@ -1,5 +1,6 @@
 # Đăng nhập bằng Zalo in the Mini App (#152), the same way as on the web (ZaloSessionsController):
 # a known Zalo id signs in; else the Zalo phone (zmp-sdk getPhoneNumber, #98) links an owner or staff member without Zalo;
+# else a mã mời (`invite_code`, Invite.redeem, #211) creates the account at that homestay,
 # else 403 not_registered with a registration_token (30 minutes) for owner registration (RegistrationsController).
 class MiniApp::V1::SessionsController < MiniApp::V1::BaseController
   skip_before_action :authenticate, only: :create
@@ -16,6 +17,11 @@ class MiniApp::V1::SessionsController < MiniApp::V1::BaseController
       return render_terms_required if params[:terms_version].blank?
       user = User.link_zalo_by_phone(ZaloIdentity.phone(access_token, params[:phone_token].to_s), zalo[:id],
         terms_version: params[:terms_version], terms_accepted_at: Time.current)
+    end
+    if user.nil? && params[:invite_code].present?
+      return render_terms_required unless params[:terms_version].to_s.length.between?(1, 20)
+      user = Invite.redeem(params[:invite_code], zalo:, terms_version: params[:terms_version].to_s)
+      return render json: { error: "invite_invalid", message: Invite::INVALID }, status: :unprocessable_entity unless user
     end
     return not_registered(zalo) unless user
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_07_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_08_080000) do
   create_table "api_tokens", force: :cascade do |t|
     t.integer "user_id", null: false
     t.string "token_digest", null: false
@@ -143,6 +143,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_100000) do
     t.datetime "updated_at", null: false
     t.index ["place_id", "key"], name: "index_guests_on_place_id_and_key", unique: true
     t.index ["place_id"], name: "index_guests_on_place_id"
+  end
+
+  create_table "invites", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.integer "created_by_id", null: false
+    t.string "code", null: false
+    t.string "role", default: "staff", null: false
+    t.integer "max_uses", default: 1, null: false
+    t.integer "uses_count", default: 0, null: false
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_invites_on_code", unique: true
+    t.index ["created_by_id"], name: "index_invites_on_created_by_id"
+    t.index ["place_id"], name: "index_invites_on_place_id"
+    t.check_constraint "role IN ('owner', 'staff')", name: "invites_role_values"
   end
 
   create_table "payments", force: :cascade do |t|
@@ -395,6 +411,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_100000) do
   add_foreign_key "cleaning_tasks", "users", column: "assignee_id"
   add_foreign_key "groups", "places"
   add_foreign_key "guests", "places"
+  add_foreign_key "invites", "places"
+  add_foreign_key "invites", "users", column: "created_by_id"
   add_foreign_key "payments", "bookings"
   add_foreign_key "payments", "users"
   add_foreign_key "place_memberships", "places"
