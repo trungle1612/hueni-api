@@ -51,6 +51,7 @@ Rails.application.routes.draw do
       resources :calendar_feeds, only: :create
     end
     resources :sync_runs, only: :index, path: "dong-bo"
+    resources :invites, only: :index, path: "ma-moi"
     resources :users, only: %i[index new create edit update] do
       post :reset_password, on: :member
     end

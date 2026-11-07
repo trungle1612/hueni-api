@@ -12,18 +12,32 @@ class Admin::InvitesControllerTest < ActionDispatch::IntegrationTest
     end
     invite = places(:tomo).invites.sole
     follow_redirect!
-    assert_select "#invites", text: /#{invite.display_code}.*Nhân viên.*Còn 1 lần/m
-    assert_select "#invites select", 0
+    assert_select "#invites_place_#{places(:tomo).id}", text: /#{invite.display_code}.*Nhân viên.*Còn 1 lần/m
+    assert_select "#invites_place_#{places(:tomo).id} select", 0
 
     delete admin_place_invite_path("tomo-homestay", invite)
     assert_not Invite.exists?(invite.id)
+  end
+
+  test "menu Mã mời lists the codes of every homestay I own; create and Thu hồi come back to it" do
+    log_in users(:owner)
+    get admin_invites_path
+    assert_response :success
+    assert_select "a.menu-active[href=?]", admin_invites_path
+    assert_select "#tomo-homestay h2", places(:tomo).name
+    assert_select "#hiuhill-homestay", 0
+
+    post admin_place_invites_path("tomo-homestay"), headers: { "Referer" => admin_invites_url }
+    assert_redirected_to admin_invites_url
+    follow_redirect!
+    assert_select "#tomo-homestay", text: /#{places(:tomo).invites.sole.display_code}/
   end
 
   test "an admin member picks the role, uses and days: an owner code for Zalo review" do
     places(:tomo).place_memberships.create!(user: users(:admin), role: "owner")
     log_in users(:admin)
     get admin_place_path("tomo-homestay")
-    assert_select "#invites select[name='invite[role]']"
+    assert_select "#invites_place_#{places(:tomo).id} select[name='invite[role]']"
     freeze_time do
       post admin_place_invites_path("tomo-homestay"), params: { invite: { role: "owner", max_uses: 5, days: 14 } }
       assert_equal [ "owner", 5, 14.days.from_now ], places(:tomo).invites.sole.values_at(:role, :max_uses, :expires_at)
@@ -42,7 +56,10 @@ class Admin::InvitesControllerTest < ActionDispatch::IntegrationTest
     post admin_place_invites_path("tomo-homestay")
     assert_response :forbidden
     get admin_place_path("tomo-homestay")
-    assert_select "#invites", 0
+    assert_select "#invites_place_#{places(:tomo).id}", 0
+    assert_select "a[href=?]", admin_invites_path, 0
+    get admin_invites_path
+    assert_response :forbidden
 
     delete session_path
     log_in users(:owner)
