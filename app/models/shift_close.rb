@@ -9,6 +9,7 @@ class ShiftClose < ApplicationRecord
   belongs_to :user, optional: true
   belongs_to :handed_to, class_name: "User", optional: true
   has_paper_trail on: %i[create], meta: { place_id: :place_id }
+  after_create { Notification.shift(self) if difference? } # Chốt ca lệch (#216)
 
   vnd_price :counted, :keep
   normalizes :note, with: ->(value) { value.squish.presence }

@@ -25,6 +25,9 @@ production:
   prune_notification_reads:
     command: "NotificationRead.prune"
     schedule: every day at 3:30am
+  prune_notifications:
+    command: "Notification.prune"
+    schedule: every day at 3:35am
   prune_sync_runs:
     command: "SyncRun.prune"
     schedule: every day at 3am

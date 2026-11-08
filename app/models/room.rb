@@ -11,6 +11,9 @@ class Room < ApplicationRecord
     meta: { place_id: :place_id, room_id: :id }
 
   after_commit { Vacancy.bust }
+  # Thông báo (#216): Dọn xong and Báo hỏng.
+  after_update { Notification.room("clean", self) if saved_change_to_housekeeping?(from: "dirty", to: "clean") }
+  after_update { Notification.room("damage", self, damage_note) if saved_change_to_damage_note? && damage_note }
 
   # maintenance = Bảo trì (#121): blocked from today through maintenance_until, see maintenance_on?.
   enum :housekeeping, { clean: "clean", dirty: "dirty", maintenance: "maintenance" }, validate: true

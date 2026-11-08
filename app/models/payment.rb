@@ -18,6 +18,7 @@ class Payment < ApplicationRecord
   validate :within_balance, on: :create
   # Trang đặt phòng riêng (#172): money in ends an online booking's hold.
   after_create { booking.update_columns(hold_expires_at: nil) if payment? && booking.hold_expires_at }
+  after_create { Notification.payment(self) if payment? } # Thu tiền (#216)
 
   def signed_amount = refund? ? -amount : amount
   def method_label = METHODS[payment_method]
