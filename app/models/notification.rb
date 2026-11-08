@@ -1,8 +1,9 @@
-# Thông báo (#213): one member's inbox at one homestay, built from what is already recorded, newest first:
-# paper_trail versions of the last DAYS days that someone else did (worded by Activity), today's OTA conflicts and
-# undeclared guests (Today), failing feeds and hueni's announcements. Only read marks (NotificationRead) and the
-# types a user turned off (users.notifications_off) are stored.
-class Notification
+# Thông báo (#213, #216): one member's inbox at one homestay, newest first. Events are saved as they happen, one row
+# per homestay event, by the models where they happen (in the same transaction, so a refused action leaves none):
+# Booking, Payment, ShiftClose, Room, RefundRequest call the writers below. Today's OTA conflicts and undeclared
+# guests (Today), failing feeds and hueni's announcements are current state, computed on read. Per user, only read
+# marks (NotificationRead) and the types turned off (users.notifications_off) are stored.
+class Notification < ApplicationRecord
   DAYS = 30
   # Cài đặt thông báo. channel = Trùng phòng và lỗi kênh, always on.
   TYPES = %w[book money reg room approve news channel].freeze
@@ -16,42 +17,78 @@ class Notification
     def initialize(unread: true, link: nil, announcement: nil, **) = super
   end
 
-  # Versions that notify, by [item_type, Activity action] → [type, icon, tone, title (nil = Activity's), link screen].
-  EVENTS = {
-    [ "Booking", "Đặt phòng" ] => [ "book", "book", "", "Đặt phòng mới", "booking" ],
-    [ "Booking", "Huỷ" ] => [ "book", "book", "", "Đặt phòng bị huỷ", "booking" ],
-    [ "Booking", "Xoá đặt phòng" ] => [ "book", "book", "", "Đặt phòng bị huỷ", nil ],
-    [ "Booking", "OTA đã huỷ, khách đang ở" ] => [ "channel", "alert", "warn", nil, "booking" ],
-    [ "Payment", "Thu tiền" ] => [ "money", "money", "pos", nil, "booking" ],
-    [ "ShiftClose", "Chốt ca lệch" ] => [ "money", "money", "warn", nil, "shift" ],
-    [ "Room", "Dọn xong" ] => [ "room", "room", "", nil, "housekeeping" ],
-    [ "Room", "Báo hỏng / thiếu đồ" ] => [ "room", "room", "warn", nil, "housekeeping" ],
-    [ "RefundRequest", "Xin hoàn tiền" ] => [ "approve", "team", "warn", "Yêu cầu hoàn tiền chờ bạn duyệt", "approvals" ]
+  # Saved events by kind → [type, icon, tone, title, link screen].
+  KINDS = {
+    "booking" => [ "book", "book", "", "Đặt phòng mới", "booking" ],
+    "cancel" => [ "book", "book", "", "Đặt phòng bị huỷ", "booking" ],
+    "ota_delete" => [ "book", "book", "", "Đặt phòng bị huỷ", nil ],
+    "ota_removed" => [ "channel", "alert", "warn", "OTA đã huỷ, khách đang ở", "booking" ],
+    "payment" => [ "money", "money", "pos", "Thu tiền", "booking" ],
+    "shift" => [ "money", "money", "warn", "Chốt ca lệch", "shift" ],
+    "clean" => [ "room", "room", "", "Dọn xong", "housekeeping" ],
+    "damage" => [ "room", "room", "warn", "Báo hỏng / thiếu đồ", "housekeeping" ],
+    "refund_request" => [ "approve", "team", "warn", "Yêu cầu hoàn tiền chờ bạn duyệt", "approvals" ]
   }.freeze
-  OWNER_ONLY = %w[Payment ShiftClose RefundRequest].freeze
+  OWNER_ONLY = %w[payment shift refund_request].freeze
+
+  belongs_to :place
+
+  # Who did it: the signed-in user, else by: (the OTA, the guest on the booking page), else "Hệ thống" (jobs, console).
+  def self.record(kind, place:, details: [], room: nil, booking: nil, refund_request: nil, by: nil)
+    user = Current.user unless by
+    create!(place:, kind:, title: KINDS.fetch(kind)[3], actor_id: user&.id, source: by || user&.name || "Hệ thống",
+      body: [ *details, ("Phòng #{room.name}" if room) ].compact_blank.join(" · ").presence,
+      booking_id: booking&.id, room_id: room&.id, refund_request_id: refund_request&.id)
+  end
+
+  # Đặt phòng mới / bị huỷ / OTA đã huỷ: an iCal booking is the OTA's doing, an online one the guest's.
+  def self.booking(kind, booking, *details)
+    by = booking.calendar_feed&.provider_label || "iCal" if booking.ical?
+    by ||= "Khách đặt online" if booking.online && !Current.user
+    record(kind, place: booking.room.place, room: booking.room, booking: (booking unless booking.destroyed?), by:,
+      details: details.presence || [ [ booking.guest_name.presence, dates(booking) ].compact.join(" ") ])
+  end
+
+  def self.payment(payment)
+    booking = payment.booking
+    record("payment", place: booking.room.place, room: booking.room, booking:,
+      details: [ VndPrice.format(payment.amount), Payment::METHODS[payment.payment_method], booking.code ])
+  end
+
+  def self.refund_request(request)
+    booking = request.booking
+    record("refund_request", place: booking.room.place, room: booking.room, booking:, refund_request: request,
+      details: [ VndPrice.format(request.amount), Payment::METHODS[request.payment_method], booking.code ])
+  end
+
+  def self.shift(close)
+    record("shift", place: close.place, details: [ "#{close.difference.negative? ? "Thiếu" : "Thừa"} #{VndPrice.format(close.difference.abs)}", close.note ])
+  end
+
+  def self.room(kind, room, *details) = record(kind, place: room.place, room:, details:)
+
+  def self.dates(booking) = [ booking.start_date, booking.end_date ].map { it.strftime("%d/%m") }.join("–")
+
+  def self.prune = where(created_at: ...(DAYS + 1).days.ago).delete_all
 
   def self.for(user, place)
-    items = versions(user, place) + today(place) + feeds(place) + Announcement.shown.map { announcement(it) }
+    items = saved(user, place) + today(place) + feeds(place) + Announcement.shown.map { announcement(it) }
     off = user.notifications_off & OPTIONAL
     items = items.reject { it.type.in?(off) }.sort_by(&:at).reverse
     read = user.notification_reads.where(key: items.map(&:key)).pluck(:key).to_set
     items.map { it.with(unread: !read.include?(it.key)) }
   end
 
-  def self.versions(user, place)
-    types = EVENTS.keys.map(&:first).uniq
-    types -= OWNER_ONLY unless user.allowed_to?(:manage, place)
-    # ponytail: words every version of the window in Ruby; prefilter in SQL if a homestay logs thousands a month.
-    versions = PaperTrail::Version.where(place_id: place.id, item_type: types, created_at: DAYS.days.ago..)
-      .where("whodunnit IS NULL OR whodunnit <> ?", user.id.to_s).order(:id).to_a
-    pending = RefundRequest.pending.where(id: versions.select { it.item_type == "RefundRequest" }.map(&:item_id)).ids.to_set
-    Activity.lines(versions).zip(versions).filter_map do |line, version|
-      event = EVENTS[[ version.item_type, line.action ]] or next
-      type, icon, tone, title, screen = event
-      item_id = version.item_type == "Booking" ? version.item_id : version.object_changes.to_h.dig("booking_id", 1)
-      Item.new(key: "v#{version.id}", type:, icon:, tone:, title: title || line.action,
-        body: [ line.detail, ("Phòng #{line.room_name}" if line.room_name) ].compact.join(" · "), source: line.actor, at: line.at,
-        urgent: version.item_type == "RefundRequest" && pending.include?(version.item_id), link: screen && { screen:, id: (item_id if screen == "booking") })
+  # What others did here in the last DAYS days; money and approvals for owners only.
+  def self.saved(user, place)
+    kinds = KINDS.keys
+    kinds -= OWNER_ONLY unless user.allowed_to?(:manage, place)
+    rows = where(place:, kind: kinds, created_at: DAYS.days.ago..).where("actor_id IS NULL OR actor_id <> ?", user.id).to_a
+    pending = RefundRequest.pending.where(id: rows.filter_map(&:refund_request_id)).ids.to_set
+    rows.map do |row|
+      type, icon, tone, _, screen = KINDS.fetch(row.kind)
+      Item.new(key: "n#{row.id}", type:, icon:, tone:, title: row.title, body: row.body, source: row.source, at: row.created_at,
+        urgent: pending.include?(row.refund_request_id), link: screen && { screen:, id: (row.booking_id if screen == "booking") })
     end
   end
 
@@ -64,8 +101,9 @@ class Notification
         body: issue.detail, source: "Kênh OTA", at: start, urgent: true, link: { screen: "booking", id: issue.booking.id })
     end
     undeclared = today.issues.select { it.kind == :stay }
+    # Keyed by homestay: a read reminder at one homestay must not mark another's.
     reminders = REMINDER_HOURS.map { start.change(hour: it) }.select { undeclared.any? && it <= Time.current }.map do |at|
-      Item.new(key: "r#{at.strftime("%Y%m%d%H")}", type: "reg", icon: "alert", tone: "warn", title: "#{undeclared.size} đặt phòng chưa khai báo lưu trú",
+      Item.new(key: "r#{place.id}-#{at.strftime("%Y%m%d%H")}", type: "reg", icon: "alert", tone: "warn", title: "#{undeclared.size} đặt phòng chưa khai báo lưu trú",
         body: undeclared.map(&:detail).first(3).join("; "), source: "Khai báo lưu trú", at:, urgent: true, link: { screen: "today" })
     end
     conflicts + reminders
@@ -83,5 +121,5 @@ class Notification
     Item.new(key: "a#{announcement.id}", type: "news", icon: "news", tone: announcement.kind == "feature" ? "info" : "", title: announcement.title,
       body: announcement.summary, source: "hueni", at: announcement.published_at, urgent: false, link: nil, announcement: announcement.detail)
   end
-  private_class_method :versions, :today, :feeds, :announcement
+  private_class_method :record, :saved, :today, :feeds, :announcement
 end

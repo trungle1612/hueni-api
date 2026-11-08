@@ -12,6 +12,11 @@ class Booking < ApplicationRecord
     meta: { place_id: ->(booking) { booking.room.place_id }, room_id: :room_id }
 
   after_commit { Vacancy.bust }
+  # Thông báo (#216), saved with the change.
+  after_create { Notification.booking("booking", self) }
+  after_update { Notification.booking("cancel", self, [ guest_name.presence, Notification.dates(self) ].compact.join(" "), cancel_reason) if saved_change_to_status?(to: "cancelled") }
+  after_update { Notification.booking("ota_removed", self, guest_name.presence || "Khách #{Notification.dates(self)}") if saved_change_to_removed_from_feed_at? && removed_from_feed_at }
+  after_destroy { Notification.booking("ota_delete", self) }
 
   # The quote: the room's prices when the booking was made. A later room price change (or a room move) keeps it.
   vnd_price :price, :weekend_price

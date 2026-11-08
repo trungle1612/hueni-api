@@ -1,6 +1,6 @@
 require "test_helper"
 
-# Thông báo (#213): what others did at the homestay, Cần xử lý and announcements; read marks and settings per user.
+# Thông báo (#213, #216): what others did at the homestay, Cần xử lý and announcements; read marks and settings per user.
 class MiniApp::NotificationsControllerTest < ActionDispatch::IntegrationTest
   setup do
     travel_to Time.zone.local(2026, 11, 8, 21, 30)
@@ -8,13 +8,13 @@ class MiniApp::NotificationsControllerTest < ActionDispatch::IntegrationTest
     @staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
     places(:tomo).place_memberships.create!(user: @staff, role: "staff")
     @tokens = { owner: @owner.api_tokens.create!.token, staff: @staff.api_tokens.create!.token }
-    PaperTrail.request(whodunnit: @staff.id.to_s) do
+    signed_in(@staff) do
       @booking = rooms(:limdim).bookings.create!(start_date: "2026-11-08", end_date: "2026-11-10", guest_name: "Chị Hoa")
       @booking.payments.create!(amount: 300_000, payment_method: "bank")
       @booking.check_in(guests: 2)
       @refund = @booking.refund_requests.create!(amount: 100_000, payment_method: "cash", requested_by: @staff)
     end
-    PaperTrail.request(whodunnit: @owner.id.to_s) do
+    signed_in(@owner) do
       rooms(:garden).bookings.create!(start_date: "2026-11-20", end_date: "2026-11-21", guest_name: "Anh Tú")
     end
     calendar_feeds(:limdim_airbnb).update!(last_error: "404 Not Found", last_error_at: 1.hour.ago)
@@ -22,6 +22,8 @@ class MiniApp::NotificationsControllerTest < ActionDispatch::IntegrationTest
     Announcement.create!(kind: "maintenance", title: "Cũ", summary: "Quá 30 ngày", published_at: 31.days.ago)
   end
 
+  # Who did it comes from the signed-in user, as in a real request (#216).
+  def signed_in(user, &) = Current.set(api_token: user.api_tokens.create!, &)
   def as(who, method, path, **params) = send(method, path, params:, headers: { "Authorization" => "Bearer #{@tokens.fetch(who)}" })
   def body = response.parsed_body
   def inbox(who) = as(who, :get, api_v1_place_notifications_path(places(:tomo))).then { body }
@@ -47,7 +49,7 @@ class MiniApp::NotificationsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes feed["body"], "404" # the person-facing message, never the raw error
 
     reminders = result["notifications"].select { it["type"] == "reg" }
-    assert_equal [ "r2026110821", "r2026110808" ], reminders.pluck("key")
+    assert_equal [ "r#{places(:tomo).id}-2026110821", "r#{places(:tomo).id}-2026110808" ], reminders.pluck("key")
     assert_equal "1 đặt phòng chưa khai báo lưu trú", reminders.first["title"]
 
     news = result["notifications"].find { it["key"] == "a#{@news.id}" }

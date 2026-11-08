@@ -17,6 +17,7 @@ class RefundRequest < ApplicationRecord
   normalizes :note, with: ->(value) { value.squish.presence }
   validates :note, length: { maximum: 200 }
   validate :within_paid, on: :create
+  after_create { Notification.refund_request(self) } # Chờ duyệt (#216)
 
   def approve(user)
     return refuse("Yêu cầu đã được xử lý") unless pending?

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_08_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_08_150000) do
   create_table "announcements", force: :cascade do |t|
     t.string "kind", default: "feature", null: false
     t.string "title", null: false
@@ -182,6 +182,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_120000) do
     t.string "key", null: false
     t.datetime "created_at", null: false
     t.index ["user_id", "key"], name: "index_notification_reads_on_user_id_and_key", unique: true
+  end
+
+  create_table "notifications", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.string "kind", null: false
+    t.integer "actor_id"
+    t.string "source", null: false
+    t.string "title", null: false
+    t.string "body"
+    t.integer "booking_id"
+    t.integer "room_id"
+    t.integer "refund_request_id"
+    t.datetime "created_at", null: false
+    t.index ["place_id", "created_at"], name: "index_notifications_on_place_id_and_created_at"
   end
 
   create_table "payments", force: :cascade do |t|
@@ -438,6 +452,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_120000) do
   add_foreign_key "invites", "places"
   add_foreign_key "invites", "users", column: "created_by_id"
   add_foreign_key "notification_reads", "users"
+  add_foreign_key "notifications", "places"
   add_foreign_key "payments", "bookings"
   add_foreign_key "payments", "users"
   add_foreign_key "place_memberships", "places"
