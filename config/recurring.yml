@@ -22,6 +22,9 @@ production:
   end_maintenance:
     command: "Room.end_maintenance"
     schedule: every day at 0:05 Asia/Ho_Chi_Minh
+  prune_notification_reads:
+    command: "NotificationRead.prune"
+    schedule: every day at 3:30am
   prune_sync_runs:
     command: "SyncRun.prune"
     schedule: every day at 3am

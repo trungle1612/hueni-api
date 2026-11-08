@@ -10,7 +10,23 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_08_080000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_08_120000) do
+  create_table "announcements", force: :cascade do |t|
+    t.string "kind", default: "feature", null: false
+    t.string "title", null: false
+    t.string "summary", null: false
+    t.text "intro"
+    t.text "content"
+    t.text "note"
+    t.string "cta"
+    t.string "cta_path"
+    t.datetime "published_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["published_at"], name: "index_announcements_on_published_at"
+    t.check_constraint "kind IN ('feature', 'maintenance')", name: "announcements_kind_values"
+  end
+
   create_table "api_tokens", force: :cascade do |t|
     t.integer "user_id", null: false
     t.string "token_digest", null: false
@@ -159,6 +175,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_080000) do
     t.index ["created_by_id"], name: "index_invites_on_created_by_id"
     t.index ["place_id"], name: "index_invites_on_place_id"
     t.check_constraint "role IN ('owner', 'staff')", name: "invites_role_values"
+  end
+
+  create_table "notification_reads", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.string "key", null: false
+    t.datetime "created_at", null: false
+    t.index ["user_id", "key"], name: "index_notification_reads_on_user_id_and_key", unique: true
   end
 
   create_table "payments", force: :cascade do |t|
@@ -378,6 +401,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_080000) do
     t.string "terms_version"
     t.datetime "terms_accepted_at"
     t.datetime "deleted_at"
+    t.json "notifications_off", default: ["room"], null: false
     t.index ["phone_number"], name: "index_users_on_phone_number", unique: true
     t.index ["zalo_id"], name: "index_users_on_zalo_id", unique: true
     t.check_constraint "role IN ('admin', 'user')", name: "users_role_values"
@@ -413,6 +437,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_080000) do
   add_foreign_key "guests", "places"
   add_foreign_key "invites", "places"
   add_foreign_key "invites", "users", column: "created_by_id"
+  add_foreign_key "notification_reads", "users"
   add_foreign_key "payments", "bookings"
   add_foreign_key "payments", "users"
   add_foreign_key "place_memberships", "places"

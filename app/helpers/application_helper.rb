@@ -17,6 +17,7 @@ module ApplicationHelper
                  active: controller_name.in?(%w[users registration_requests]) }
       items << { label: "Đồng bộ", icon: "activity", path: admin_sync_runs_path, active: controller_name == "sync_runs" }
       items << { label: "Mã mời", icon: "key", path: admin_invites_path, active: controller_name == "invites" }
+      items << { label: "Thông báo", icon: "bell", path: admin_announcements_path, active: controller_name == "announcements" }
     end
     items
   end

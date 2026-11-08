@@ -51,6 +51,7 @@ Rails.application.routes.draw do
     end
     resources :sync_runs, only: :index, path: "dong-bo"
     resources :invites, only: %i[index create destroy], path: "ma-moi"
+    resources :announcements, only: %i[index create edit update destroy], path: "thong-bao"
     resources :users, only: %i[index new create edit update] do
       post :reset_password, on: :member
     end
@@ -86,6 +87,7 @@ Rails.application.routes.draw do
     resource :registration, only: %i[show create update]
     resource :me, only: %i[show destroy], controller: "me" do
       post :terms
+      patch :notifications
     end
     resources :places, only: :show do
       member do
@@ -120,6 +122,12 @@ Rails.application.routes.draw do
       resources :groups, only: :create
       resources :memberships, only: %i[index create]
       resources :refund_requests, only: :index
+      resources :notifications, only: :index do
+        collection do
+          post :read
+          post :unread
+        end
+      end
     end
     resources :memberships, only: %i[update destroy] do
       member do

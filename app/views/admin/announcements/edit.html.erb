@@ -1,0 +1,6 @@
+<% content_for :title, "Sửa thông báo · hueni admin" %>
+
+<h1 class="text-xl font-semibold mb-4">Sửa thông báo</h1>
+
+<%= render "form", announcement: @announcement %>
+<%= link_to "Quay lại", admin_announcements_path, class: "btn btn-ghost btn-sm" %>
