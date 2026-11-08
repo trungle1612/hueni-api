@@ -14,7 +14,7 @@ class Invite < ApplicationRecord
   # Typed as 7k2p-9qxm or "7K2P 9QXM": the same code.
   normalizes :code, with: ->(code) { code.upcase.gsub(/[^A-Z0-9]/, "") }
 
-  validates :max_uses, numericality: { only_integer: true, in: 1..20 }
+  validates :max_uses, numericality: { only_integer: true, in: 1..20, message: "phải từ 1 đến 20" }
   validates :expires_at, presence: true
 
   before_validation on: :create do

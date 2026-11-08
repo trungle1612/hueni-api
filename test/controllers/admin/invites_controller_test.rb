@@ -19,7 +19,7 @@ class Admin::InvitesControllerTest < ActionDispatch::IntegrationTest
 
     post admin_invites_path, params: { invite: { place_id: places(:tomo).id, role: "staff", max_uses: 50, days: 7 } }
     assert_empty places(:tomo).invites
-    assert flash[:alert].present?
+    assert_equal "Số lần phải từ 1 đến 20", flash[:alert]
 
     delete admin_invite_path(invite)
     assert_not Invite.exists?(invite.id)
