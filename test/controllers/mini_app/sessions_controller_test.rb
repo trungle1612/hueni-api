@@ -230,4 +230,42 @@ class MiniApp::SessionsControllerTest < ActionDispatch::IntegrationTest
     get api_v1_registration_path, headers:, as: :json
     assert_response :unauthorized
   end
+
+  test "a mã mời signs an unknown Zalo into its homestay with its role, up to max_uses, until it expires (#211)" do
+    invite = places(:tomo).invites.create!(role: "staff", created_by: users(:owner), max_uses: 2)
+    zalo_me("zmp-na", { id: "zalo-na", name: "Bé Na" })
+    zalo_me("zmp-ti", { id: "zalo-ti", name: "Bé Tí" })
+    zalo_me("zmp-tu", { id: "zalo-tu", name: "Bé Tư" })
+    typed = invite.display_code.downcase.sub("-", " ") # "7k2p 9qxm"
+
+    post api_v1_session_path, params: { access_token: "zmp-na", invite_code: typed }, as: :json
+    assert_response :unprocessable_entity
+    assert_equal "terms_required", response.parsed_body["error"]
+    assert_equal 0, invite.reload.uses_count
+
+    post api_v1_session_path, params: { access_token: "zmp-na", invite_code: typed, terms_version: "2026-11-04" }, as: :json
+    assert_response :created
+    assert_equal [ "Bé Na", "2026-11-04" ], response.parsed_body["user"].values_at("name", "terms_version")
+    assert_equal [ places(:tomo).id, "staff" ], response.parsed_body["places"].sole.values_at("id", "role")
+    assert_equal "Bé Na", Activity.lines(PaperTrail::Version.where(item_type: "PlaceMembership").order(:id).last(1)).sole.actor
+
+    # Signed in again: the Zalo is known now, the code is not used again.
+    post api_v1_session_path, params: { access_token: "zmp-na", invite_code: typed, terms_version: "2026-11-04" }, as: :json
+    assert_response :created
+    assert_equal 1, invite.reload.uses_count
+
+    post api_v1_session_path, params: { access_token: "zmp-ti", invite_code: invite.code, terms_version: "2026-11-04" }, as: :json
+    assert_response :created
+    post api_v1_session_path, params: { access_token: "zmp-tu", invite_code: invite.code, terms_version: "2026-11-04" }, as: :json
+    assert_response :unprocessable_entity
+    assert_equal [ "invite_invalid", Invite::INVALID ], response.parsed_body.values_at("error", "message") # used up
+
+    fresh = places(:tomo).invites.create!(role: "staff", created_by: users(:owner))
+    travel 8.days
+    post api_v1_session_path, params: { access_token: "zmp-tu", invite_code: fresh.code, terms_version: "2026-11-04" }, as: :json
+    assert_equal Invite::INVALID, response.parsed_body["message"] # expired
+    post api_v1_session_path, params: { access_token: "zmp-tu", invite_code: "ABCD-EFGH", terms_version: "2026-11-04" }, as: :json
+    assert_equal Invite::INVALID, response.parsed_body["message"] # wrong
+    assert_not User.exists?(zalo_id: "zalo-tu")
+  end
 end

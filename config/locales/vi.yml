@@ -67,6 +67,9 @@ vi:
         kind: Loại
         payment_method: Hình thức
         note: Ghi chú
+      invite:
+        max_uses: Số lần
+        expires_at: Hạn dùng
       calendar_feed:
         url: Link iCal
         provider: Kênh

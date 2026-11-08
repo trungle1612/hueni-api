@@ -76,4 +76,13 @@ class UserTest < ActiveSupport::TestCase
 
     assert_raises(ArgumentError) { users(:owner).allowed_to?(:undo, places(:tomo)) }
   end
+
+  test "several accounts without a phone: deleted ones, and Zalo-only ones from a mã mời (#211)" do
+    2.times { |i| User.create!(name: "Nhân viên #{i}", phone_number: "090000000#{i}", password: "password123").delete_account! }
+    2.times { |i| User.create!(name: "Zalo #{i}", zalo_id: "zalo-#{i}", password: "password123") }
+    assert_equal 4, User.where(phone_number: nil).count
+
+    assert_not User.new(name: "Không Zalo", password: "password123").valid? # no Zalo: a phone is needed
+    assert_not users(:owner).tap { it.phone_number = "" }.valid? # had one: can't be blanked
+  end
 end

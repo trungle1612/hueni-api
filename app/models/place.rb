@@ -15,6 +15,7 @@ class Place < ApplicationRecord
     end
   end
   has_many :place_memberships, dependent: :destroy
+  has_many :invites, dependent: :delete_all
   has_many :users, through: :place_memberships
 
   after_commit { Vacancy.bust }
@@ -54,6 +55,7 @@ class Place < ApplicationRecord
       guests.delete_all
       PaperTrail::Version.where(place_id: id, item_type: %w[Booking Payment BookingCharge RefundRequest Group Guest]).delete_all
       place_memberships.delete_all
+      invites.delete_all
     end
     Vacancy.bust
   end
