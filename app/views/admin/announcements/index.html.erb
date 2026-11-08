@@ -1,0 +1,31 @@
+<% content_for :title, "Thông báo · hueni admin" %>
+
+<h1 class="text-xl font-semibold">Thông báo</h1>
+<p class="text-sm opacity-70 mb-4">Tính năng mới và bảo trì, hiện trong Thông báo của mọi người dùng Mini App trong <%= Notification::DAYS %> ngày.</p>
+
+<%= render "form", announcement: @announcement %>
+
+<section id="announcements">
+  <h2 class="font-semibold mb-2">Đã đăng</h2>
+  <% if @announcements.any? %>
+    <ul class="list bg-base-100 rounded-box shadow-sm">
+      <% @announcements.each do |announcement| %>
+        <li id="<%= dom_id(announcement) %>" class="list-row items-center">
+          <div class="list-col-grow min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-semibold"><%= announcement.title %></span>
+              <span class="badge badge-soft badge-sm badge-info"><%= Announcement::KINDS.fetch(announcement.kind) %></span>
+            </div>
+            <div class="text-sm"><%= announcement.summary %></div>
+            <div class="text-xs opacity-60"><%= announcement.published_at.after?(Time.current) ? "Hiện từ" : "Đăng" %> <%= l(announcement.published_at, format: "%d/%m/%Y %H:%M") %></div>
+          </div>
+          <%= link_to "Sửa", edit_admin_announcement_path(announcement), class: "btn btn-ghost btn-sm" %>
+          <%= button_to "Xoá", admin_announcement_path(announcement), method: :delete, class: "btn btn-ghost btn-sm text-error",
+                form: { data: { turbo_confirm: "Xoá thông báo này? Người dùng sẽ không thấy nữa." } } %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="text-sm opacity-70">Chưa có thông báo nào.</p>
+  <% end %>
+</section>

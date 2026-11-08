@@ -8,6 +8,12 @@ class MiniApp::V1::MeController < MiniApp::V1::BaseController
     head :no_content
   end
 
+  # Cài đặt thông báo (#213): { off: [type] }, the optional types this user hides; Trùng phòng và lỗi kênh stays on.
+  def notifications
+    Current.user.update!(notifications_off: Array(params[:off]) & Notification::OPTIONAL)
+    head :no_content
+  end
+
   # Consent for a user already linked (signed in by a known Zalo id, or a newer policy version, #206).
   def terms
     return render_terms_required if params[:version].blank?

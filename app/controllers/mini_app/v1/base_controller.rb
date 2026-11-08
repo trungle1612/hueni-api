@@ -31,7 +31,7 @@ class MiniApp::V1::BaseController < ActionController::API
     def me_json(user)
       places = user.accessible_places.order(:name).to_a
       memberships = user.place_memberships.unlocked.index_by(&:place_id)
-      { user: { id: user.id, name: user.name, terms_version: user.terms_version }, places: places.map { |place|
+      { user: { id: user.id, name: user.name, terms_version: user.terms_version, notifications_off: user.notifications_off }, places: places.map { |place|
         membership = memberships[place.id]
         { id: place.id, slug: place.slug, name: place.name, role: membership.role, permissions: PlaceMembership::PERMISSIONS.keys.select { membership.allows?(it) } }
       } }

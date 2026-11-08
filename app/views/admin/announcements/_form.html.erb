@@ -1,0 +1,49 @@
+<%= form_with model: [ :admin, announcement ], class: "card bg-base-100 shadow-sm mb-6" do |form| %>
+  <div class="card-body p-4 gap-3">
+    <% if announcement.errors.any? %>
+      <div role="alert" class="alert alert-error alert-soft text-sm"><%= announcement.errors.full_messages.to_sentence %></div>
+    <% end %>
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <%= form.label :kind, "Loại", class: "label text-sm mb-1" %>
+        <%= form.select :kind, Announcement::KINDS.invert, {}, class: "select w-full" %>
+      </div>
+      <div>
+        <%= form.label :published_at, "Hiện từ", class: "label text-sm mb-1" %>
+        <%= form.datetime_field :published_at, required: true, class: "input w-full" %>
+      </div>
+    </div>
+    <div>
+      <%= form.label :title, "Tiêu đề", class: "label text-sm mb-1" %>
+      <%= form.text_field :title, required: true, maxlength: 120, class: "input w-full" %>
+    </div>
+    <div>
+      <%= form.label :summary, "Một dòng trong danh sách", class: "label text-sm mb-1" %>
+      <%= form.text_field :summary, required: true, maxlength: 120, class: "input w-full" %>
+    </div>
+    <div>
+      <%= form.label :intro, "Mở đầu", class: "label text-sm mb-1" %>
+      <%= form.text_area :intro, rows: 2, class: "textarea w-full" %>
+    </div>
+    <div>
+      <%= form.label :content, "Nội dung", class: "label text-sm mb-1" %>
+      <%= form.text_area :content, rows: 6, class: "textarea w-full font-mono text-sm", placeholder: "## Có gì mới\n- Ý thứ nhất\n## Cách dùng\n1. Bước một" %>
+      <p class="text-xs opacity-60 mt-1">Dòng "## " là tiêu đề mục, "- " là gạch đầu dòng, "1. " là bước.</p>
+    </div>
+    <div>
+      <%= form.label :note, "Lưu ý", class: "label text-sm mb-1" %>
+      <%= form.text_area :note, rows: 2, class: "textarea w-full" %>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <%= form.label :cta, "Nút (không bắt buộc)", class: "label text-sm mb-1" %>
+        <%= form.text_field :cta, maxlength: 120, class: "input w-full" %>
+      </div>
+      <div>
+        <%= form.label :cta_path, "Mở màn hình", class: "label text-sm mb-1" %>
+        <%= form.text_field :cta_path, placeholder: "/bookings/new", class: "input w-full" %>
+      </div>
+    </div>
+    <%= form.submit announcement.persisted? ? "Lưu" : "Đăng thông báo", class: "btn btn-primary btn-block" %>
+  </div>
+<% end %>

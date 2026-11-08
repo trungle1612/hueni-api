@@ -4,6 +4,7 @@ class User < ApplicationRecord
   has_secure_password
   has_many :sessions, dependent: :destroy
   has_many :api_tokens, dependent: :delete_all
+  has_many :notification_reads, dependent: :delete_all
   has_many :place_memberships, dependent: :destroy
   has_many :places, through: :place_memberships
 
@@ -68,6 +69,7 @@ class User < ApplicationRecord
       RegistrationRequest.where(zalo_id:).delete_all if zalo_id
       sessions.destroy_all
       api_tokens.delete_all
+      notification_reads.delete_all
       update!(name: DELETED_NAME, phone_number: nil, zalo_id: nil, password: User.unknown_password,
         terms_version: nil, terms_accepted_at: nil, deleted_at: Time.current)
     end
