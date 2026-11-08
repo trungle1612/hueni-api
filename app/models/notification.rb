@@ -1,6 +1,6 @@
-# Thông báo (#213, #216): one member's inbox at one homestay, newest first. Events are saved as they happen, one row
-# per homestay event, by the models where they happen (in the same transaction, so a refused action leaves none):
-# Booking, Payment, ShiftClose, Room, RefundRequest call the writers below. Today's OTA conflicts and undeclared
+# Thông báo (#213, #216): one member's inbox at one homestay, newest first. Events are worded as they happen, one row
+# per homestay event, by the models where they happen (Booking, Payment, ShiftClose, Room, RefundRequest call the
+# writers below) and saved by NotificationJob once the event commits, so a refused action leaves none. Today's OTA conflicts and undeclared
 # guests (Today), failing feeds and hueni's announcements are current state, computed on read. Per user, only read
 # marks (NotificationRead) and the types turned off (users.notifications_off) are stored.
 class Notification < ApplicationRecord
@@ -33,12 +33,13 @@ class Notification < ApplicationRecord
 
   belongs_to :place
 
+  # Worded now, saved by NotificationJob after the event commits; created_at is when it happened.
   # Who did it: the signed-in user, else by: (the OTA, the guest on the booking page), else "Hệ thống" (jobs, console).
   def self.record(kind, place:, details: [], room: nil, booking: nil, refund_request: nil, by: nil)
     user = Current.user unless by
-    create!(place:, kind:, title: KINDS.fetch(kind)[3], actor_id: user&.id, source: by || user&.name || "Hệ thống",
+    NotificationJob.perform_later(place_id: place.id, kind:, title: KINDS.fetch(kind)[3], actor_id: user&.id, source: by || user&.name || "Hệ thống",
       body: [ *details, ("Phòng #{room.name}" if room) ].compact_blank.join(" · ").presence,
-      booking_id: booking&.id, room_id: room&.id, refund_request_id: refund_request&.id)
+      booking_id: booking&.id, room_id: room&.id, refund_request_id: refund_request&.id, created_at: Time.current)
   end
 
   # Đặt phòng mới / bị huỷ / OTA đã huỷ: an iCal booking is the OTA's doing, an online one the guest's.

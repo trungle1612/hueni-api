@@ -1,7 +1,10 @@
 require "test_helper"
 
-# Thông báo saved when the event happens (#216): by the model, with who did it, never from paper_trail.
+# Thông báo worded when the event happens (#216), by the model with who did it (never from paper_trail),
+# and saved by NotificationJob after the event commits.
 class NotificationTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
+
   setup do
     travel_to Time.zone.local(2026, 11, 8, 14, 0)
     @staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
@@ -9,7 +12,7 @@ class NotificationTest < ActiveSupport::TestCase
   end
 
   def signed_in(user, &) = Current.set(api_token: user.api_tokens.create!, &)
-  def last = Notification.order(:id).last
+  def last = perform_enqueued_jobs.then { Notification.order(:id).last } # saved by NotificationJob
 
   test "booking events, worded once and saved even with paper_trail off" do
     booking = PaperTrail.request(enabled: false) do
@@ -42,7 +45,7 @@ class NotificationTest < ActiveSupport::TestCase
   test "Thu tiền, Xin hoàn tiền, Chốt ca lệch, Dọn xong, Báo hỏng; a refund or a matching close is not one" do
     booking = PaperTrail.request(enabled: false) { rooms(:limdim).bookings.create!(start_date: "2026-11-08", end_date: "2026-11-10", guest_name: "Chị Hoa", price: 300_000) }
     signed_in(@staff) do
-      assert_no_difference(-> { Notification.count }) { assert Shift.new(places(:tomo)).close(user: @staff, counted: 0, keep: 0).persisted? }
+      assert_no_enqueued_jobs(only: NotificationJob) { assert Shift.new(places(:tomo)).close(user: @staff, counted: 0, keep: 0).persisted? }
       assert Shift.new(places(:tomo)).close(user: @staff, counted: 50_000, keep: 0, note: "Đếm lại sau").persisted?
       assert_equal [ "shift", "Thừa 50.000 ₫ · Đếm lại sau" ], last.values_at(:kind, :body)
 
@@ -50,9 +53,8 @@ class NotificationTest < ActiveSupport::TestCase
       assert_equal [ "payment", "300.000 ₫ · Chuyển khoản · #{booking.code} · Phòng #{rooms(:limdim).name}" ], last.values_at(:kind, :body)
       request = booking.refund_requests.create!(amount: 100_000, payment_method: "cash", requested_by: @staff)
       assert_equal [ "refund_request", request.id ], last.values_at(:kind, :refund_request_id)
-      assert_no_difference -> { Notification.count } do
-        booking.payments.create!(amount: 100_000, payment_method: "cash", kind: "refund")
-      end
+      clear_enqueued_jobs
+      assert_no_enqueued_jobs(only: NotificationJob) { booking.payments.create!(amount: 100_000, payment_method: "cash", kind: "refund") }
 
       rooms(:limdim).dirty!
       rooms(:limdim).clean!
@@ -65,7 +67,8 @@ class NotificationTest < ActiveSupport::TestCase
   test "a refused Thu tiền và nhận phòng leaves no notification" do
     rooms(:limdim).bookings.create!(start_date: "2026-11-07", end_date: "2026-11-09", guest_name: "Anh Minh", checked_in_at: 1.day.ago)
     booking = rooms(:limdim).bookings.create!(start_date: "2026-11-20", end_date: "2026-11-22", guest_name: "Chị Hoa", price: 300_000)
-    assert_no_difference -> { Notification.count } do
+    clear_enqueued_jobs
+    assert_no_enqueued_jobs only: NotificationJob do
       assert_not booking.collecting_due(true) { booking.check_in } # Nhận phòng sớm while Anh Minh is still in
     end
     assert_empty booking.payments
@@ -75,6 +78,7 @@ class NotificationTest < ActiveSupport::TestCase
     rooms(:limdim).bookings.create!(start_date: "2026-11-20", end_date: "2026-11-22")
     travel 32.days
     rooms(:limdim).bookings.create!(start_date: "2026-12-20", end_date: "2026-12-22")
+    perform_enqueued_jobs
     Notification.prune
     assert_equal 1, Notification.count
   end

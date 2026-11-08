@@ -2,6 +2,8 @@ require "test_helper"
 
 # Thông báo (#213, #216): what others did at the homestay, Cần xử lý and announcements; read marks and settings per user.
 class MiniApp::NotificationsControllerTest < ActionDispatch::IntegrationTest
+  include ActiveJob::TestHelper
+
   setup do
     travel_to Time.zone.local(2026, 11, 8, 21, 30)
     @owner = users(:owner)
@@ -17,6 +19,7 @@ class MiniApp::NotificationsControllerTest < ActionDispatch::IntegrationTest
     signed_in(@owner) do
       rooms(:garden).bookings.create!(start_date: "2026-11-20", end_date: "2026-11-21", guest_name: "Anh Tú")
     end
+    perform_enqueued_jobs # NotificationJob saves them
     calendar_feeds(:limdim_airbnb).update!(last_error: "404 Not Found", last_error_at: 1.hour.ago)
     @news = Announcement.create!(kind: "feature", title: "Xuất hoá đơn điện tử", summary: "Ngay từ Phiếu tính tiền.", content: "## Có gì mới\n- Một", published_at: 2.hours.ago)
     Announcement.create!(kind: "maintenance", title: "Cũ", summary: "Quá 30 ngày", published_at: 31.days.ago)
