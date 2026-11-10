@@ -74,3 +74,5 @@ gem "omniauth-zalo2", "~> 0.2.0"
 gem "omniauth-rails_csrf_protection", "~> 2.0"
 
 gem "alba", "~> 4.0"
+
+gem "rollbar", "~> 3.8"
