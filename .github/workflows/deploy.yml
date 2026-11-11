@@ -26,6 +26,7 @@ jobs:
       RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
       ZALO_APP_ID: ${{ secrets.ZALO_APP_ID }}
       ZALO_APP_SECRET: ${{ secrets.ZALO_APP_SECRET }}
+      ZALO_API_KEY: ${{ secrets.ZALO_API_KEY }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       ROLLBAR_ACCESS_TOKEN: ${{ secrets.ROLLBAR_ACCESS_TOKEN }}

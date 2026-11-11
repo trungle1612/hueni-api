@@ -84,6 +84,7 @@ Rails.application.routes.draw do
   # Zalo Mini App API (#119 C).
   scope "api/v1", module: "mini_app/v1", as: "api_v1", defaults: { format: :json } do
     resource :session, only: %i[create destroy]
+    post "zalo/webhook", to: "zalo_webhooks#create", as: :zalo_webhook
     resource :registration, only: %i[show create update]
     resource :me, only: %i[show destroy], controller: "me" do
       post :terms
