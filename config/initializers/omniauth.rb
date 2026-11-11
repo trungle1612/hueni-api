@@ -9,6 +9,10 @@ zalo_app_secret = ENV["ZALO_APP_SECRET"].presence || Rails.application.credentia
 Rails.configuration.x.zalo_configured = zalo_app_id.present? && zalo_app_secret.present?
 # The Mini App API checks access tokens with the same app (#152).
 Rails.configuration.x.zalo_app_secret = zalo_app_secret
+# The Zalo webhook (#225) checks that events are for this app and signed with the Mini App API Key
+# (mini.zalo.me/developers → Open APIs), env ZALO_API_KEY or credentials `zalo: { api_key: }`.
+Rails.configuration.x.zalo_app_id = zalo_app_id
+Rails.configuration.x.zalo_api_key = ENV["ZALO_API_KEY"].presence || Rails.application.credentials.dig(:zalo, :api_key)
 
 Rails.application.config.middleware.use OmniAuth::Builder do
   provider :zalo2, zalo_app_id, zalo_app_secret
