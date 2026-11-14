@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>Mất kết nối · hueni</title>
+  <!-- Served by the service worker when offline (#228): self-contained, no stylesheet or font requests. -->
+  <style>
+    body { margin: 0; min-height: 100dvh; background: #f5f6f5; color: #1a1f1c; font: 14px/1.45 system-ui, sans-serif; }
+    main { max-width: 36rem; margin: 0 auto; padding: 16px; }
+    .panel { display: flex; flex-direction: column; gap: 8px; padding: 16px; background: #fff; border: 1px solid #e1e4e1; border-radius: 8px; }
+    .banner { margin: 0 0 16px; padding: 8px 16px; background: #fcf0df; border: 1px solid #e9c48f; border-radius: 6px; color: #8a4b00; font-size: 13px; font-weight: 500; }
+    h1 { margin: 0; font-size: 16px; font-weight: 600; }
+    p { margin: 0; color: #545c57; }
+    button { min-height: 44px; margin-top: 4px; padding: 0 16px; border: 1px solid #a8324d; border-radius: 6px; background: #a8324d; color: #fff; font: 600 14px system-ui, sans-serif; cursor: pointer; }
+    button:focus-visible { outline: 2px solid #a8324d; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="banner" role="status">Mất kết nối.</p>
+    <div class="panel">
+      <h1>Không kết nối được máy chủ</h1>
+      <p>Kiểm tra Wi-Fi hoặc 4G rồi thử lại. Đặt phòng đã lưu không bị ảnh hưởng.</p>
+      <div><button type="button" onclick="location.reload()">Thử lại</button></div>
+    </div>
+  </main>
+</body>
+</html>

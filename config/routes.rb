@@ -16,10 +16,16 @@ Rails.application.routes.draw do
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
-  # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
-  # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
+  # PWA files from app/views/pwa/* (#228), linked from layouts/pms.
+  get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
+  get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
+  # PMS PWA for owners and staff (#227, ADR-002): the current homestay lives in the session, not the URL.
+  scope module: :pms, as: :pms do
+    get "hom-nay", to: "today#show", as: :today
+    get "them", to: "more#show", as: :more
+    patch "co-so/:slug", to: "places#update", as: :place
+  end
   root "sessions#new"
 
   namespace :admin do

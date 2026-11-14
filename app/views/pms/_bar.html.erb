@@ -1,0 +1,7 @@
+<%# locals: (title:, sub: nil) -%>
+<header class="sticky top-0 z-10 flex items-center gap-1 min-h-14 pl-4 pr-2 bg-pms-surface border-b border-pms-border">
+  <div class="flex-1 min-w-0 flex flex-col">
+    <h1 class="text-[17px] leading-tight font-semibold truncate"><%= title %></h1>
+    <% if sub %><span class="text-xs text-pms-text-2 truncate"><%= sub %></span><% end %>
+  </div>
+</header>

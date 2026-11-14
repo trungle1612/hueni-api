@@ -1,0 +1,4 @@
+<% content_for :title, "Bạn chưa có quyền · hueni" %>
+<%= render "pms/message", title: "Bạn chưa có quyền",
+      text: "Chỉ chủ cơ sở làm được việc này. Hỏi chủ cơ sở nếu cần thay đổi.",
+      action: link_to("Về Hôm nay", pms_today_path, class: "pms-btn") %>

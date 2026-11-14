@@ -1,0 +1,4 @@
+<% content_for :title, "Không tìm thấy · hueni" %>
+<%= render "pms/message", title: "Không tìm thấy",
+      text: "Trang này không tồn tại, đã bị xoá, hoặc thuộc cơ sở bạn không quản lý.",
+      action: link_to("Về Hôm nay", pms_today_path, class: "pms-btn") %>

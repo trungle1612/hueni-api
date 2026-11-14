@@ -1,0 +1,11 @@
+<% content_for :title, "Hôm nay · hueni" %>
+<% content_for :bar, render("pms/bar", title: "Hôm nay", sub: [ pms_day(Date.current), current_place&.name ].compact.join(" · ")) %>
+
+<% if current_place %>
+  <%# Placeholder until #229 brings the lists. %>
+  <%= render "pms/message", title: "Màn Hôm nay đang được làm",
+        text: "Khách đến, khách đi và phòng cần dọn sẽ hiện ở đây. Trong lúc chờ, dùng trang quản lý.",
+        action: link_to("Mở trang quản lý", admin_root_path, class: "pms-btn") %>
+<% else %>
+  <%= render "pms/no_place" %>
+<% end %>

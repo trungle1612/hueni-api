@@ -1,0 +1,35 @@
+<% content_for :title, "Thêm · hueni" %>
+<% content_for :bar, render("pms/bar", title: "Thêm") %>
+
+<section class="px-4 pt-4" aria-labelledby="account">
+  <h2 id="account" class="pms-sec-h">Tài khoản</h2>
+  <div class="pms-panel px-3 py-2.5 font-semibold"><%= Current.user.name %></div>
+</section>
+
+<section class="px-4 pt-4" aria-labelledby="places">
+  <h2 id="places" class="pms-sec-h">Cơ sở</h2>
+  <% if current_place %>
+    <div class="pms-panel divide-y divide-pms-border">
+      <% places.each do |place| %>
+        <% if place == current_place %>
+          <div class="flex items-center gap-3 min-h-14 px-3">
+            <span class="flex-1 min-w-0 font-semibold truncate"><%= place.name %></span>
+            <span class="rounded px-1.5 text-xs font-semibold leading-5 bg-pms-pos-bg text-pms-pos">Đang xem</span>
+          </div>
+        <% else %>
+          <%= button_to pms_place_path(place.slug), method: :patch, class: "flex w-full items-center gap-3 min-h-14 px-3 text-left cursor-pointer" do %>
+            <span class="flex-1 min-w-0 truncate"><%= place.name %></span>
+            <span class="text-pms-primary font-semibold">Chọn</span>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="pms-panel px-3 py-4 text-[13px] text-pms-text-2">Bạn chưa thuộc cơ sở nào.</div>
+  <% end %>
+</section>
+
+<div class="px-4 pt-6 flex flex-col gap-3">
+  <%= link_to "Mở trang quản lý", admin_root_path, class: "pms-btn w-full" %>
+  <%= button_to "Đăng xuất", session_path, method: :delete, class: "pms-btn pms-btn-ghost w-full", form_class: "w-full" %>
+</div>
