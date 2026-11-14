@@ -69,7 +69,7 @@ class NotificationTest < ActiveSupport::TestCase
     booking = rooms(:limdim).bookings.create!(start_date: "2026-11-20", end_date: "2026-11-22", guest_name: "Chị Hoa", price: 300_000)
     clear_enqueued_jobs
     assert_no_enqueued_jobs only: NotificationJob do
-      assert_not booking.collecting_due(true) { booking.check_in } # Nhận phòng sớm while Anh Minh is still in
+      assert_not booking.collecting_due(true) { booking.check_in(guests: 1) } # Nhận phòng sớm while Anh Minh is still in
     end
     assert_empty booking.payments
   end

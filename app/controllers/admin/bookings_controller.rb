@@ -56,12 +56,9 @@ class Admin::BookingsController < Admin::BaseController
     end
   end
 
-  # The head count is required at the desk when the booking has none.
+  # Booking#check_in asks for the head count when the booking has none.
   def check_in
-    guests = params[:guests].presence&.to_i
-    if guests.nil? && @booking.guests.nil?
-      redirect_back_or_to admin_root_path, alert: "Nhập số khách khi nhận phòng"
-    elsif @booking.collecting_due(params[:collect]) { @booking.check_in(guests:) }
+    if @booking.collecting_due(params[:collect]) { @booking.check_in(guests: params[:guests].presence&.to_i) }
       redirect_back_or_to admin_root_path, notice: "Đã nhận phòng: #{stay_label}#{money_note}"
     else
       redirect_back_or_to admin_root_path, alert: @booking.errors.full_messages.to_sentence

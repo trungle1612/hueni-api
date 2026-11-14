@@ -69,6 +69,25 @@
   }
   .pms-tab[aria-current] { color: var(--color-pms-primary); font-weight: 600; }
   .pms-tab[aria-disabled] { opacity: .45; }
+  .pms-notice {
+    display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 12px; border-radius: 6px;
+    border: 1px solid var(--color-pms-warn-line); background: var(--color-pms-warn-bg); color: var(--color-pms-warn);
+    font-size: 13px; font-weight: 500; text-decoration: none;
+  }
+  /* Bottom sheet = a native popover (no JS): popovertarget opens it, the backdrop is the scrim. */
+  .pms-sheet {
+    inset: auto 0 0 0; width: 100%; max-width: 36rem; margin: 0 auto; border: 0; border-radius: 8px 8px 0 0;
+    padding: 16px 16px calc(24px + env(safe-area-inset-bottom)); background: var(--color-pms-surface); color: var(--color-pms-text);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, .12); font: 14px/1.45 var(--font-pms);
+  }
+  .pms-sheet::backdrop { background: rgba(26, 31, 28, .45); }
+  /* Gone after 6 s, as in the design; CSS only. */
+  .pms-toast {
+    position: fixed; left: 12px; right: 12px; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 30; max-width: 34rem; margin: 0 auto;
+    display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 2px 4px 2px 14px; border-radius: 6px;
+    background: var(--color-pms-text); color: #fff; animation: pms-toast-out 0s 6s forwards;
+  }
+  @keyframes pms-toast-out { to { visibility: hidden; } }
   .pms-app :focus-visible { outline: 2px solid var(--color-pms-primary); outline-offset: 2px; }
   .pms-app .turbo-progress-bar { background: var(--color-pms-primary); }
 }

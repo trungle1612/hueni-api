@@ -55,7 +55,7 @@ class ActivityLogTest < ActiveSupport::TestCase
   end
 
   test "check-in and check-out each log one version; the room turning dirty logs none" do
-    booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Chị Mai")
+    booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07", guest_name: "Chị Mai", guests: 1)
 
     version = assert_one_version(booking, "update") { assert booking.check_in }
     assert_equal [ "checked_in_at" ], version.object_changes.keys - %w[updated_at]

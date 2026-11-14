@@ -36,7 +36,7 @@ class Admin::ActivityHelperTest < ActionView::TestCase
     assert_equal [ :edit, "Sửa đặt phòng", "khách: Chị Mai → —" ], entry
 
     booking.update!(guest_name: "Chị Mai", start_date: "2026-10-05")
-    booking.check_in
+    booking.check_in(guests: 1)
     assert_equal [ :check_in, "Nhận phòng", "Chị Mai" ], entry
     booking.check_out
     assert_equal [ :check_out, "Trả phòng", "Chị Mai" ], entry
@@ -49,7 +49,7 @@ class Admin::ActivityHelperTest < ActionView::TestCase
 
   test "check-in and check-out of a stay without a guest name show its dates" do
     booking = rooms(:garden).bookings.create!(start_date: "2026-10-05", end_date: "2026-10-07")
-    booking.check_in
+    booking.check_in(guests: 1)
     assert_equal [ :check_in, "Nhận phòng", "Khách 05/10–07/10" ], entry
     booking.check_out
     assert_equal [ :check_out, "Trả phòng", "Khách 05/10–07/10" ], entry

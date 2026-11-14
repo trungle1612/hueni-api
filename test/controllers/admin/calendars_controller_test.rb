@@ -60,7 +60,7 @@ class Admin::CalendarsControllerTest < ActionDispatch::IntegrationTest
 
   test "checked-out bookings are muted with a tick, and the legend says so" do
     booking = bookings(:limdim_confirmed)
-    booking.check_in
+    booking.check_in(guests: 1)
     booking.check_out
     get admin_place_calendar_path("tomo-homestay")
     assert_select "a#booking_#{booking.id}.bg-primary\\/15", text: "✓ Anh Minh"

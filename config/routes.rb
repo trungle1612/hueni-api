@@ -25,6 +25,13 @@ Rails.application.routes.draw do
     get "hom-nay", to: "today#show", as: :today
     get "them", to: "more#show", as: :more
     patch "co-so/:slug", to: "places#update", as: :place
+    scope "dat-phong/:id", controller: :stays, as: :stay do
+      post "nhan-phong", action: :check_in, as: :check_in
+      post "tra-phong", action: :check_out, as: :check_out
+      post "hoan-tac-nhan-phong", action: :undo_check_in, as: :undo_check_in
+      post "hoan-tac-tra-phong", action: :undo_check_out, as: :undo_check_out
+    end
+    post "phong/:id/don-xong", to: "rooms#clean", as: :room_clean
   end
   root "sessions#new"
 

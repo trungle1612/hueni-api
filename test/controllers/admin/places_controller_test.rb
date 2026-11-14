@@ -97,7 +97,7 @@ class Admin::PlacesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#{garden} form[action$='/check_in'] button", text: "Nhận phòng sớm"
     assert_select "#{garden} form[data-turbo-confirm='Chị Hoa nhận phòng sớm Garden? Ngày đến đổi 05/10 → 01/10']"
 
-    bookings(:limdim_confirmed).check_in
+    bookings(:limdim_confirmed).check_in(guests: 1)
     get admin_place_path("tomo-homestay")
     assert_select "#{limdim} [data-state]", "Đang có khách"
     assert_select "#{limdim} form[action='#{check_out_admin_booking_path(bookings(:limdim_confirmed))}']"
