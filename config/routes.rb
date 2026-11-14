@@ -20,14 +20,13 @@ Rails.application.routes.draw do
   get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
   get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
-  # "/" stays public/index.html (Zalo site verification) and forwards to /admin until Hôm nay is built (#229).
-
   # PMS PWA for owners and staff (#227, ADR-002): the current homestay lives in the session, not the URL.
   scope module: :pms, as: :pms do
     get "hom-nay", to: "today#show", as: :today
     get "them", to: "more#show", as: :more
     patch "co-so/:slug", to: "places#update", as: :place
   end
+  root "sessions#new"
 
   namespace :admin do
     root "dashboard#show"
