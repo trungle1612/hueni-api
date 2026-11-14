@@ -17,7 +17,7 @@ class PmsTodayTest < ApplicationSystemTestCase
     end
 
     assert_selector ".pms-toast", text: "Đã nhận phòng Limdim · đã thu 400.000đ"
-    assert_selector "section[aria-labelledby=dang-o]", text: "Anh Minh"
+    assert_selector "#today_booking_#{booking.id}", text: "Đã nhận"
     within(".pms-toast") { click_button "Hoàn tác" }
     assert_selector "section[aria-labelledby=nhan-phong]", text: "Anh Minh"
     assert_nil booking.reload.checked_in_at

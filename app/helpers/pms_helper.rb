@@ -1,6 +1,6 @@
 module PmsHelper
-  # "T4, 21/10/2026", as in the design's top bar.
-  def pms_day(date) = "#{%w[CN T2 T3 T4 T5 T6 T7][date.wday]}, #{date.strftime("%d/%m/%Y")}"
+  # "T4 21/10/2026", as in the design's top bar.
+  def pms_day(date) = "#{%w[CN T2 T3 T4 T5 T6 T7][date.wday]} #{date.strftime("%d/%m/%Y")}"
 
   # "600.000đ", as in the design.
   def pms_money(amount) = "#{number_with_delimiter(amount, delimiter: ".")}đ"

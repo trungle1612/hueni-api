@@ -31,7 +31,6 @@ Rails.application.routes.draw do
       post "hoan-tac-nhan-phong", action: :undo_check_in, as: :undo_check_in
       post "hoan-tac-tra-phong", action: :undo_check_out, as: :undo_check_out
     end
-    post "phong/:id/don-xong", to: "rooms#clean", as: :room_clean
   end
   root "sessions#new"
 

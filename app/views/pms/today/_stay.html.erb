@@ -1,16 +1,20 @@
-<%# One Hôm nay row. step: :check_in / :check_out = the row's button, nil = none (Đang ở, Ngày mai).
-    Money due, a dirty room or a missing head count first open a bottom sheet; otherwise the tap does it. -%>
-<% due = booking.due if booking.due&.positive? %>
+<%# One Hôm nay row. kind: :check_in / :check_out; done: already checked in / out today (badge Đã nhận / Đã trả);
+    @tomorrow: no button. Money due, a dirty room or a missing head count first open
+    a bottom sheet; otherwise the tap does it. -%>
+<% due = booking.due if !done && booking.due&.positive? %>
+<% step = kind unless @tomorrow %>
 <div id="<%= dom_id(booking, :today) %>" class="flex items-center gap-3 min-h-15 px-3 py-2">
   <%= link_to pms_booking_href(booking), class: "flex-1 min-w-0 flex items-center gap-3 min-h-11 no-underline" do %>
     <span class="flex-none min-w-9 max-w-24 text-[15px] font-semibold truncate"><%= booking.room.name %></span>
     <span class="flex-1 min-w-0">
       <span class="block font-semibold truncate"><%= booking.label %></span>
-      <span class="block text-[13px] text-pms-text-2 truncate"><%= pms_stay_meta(booking, departing: step == :check_out) %></span>
+      <span class="block text-[13px] text-pms-text-2 truncate"><%= pms_stay_meta(booking, departing: kind == :check_out) %></span>
       <% if due %><span class="block text-[13px] font-semibold text-pms-warn">Còn thu <%= pms_money(due) %></span><% end %>
     </span>
   <% end %>
-  <% if step %>
+  <% if done %>
+    <span class="flex-none rounded px-1.5 text-xs font-semibold leading-5 bg-pms-pos-bg text-pms-pos"><%= kind == :check_in ? "Đã nhận" : "Đã trả" %></span>
+  <% elsif step %>
     <% check_in = step == :check_in %>
     <% path = check_in ? pms_stay_check_in_path(booking) : pms_stay_check_out_path(booking) %>
     <% verb = check_in ? "nhận phòng" : "trả phòng" %>
