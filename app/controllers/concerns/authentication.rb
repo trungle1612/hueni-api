@@ -35,8 +35,11 @@ module Authentication
     end
 
     def after_authentication_url
-      session.delete(:return_to_after_authenticating) || admin_root_url
+      session.delete(:return_to_after_authenticating) || home_url
     end
+
+    # Owners and staff land on the PMS PWA (#229); admins run accounts on /admin (#85).
+    def home_url = Current.user&.admin? ? admin_root_url : pms_today_url
 
     def start_new_session_for(user)
       user.sessions.create!(user_agent: request.user_agent, ip_address: request.remote_ip).tap do |session|

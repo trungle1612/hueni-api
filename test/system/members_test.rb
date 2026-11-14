@@ -17,7 +17,7 @@ class MembersTest < ApplicationSystemTestCase
     visit link
     OmniAuth.config.mock_auth[:zalo2] = OmniAuth::AuthHash.new(provider: "zalo2", uid: "zalo-hang")
     click_button "Liên kết Zalo"
-    assert_selector "h1", text: "Tổng quan"
+    assert_selector "h1", text: "Hôm nay" # staff land on the PWA
     visit admin_place_path("tomo-homestay")
     assert_selector ".badge", text: "Nhân viên"
 

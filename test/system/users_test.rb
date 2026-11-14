@@ -24,10 +24,11 @@ class UsersTest < ApplicationSystemTestCase
     assert_no_field "Mật khẩu mới"
     OmniAuth.config.mock_auth[:zalo2] = OmniAuth::AuthHash.new(provider: "zalo2", uid: "zalo-hoa")
     click_button "Liên kết Zalo"
-    assert_text "Hiu Hill Homestay"
+    assert_selector "header", text: "Hiu Hill Homestay" # Hôm nay in the PWA
     assert_no_text "tomo homestay"
 
-    click_button "Đăng xuất", match: :first
+    click_link "Thêm"
+    click_button "Đăng xuất"
     assert_current_path new_session_path
     log_in_with_zalo "zalo-hoa"
     assert_text "Hiu Hill Homestay"
