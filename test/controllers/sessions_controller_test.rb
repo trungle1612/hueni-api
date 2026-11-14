@@ -13,7 +13,8 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
   test "login page renders" do
     get new_session_path
     assert_response :success
-    assert_select "h1, h2", text: "Đăng nhập"
+    assert_select "h1", text: "Đăng nhập bằng Zalo"
+    assert_select "link[rel=manifest]" # the PMS layout (#228)
   end
 
   test "login page leads with Zalo; the password form is for admins" do

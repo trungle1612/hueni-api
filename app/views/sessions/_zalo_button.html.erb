@@ -8,8 +8,8 @@
       <% if register %>
         <input type="hidden" name="dev_zalo_id" value="dev-<%= SecureRandom.hex(4) %>">
       <% else %>
-      <label class="text-xs font-semibold text-warning" for="dev_zalo_id">Zalo giả (development) — không qua Zalo thật</label>
-      <select name="dev_zalo_id" id="dev_zalo_id" required class="select select-sm select-warning w-full">
+      <label class="text-xs font-semibold text-pms-warn" for="dev_zalo_id">Zalo giả (development) — không qua Zalo thật</label>
+      <select name="dev_zalo_id" id="dev_zalo_id" required class="pms-input">
         <option value="">Chọn tài khoản Zalo giả…</option>
         <% User.where.not(zalo_id: nil).order(:name).each do |user| %><option value="<%= user.zalo_id %>">Zalo của <%= user.name %></option><% end %>
         <option value="dev-<%= SecureRandom.hex(4) %>">Zalo mới (chưa liên kết)</option>
@@ -17,12 +17,12 @@
       <% end %>
     <% end %>
     <% if register %>
-      <button class="btn btn-block btn-outline"><%= label %></button>
+      <button class="pms-btn w-full"><%= label %></button>
     <% else %>
-      <button class="btn btn-block border-0 bg-[#0068ff] text-white hover:bg-[#0054cc]"><%= label %></button>
+      <button class="pms-btn pms-btn-zalo w-full"><%= label %></button>
     <% end %>
   <% end %>
 <% else %>
-  <button type="button" disabled class="btn btn-block"><%= label %></button>
-  <div role="alert" class="text-xs text-error">Chưa cấu hình Zalo (thiếu khoá <code>zalo.app_id</code> / <code>app_secret</code>).</div>
+  <button type="button" disabled class="pms-btn w-full"><%= label %></button>
+  <div role="alert" class="text-xs text-pms-danger">Chưa cấu hình Zalo (thiếu khoá <code>zalo.app_id</code> / <code>app_secret</code>).</div>
 <% end %>

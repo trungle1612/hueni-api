@@ -1,0 +1,8 @@
+<%# Shared empty / error / no-permission panel (design: Trạng thái). locals: (title:, text:, action: nil) -%>
+<div class="px-4 pt-4">
+  <div class="pms-panel p-4 flex flex-col gap-2">
+    <h2 class="text-base font-semibold"><%= title %></h2>
+    <p class="text-pms-text-2"><%= text %></p>
+    <% if action %><div class="mt-1"><%= action %></div><% end %>
+  </div>
+</div>

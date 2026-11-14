@@ -1,0 +1,18 @@
+<%# Bottom tabs from the design. path: nil = screen not built yet (#229–#236). Icons: the design's inline strokes. -%>
+<% tabs = [
+  [ "Hôm nay", pms_today_path, '<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>' ],
+  [ "Lịch", nil, '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>' ],
+  [ "Phòng", nil, '<path d="M3 18V7M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="1.5"/>' ],
+  [ "Báo cáo", nil, '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>' ],
+  [ "Thêm", pms_more_path, '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>' ]
+] %>
+<nav aria-label="Điều hướng chính" class="sticky bottom-0 z-10 grid grid-cols-5 bg-pms-surface border-t border-pms-border pb-[env(safe-area-inset-bottom)]">
+  <% tabs.each do |label, path, icon| %>
+    <% svg = tag.svg(icon.html_safe, width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 1.75, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": true) %>
+    <% if path %>
+      <%= link_to path, class: "pms-tab", "aria-current": ("page" if current_page?(path)) do %><%= svg %><%= label %><% end %>
+    <% else %>
+      <span class="pms-tab" aria-disabled="true"><%= svg %><%= label %><span class="sr-only"> (sắp có)</span></span>
+    <% end %>
+  <% end %>
+</nav>

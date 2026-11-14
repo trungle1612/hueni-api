@@ -1,0 +1,3 @@
+<%= render "pms/message", title: "Bạn chưa thuộc cơ sở nào",
+      text: "Nhờ chủ cơ sở thêm số điện thoại của bạn vào danh sách nhân viên, hoặc đăng ký làm chủ homestay.",
+      action: (link_to("Mở trang quản lý", admin_root_path, class: "pms-btn") if Current.user.admin?) %>
