@@ -3,6 +3,7 @@ class SessionsController < ApplicationController
   rate_limit to: 10, within: 3.minutes, only: :create, with: -> { redirect_to new_session_path, alert: "Thử lại sau ít phút." }
 
   def new
+    redirect_to admin_root_path if authenticated?
   end
 
   def create
