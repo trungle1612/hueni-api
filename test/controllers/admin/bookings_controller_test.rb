@@ -226,7 +226,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     patch admin_booking_path(booking), params: { booking: { note: "x", checked_in_at: "2026-10-01 10:00", checked_out_at: "2026-10-01 11:00" } }
     assert_nil booking.reload.checked_in_at
 
-    booking.check_in
+    booking.check_in(guests: 1)
     patch admin_booking_path(booking), params: { booking: { status: "cancelled", cancel_reason: "Khách huỷ" } }
     assert_response :unprocessable_entity
     assert_select "[role=alert]", text: /Khách đã nhận phòng, không huỷ được/
@@ -244,7 +244,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
 
   test "edit page of a checked-in guest shows the time and check-out, hides cancel" do
     booking = bookings(:limdim_confirmed)
-    booking.check_in
+    booking.check_in(guests: 1)
     get edit_admin_booking_path(booking)
     assert_select "#stay", text: /Đã nhận phòng lúc 12:00 01\/10/
     assert_select "#stay form[action='#{check_out_admin_booking_path(booking)}']"
@@ -261,7 +261,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
 
   test "a checked-out booking can't be updated" do
     booking = bookings(:limdim_confirmed)
-    booking.check_in
+    booking.check_in(guests: 1)
     booking.check_out
     patch admin_booking_path(booking), params: { booking: { guest_name: "Đổi", end_date: "2026-10-10" } }
     assert_redirected_to edit_admin_booking_path(booking)
@@ -299,7 +299,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
 
   test "owners undo a check-in and a check-out from the booking page" do
     booking = bookings(:limdim_confirmed)
-    booking.check_in
+    booking.check_in(guests: 1)
     get edit_admin_booking_path(booking)
     assert_select "#stay form[action='#{undo_check_in_admin_booking_path(booking)}'][data-turbo-confirm*='Hoàn tác nhận phòng']"
 
@@ -308,7 +308,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Đã hoàn tác nhận phòng: Anh Minh · Limdim", flash[:notice]
     assert_nil booking.reload.checked_in_at
 
-    booking.check_in
+    booking.check_in(guests: 1)
     booking.check_out
     post undo_check_out_admin_booking_path(booking)
     assert_equal "Đã hoàn tác trả phòng: Anh Minh · Limdim", flash[:notice]
@@ -320,7 +320,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
 
   test "staff can't undo (403, no button); another owner's booking is not found" do
     booking = bookings(:limdim_confirmed)
-    booking.check_in
+    booking.check_in(guests: 1)
     staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
     places(:tomo).place_memberships.create!(user: staff, role: "staff")
     delete session_path
@@ -338,7 +338,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
 
   test "staff move an in-house guest from the booking page; other homestays' rooms are not found" do
     booking = rooms(:garden).bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02", guest_name: "Chị Mai")
-    booking.check_in
+    booking.check_in(guests: 1)
     get edit_admin_booking_path(booking)
     assert_select "#move", count: 0 # limdim is taken by Anh Minh
 
@@ -365,7 +365,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
     assert_select "#stay form[action='#{check_in_admin_booking_path(booking)}'] input[name=guests][required][max='4']"
 
     post check_in_admin_booking_path(booking)
-    assert_equal "Nhập số khách khi nhận phòng", flash[:alert]
+    assert_equal "Số khách cần nhập khi nhận phòng", flash[:alert]
     assert_nil booking.reload.checked_in_at
 
     post check_in_admin_booking_path(booking), params: { guests: 9 }
@@ -397,7 +397,7 @@ class Admin::BookingsControllerTest < ActionDispatch::IntegrationTest
   test "admins who aren't members can't open a booking or act on it" do
     booking = bookings(:limdim_confirmed)
     in_house = rooms(:garden).bookings.create!(start_date: "2026-10-01", end_date: "2026-10-02", guests: 1)
-    in_house.check_in
+    in_house.check_in(guests: 1)
     delete session_path
     log_in users(:admin)
 

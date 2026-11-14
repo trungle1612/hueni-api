@@ -35,15 +35,7 @@ class MiniApp::V1::BookingsController < MiniApp::V1::BaseController
   end
 
   # collect: true = Thu X và nhận phòng (what is due, in cash); else it stays owed. guests: required when the booking has none.
-  def check_in
-    guests = params[:guests].presence&.to_i
-    if guests.nil? && @booking.guests.nil?
-      @booking.errors.add(:guests, "cần nhập khi nhận phòng")
-      render_invalid(@booking)
-    else
-      respond @booking.collecting_due(collect?) { @booking.check_in(guests:) }
-    end
-  end
+  def check_in = respond(@booking.collecting_due(collect?) { @booking.check_in(guests: params[:guests].presence&.to_i) })
 
   def check_out = respond(@booking.collecting_due(collect?) { @booking.check_out })
   def no_show = respond(@booking.no_show)

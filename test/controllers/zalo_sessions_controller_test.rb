@@ -7,11 +7,15 @@ class ZaloSessionsControllerTest < ActionDispatch::IntegrationTest
     follow_redirect!
   end
 
-  test "a linked Zalo id logs in, admin or not, and goes where they were headed" do
+  test "a linked Zalo id logs in and goes where they were headed, else owners to the PWA, admins to /admin" do
     get admin_calendar_path
     zalo "zalo-chi-lan"
     assert_redirected_to admin_calendar_url
     assert_equal 1, users(:owner).sessions.count
+
+    delete session_path
+    zalo "zalo-chi-lan"
+    assert_redirected_to pms_today_url # owners and staff land on the PWA
 
     delete session_path
     users(:admin).update!(zalo_id: "zalo-trung")
@@ -37,7 +41,7 @@ class ZaloSessionsControllerTest < ActionDispatch::IntegrationTest
 
   test "the register button logs an existing account in, with a notice" do
     zalo "zalo-chi-lan", register: true
-    assert_redirected_to admin_root_url
+    assert_redirected_to pms_today_url
     assert_equal "Bạn đã có tài khoản.", flash[:notice]
     assert_nil session[:registration]
   end
@@ -72,7 +76,7 @@ class ZaloSessionsControllerTest < ActionDispatch::IntegrationTest
     get password_setup_path(token:)
     zalo "zalo-moi", link: "token"
 
-    assert_redirected_to admin_root_url
+    assert_redirected_to pms_today_url
     assert_equal "zalo-moi", user.reload.zalo_id
     assert_not_includes user.sessions, other_device
     assert_equal 1, user.sessions.count
@@ -130,7 +134,7 @@ class ZaloSessionsControllerTest < ActionDispatch::IntegrationTest
   test "an unknown Zalo id with an owner's phone number links that owner and logs in (#98)" do
     users(:owner).update!(zalo_id: nil)
     zalo "zalo-moi", phone: "84912345678" # Zalo's format; stored as 0912345678
-    assert_redirected_to admin_root_url
+    assert_redirected_to pms_today_url
     assert_equal "zalo-moi", users(:owner).reload.zalo_id
     assert_equal 1, users(:owner).sessions.count
   end

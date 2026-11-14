@@ -13,10 +13,14 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?]", session_path
   end
 
-  test "root sends a logged-in user to admin" do
+  test "root sends owners and staff to the PWA, admins to /admin" do
     log_in users(:owner)
     get "/"
-    assert_redirected_to admin_root_path
+    assert_redirected_to pms_today_url
+
+    sign_in_as users(:admin)
+    get "/"
+    assert_redirected_to admin_root_url
   end
 
   test "shows the dashboard to a logged-in user" do

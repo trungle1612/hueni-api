@@ -1,11 +1,78 @@
 <% content_for :title, "Hôm nay · hueni" %>
-<% content_for :bar, render("pms/bar", title: "Hôm nay", sub: [ pms_day(Date.current), current_place&.name ].compact.join(" · ")) %>
+<% day = @tomorrow ? "Xem trước #{pms_day(Date.current.next_day)}" : pms_day(Date.current) %>
+<%# Until the PWA has Tìm (#235), Thông báo (#237) and Đặt phòng mới (#232), search and + Đặt phòng open /admin. %>
+<% actions = capture do %>
+  <% if current_place %>
+    <%= link_to admin_search_path, class: "flex-none flex items-center justify-center size-11 rounded-md", "aria-label": "Tìm đặt phòng" do %>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <% end %>
+    <%= link_to "+ Đặt phòng", new_admin_place_booking_path(current_place.slug), class: "pms-btn px-3" %>
+  <% end %>
+<% end %>
+<% content_for :bar, render("pms/bar", title: "Hôm nay", sub: [ day, current_place&.name ].compact.join(" · "), actions:, border: !current_place) %>
 
 <% if current_place %>
-  <%# Placeholder until #229 brings the lists. %>
-  <%= render "pms/message", title: "Màn Hôm nay đang được làm",
-        text: "Khách đến, khách đi và phòng cần dọn sẽ hiện ở đây. Trong lúc chờ, dùng trang quản lý.",
-        action: link_to("Mở trang quản lý", admin_root_path, class: "pms-btn") %>
+  <% t = @today %>
+  <nav class="sticky top-14 z-10 flex bg-pms-surface border-b border-pms-border px-2" aria-label="Chọn ngày">
+    <% [ [ "Hôm nay", pms_today_path, !@tomorrow ], [ "Ngày mai", pms_today_path(day: "mai"), @tomorrow ] ].each do |label, path, on| %>
+      <%= link_to label, path, "aria-current": ("page" if on),
+            class: "flex items-center min-h-11 px-2.5 border-b-2 no-underline #{on ? "border-pms-primary font-semibold" : "border-transparent text-pms-text-2 font-medium"}" %>
+    <% end %>
+  </nav>
+
+  <div class="px-4 pt-4">
+    <div id="stats" class="pms-panel grid grid-cols-4 divide-x divide-pms-border">
+      <% [ [ @tomorrow ? "Sẽ đến" : "Chờ đến", t.arrivals.size ], [ @tomorrow ? "Sẽ đi" : "Chờ đi", t.departures.size ],
+           [ @tomorrow ? "Dự kiến ở" : "Đang ở", t.in_house.size, "/#{@open_rooms}" ] ].each do |label, count, of| %>
+        <div class="flex flex-col gap-0.5 px-3 py-2.5 min-w-0">
+          <b class="text-xl leading-tight font-semibold"><%= count %><% if of %><span class="text-[13px]"><%= of %></span><% end %></b>
+          <span class="text-xs text-pms-text-2 truncate"><%= label %></span>
+        </div>
+      <% end %>
+      <%# Until Phòng (#233): the homestay page on /admin, where Dọn xong is. %>
+      <%= link_to admin_place_path(current_place.slug), class: "flex flex-col gap-0.5 px-3 py-2.5 min-w-0 no-underline" do %>
+        <b class="text-xl leading-tight font-semibold"><%= t.dirty_rooms.size %></b>
+        <span class="text-xs text-pms-text-2 truncate">Cần dọn</span>
+      <% end %>
+    </div>
+  </div>
+
+  <% if !@tomorrow && t.issues.any? %>
+    <div id="issues" class="px-4 pt-4 flex flex-col gap-1.5">
+      <% t.issues.each do |issue| %>
+        <%= link_to issue.kind == :clean ? admin_place_path(current_place.slug) : pms_booking_href(issue.booking), class: "pms-notice" do %>
+          <span class="flex-1 min-w-0"><%= issue.title %> · <%= issue.detail %></span><b><%= issue.kind == :stay ? "Khai báo" : "Xem" %></b>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% [ [ "nhan-phong", "Nhận phòng", t.arrivals, t.checked_in, :check_in, "Không có khách đến." ],
+       [ "tra-phong", "Trả phòng", t.departures, t.checked_out, :check_out, "Không có khách đi." ] ].each_with_index do |(id, label, waiting, done, step, empty), i| %>
+    <section class="px-4 pt-4 <%= "pb-6" if i == 1 %>" aria-labelledby="<%= id %>">
+      <h2 id="<%= id %>" class="pms-sec-h flex items-baseline justify-between gap-2">
+        <span><%= label %> · <%= @tomorrow ? waiting.size : "#{waiting.size} chờ / #{waiting.size + done.size}" %></span>
+        <%# Until Lịch phòng (#230): the /admin calendar. %>
+        <% if i.zero? %><%= link_to "Lịch", admin_place_calendar_path(current_place.slug), class: "text-pms-primary font-semibold no-underline" %><% end %>
+      </h2>
+      <div class="pms-panel divide-y divide-pms-border">
+        <%= render partial: "stay", collection: waiting, as: :booking, locals: { kind: step, done: false } %>
+        <%= render partial: "stay", collection: done, as: :booking, locals: { kind: step, done: true } %>
+        <% if waiting.empty? && done.empty? %><div class="px-3 py-4 text-[13px] text-pms-text-2"><%= empty %></div><% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <% if (toast = flash[:toast]) %>
+    <div class="pms-toast" role="status">
+      <span class="flex-1"><%= toast %></span>
+      <% step = flash[:undo]&.last %>
+      <% if @undo && (step == "check_in" ? @undo.can_undo_check_in? : @undo.can_undo_check_out?) %>
+        <%= button_to "Hoàn tác", step == "check_in" ? pms_stay_undo_check_in_path(@undo) : pms_stay_undo_check_out_path(@undo),
+              class: "min-h-11 px-3 font-semibold text-[#ddb8ca] cursor-pointer" %>
+      <% end %>
+    </div>
+  <% end %>
 <% else %>
   <%= render "pms/no_place" %>
 <% end %>

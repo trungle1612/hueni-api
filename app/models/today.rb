@@ -7,6 +7,8 @@ class Today
 
   # date: the day the lists are for (today, or tomorrow for Ngày mai).
   attr_reader :date, :arrivals, :departures, :in_house, :dirty_rooms, :issues
+  # Hôm nay in the PWA (#229) keeps the rows done today, marked Đã nhận / Đã trả. Empty for Ngày mai.
+  attr_reader :checked_in, :checked_out
 
   def initialize(rooms, tomorrow: false)
     today = @date = Date.current
@@ -16,7 +18,11 @@ class Today
     @arrivals = bookings.blocking.not_checked_in.where(start_date: ..today, end_date: Booking.arrival_date.next_day..).to_a
     @in_house = bookings.in_house.where(end_date: today.next_day..).to_a
     @issues = conflicts(bookings) + dirty_arrivals + undeclared
+    @checked_in = bookings.where(checked_in_at: Time.current.all_day).to_a
+    @checked_out = bookings.where(checked_out_at: Time.current.all_day).to_a
     return unless tomorrow
+
+    @checked_in = @checked_out = []
 
     tomorrow = @date = today.next_day
     @arrivals = bookings.blocking.not_checked_in.where(start_date: tomorrow).to_a

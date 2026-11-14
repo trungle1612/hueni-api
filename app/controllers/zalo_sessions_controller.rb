@@ -55,7 +55,7 @@ class ZaloSessionsController < ApplicationController
       if user.update(zalo_id:, password: User.unknown_password)
         user.sessions.destroy_all
         start_new_session_for user
-        redirect_to admin_root_url, notice: "Đã liên kết Zalo. Chào #{user.name}!"
+        redirect_to home_url, notice: "Đã liên kết Zalo. Chào #{user.name}!"
       else
         redirect_to password_setup_path(token:), alert: ALREADY_LINKED
       end

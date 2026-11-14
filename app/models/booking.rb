@@ -284,10 +284,14 @@ class Booking < ApplicationRecord
   # with an OTA booking or exceeds a lowered max_guests (the calendar shows the conflict).
   # Arriving before start_date (Nhận phòng sớm) moves start_date to today, so the extra nights are booked;
   # that changes dates, so it is validated.
-  # guests: the head count taken at the desk (the admin asks for it when the booking has none).
+  # guests: the head count taken at the desk, required when the booking has none.
   def check_in(guests: nil)
     with_lock do
       next refuse(check_in_refusal) unless can_check_in?
+      unless guests || self.guests
+        errors.add(:guests, "cần nhập khi nhận phòng")
+        next false
+      end
       if guests
         next refuse("Số khách phải từ 1 đến #{room.max_guests}") unless guests.in?(1..room.max_guests)
         self.guests = guests
