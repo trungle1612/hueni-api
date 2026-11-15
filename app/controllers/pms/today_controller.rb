@@ -2,6 +2,7 @@
 class Pms::TodayController < Pms::BaseController
   def show
     return unless current_place
+    return redirect_to pms_onboarding_path unless cookies[:pms_onboarded]
     @tomorrow = params[:day] == "mai"
     @today = Today.new(current_place.rooms, tomorrow: @tomorrow)
     @open_rooms = current_place.rooms.where(active: true).count

@@ -24,6 +24,13 @@
     <% end %>
   </nav>
 
+  <% if allowed_to?(:manage, current_place) && !current_place.rooms.exists? %>
+    <section class="px-4 pt-4" aria-labelledby="chuan-bi">
+      <h2 id="chuan-bi" class="pms-sec-h">Chuẩn bị cơ sở của bạn</h2>
+      <%= render "pms/onboarding/setup", place: current_place %>
+    </section>
+  <% end %>
+
   <div class="px-4 pt-4">
     <div id="stats" class="pms-panel grid grid-cols-4 divide-x divide-pms-border">
       <% [ [ @tomorrow ? "Sẽ đến" : "Chờ đến", t.arrivals.size ], [ @tomorrow ? "Sẽ đi" : "Chờ đi", t.departures.size ],

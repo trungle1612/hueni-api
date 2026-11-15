@@ -25,11 +25,26 @@ export default class extends Controller {
     }
     if ((await Notification.requestPermission()) !== "granted") return this.show(false)
     try {
-      const subscription = await this.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this.applicationServerKey })
-      this.show((await this.send("POST", subscription)).ok)
+      this.show((await this.subscribe()).ok)
     } catch {
       this.show(false, "Không bật được. Thử lại sau.")
     }
+  }
+
+  // Bật thông báo in Bắt đầu (#266): subscribe only, then tell the page how it went (push:changed).
+  async enable({ currentTarget }) {
+    currentTarget.disabled = true
+    let on = false
+    if (this.registration && (await Notification.requestPermission()) === "granted") {
+      try { on = (await this.subscribe()).ok } catch {}
+    }
+    currentTarget.disabled = false
+    this.dispatch("changed", { detail: { on, permission: this.registration ? Notification.permission : "unsupported" } })
+  }
+
+  async subscribe() {
+    const subscription = await this.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this.applicationServerKey })
+    return this.send("POST", subscription)
   }
 
   show(on, message) {

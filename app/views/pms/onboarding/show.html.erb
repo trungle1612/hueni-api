@@ -1,0 +1,83 @@
+<% content_for :title, "Bắt đầu · hueni" %>
+<% content_for :no_nav, "1" %>
+<% icon = ->(path) { tag.span(class: "flex-none flex items-center justify-center size-8 rounded-md bg-pms-muted text-pms-text-2", "aria-hidden": true) { tag.svg(path.html_safe, width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round") } } %>
+<% foot = "sticky bottom-0 mt-auto flex flex-col gap-1 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] bg-pms-bg" %>
+<% step_no = "flex-none flex items-center justify-center size-6 rounded-full bg-pms-primary-bg text-pms-primary text-[13px] font-bold" %>
+<% key = "inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-pms-border-strong bg-pms-bg text-xs font-semibold whitespace-nowrap" %>
+<% done_box = "flex items-center gap-2 mt-4 px-3 py-2.5 rounded-md border border-pms-pos bg-pms-pos-bg text-pms-pos font-semibold" %>
+<% today = @steps.last == "notif" ? "Vào Màn hình chính" : "Tiếp tục" %>
+
+<div class="min-h-dvh flex flex-col px-6" data-controller="onboarding" data-onboarding-done-value="<%= pms_today_path %>"
+     data-action="push:changed@document->onboarding#pushed appinstalled@window->onboarding#installed beforeinstallprompt@window->onboarding#installable">
+  <div class="flex items-center gap-3 pt-4">
+    <div class="flex-1 grid grid-flow-col auto-cols-fr gap-1" role="progressbar" data-onboarding-target="progress">
+      <% @steps.each do |step| %><i class="h-1 rounded-sm bg-pms-border" data-onboarding-target="bar" data-step="<%= step %>"></i><% end %>
+    </div>
+    <%= link_to "Bỏ qua", pms_today_path, class: "flex-none flex items-center min-h-11 px-1 font-semibold text-pms-text-2 no-underline" %>
+  </div>
+
+  <% if @steps.include?("install") %>
+    <section class="flex-1 flex flex-col" data-onboarding-target="step" data-step="install" hidden>
+      <p class="mt-6 mb-1 text-xs font-semibold tracking-wide text-pms-text-2" data-onboarding-target="kicker"></p>
+      <h1 class="text-[22px] leading-tight font-semibold">Đặt hueni ra màn hình chính</h1>
+      <p class="mt-2 text-pms-text-2">Mở nhanh như app thường, chạy toàn màn hình và nhận được thông báo khi có khách đặt phòng.</p>
+      <div data-when="ios">
+        <ol class="pms-panel mt-5 divide-y divide-pms-border">
+          <li class="flex items-center gap-3 p-3"><span class="<%= step_no %>">1</span><span>Bấm nút Chia sẻ <span class="<%= key %>"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Chia sẻ</span> ở thanh dưới của Safari</span></li>
+          <li class="flex items-center gap-3 p-3"><span class="<%= step_no %>">2</span><span>Kéo xuống, chọn <span class="<%= key %>">Thêm vào MH chính</span></span></li>
+          <li class="flex items-center gap-3 p-3"><span class="<%= step_no %>">3</span><span>Đóng Safari, mở hueni từ biểu tượng mới trên màn hình chính</span></li>
+        </ol>
+        <p class="mt-2 text-[13px] text-pms-text-2">Chỉ làm được trên Safari. Nếu đang mở bằng Chrome hoặc Zalo, hãy mở link này bằng Safari trước.</p>
+      </div>
+      <p class="mt-5 text-[13px] text-pms-text-2" data-when="prompt">Trình duyệt sẽ hỏi lại một lần để xác nhận. App chỉ chiếm vài MB.</p>
+      <p class="mt-5 text-[13px] text-pms-text-2" data-when="manual">Mở menu của trình duyệt, chọn <span class="<%= key %>">Cài đặt ứng dụng</span> hoặc <span class="<%= key %>">Thêm vào màn hình chính</span>.</p>
+      <div class="<%= done_box %>" role="status" data-when="installed">✓ Đã cài. Từ lần sau mở hueni từ màn hình chính.</div>
+      <div class="<%= foot %>">
+        <button type="button" class="pms-btn pms-btn-primary min-h-12" data-when="ios" data-action="onboarding#next">Tôi đã thêm, tiếp tục</button>
+        <button type="button" class="pms-btn pms-btn-primary min-h-12" data-when="prompt" data-action="onboarding#install">Cài đặt app</button>
+        <button type="button" class="pms-btn pms-btn-primary min-h-12" data-when="manual installed" data-action="onboarding#next">Tiếp tục</button>
+        <button type="button" class="pms-btn pms-btn-ghost min-h-12" data-when="ios prompt manual" data-action="onboarding#next">Để sau</button>
+      </div>
+    </section>
+  <% end %>
+
+  <% if @steps.include?("notif") %>
+    <section class="flex-1 flex flex-col" data-onboarding-target="step" data-step="notif" hidden>
+      <p class="mt-6 mb-1 text-xs font-semibold tracking-wide text-pms-text-2" data-onboarding-target="kicker"></p>
+      <h1 class="text-[22px] leading-tight font-semibold">Bật thông báo để không lỡ khách</h1>
+      <p class="mt-2 text-pms-text-2">Chỉ báo những việc cần bạn xử lý. Bạn chỉnh từng loại sau trong Thông báo › Cài đặt.</p>
+      <div class="pms-panel mt-5 divide-y divide-pms-border">
+        <% [ [ "Đặt phòng mới và huỷ", "Từ hue-ni, Booking.com, Agoda, Airbnb", '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>' ],
+             [ "Trùng phòng, lỗi kênh", "Để kịp xử lý trước khi khách đến", '<path d="M12 3l10 18H2z"/><path d="M12 10v4M12 18h0"/>' ],
+             [ "Hạn khai báo lưu trú", "Nhắc lúc 21:00 nếu còn khách chưa gửi", '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' ] ].each do |label, sub, path| %>
+          <div class="flex items-center gap-2.5 min-h-13 px-3 py-2"><%= icon.(path) %><span class="flex-1 min-w-0"><b class="block font-semibold"><%= label %></b><span class="block text-[13px] text-pms-text-2"><%= sub %></span></span></div>
+        <% end %>
+      </div>
+      <div class="<%= done_box %>" role="status" data-when="granted">✓ Đã bật thông báo</div>
+      <div class="pms-notice mt-4" role="status" data-when="denied">Thông báo đang bị chặn. Bật lại trong Cài đặt của điện thoại hoặc của trình duyệt. Bạn vẫn xem được mọi thứ trong mục Thông báo của app.</div>
+      <div class="pms-notice mt-4" role="status" data-when="unsupported">Trên iPhone, thông báo chỉ bật được khi mở hueni từ biểu tượng trên màn hình chính. Bạn vẫn xem được mọi thứ trong mục Thông báo của app.</div>
+      <div class="<%= foot %>">
+        <button type="button" class="pms-btn pms-btn-primary min-h-12" data-when="ask" data-action="push#enable">Bật thông báo</button>
+        <button type="button" class="pms-btn pms-btn-primary min-h-12" data-when="granted denied unsupported" data-action="onboarding#next"><%= today %></button>
+        <button type="button" class="pms-btn pms-btn-ghost min-h-12" data-when="ask" data-action="onboarding#next">Để sau</button>
+      </div>
+    </section>
+  <% end %>
+
+  <% if @steps.include?("setup") %>
+    <section class="flex-1 flex flex-col" data-onboarding-target="step" data-step="setup" hidden>
+      <p class="mt-6 mb-1 text-xs font-semibold tracking-wide text-pms-text-2" data-onboarding-target="kicker"></p>
+      <h1 class="text-[22px] leading-tight font-semibold">Chuẩn bị cơ sở của bạn</h1>
+      <p class="mt-2 mb-5 text-pms-text-2">Khoảng 10 phút. Danh sách này nằm ở đầu màn Hôm nay cho đến khi xong.</p>
+      <%= render "setup", place: current_place %>
+      <div class="<%= foot %>">
+        <% if current_place.rooms.exists? %>
+          <%= link_to "Vào Màn hình chính", pms_today_path, class: "pms-btn pms-btn-primary min-h-12" %>
+        <% else %>
+          <%= link_to "Bắt đầu: thêm phòng", new_pms_room_path, class: "pms-btn pms-btn-primary min-h-12" %>
+          <%= link_to "Vào Màn hình chính, làm sau", pms_today_path, class: "pms-btn pms-btn-ghost min-h-12" %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+</div>

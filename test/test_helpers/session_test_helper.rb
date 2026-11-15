@@ -1,6 +1,8 @@
 module SessionTestHelper
   # Logs in through the mocked Zalo login (#97), linking a Zalo id first if the user has none.
+  # Bắt đầu (#266) already seen in this browser, so Hôm nay opens; delete the cookie to test it.
   def log_in(user)
+    cookies[:pms_onboarded] = "1"
     user.update!(zalo_id: "zalo-#{user.id}") unless user.zalo_id
     mock_zalo user.zalo_id
     post "/auth/zalo2"

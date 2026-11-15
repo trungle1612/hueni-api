@@ -1,0 +1,15 @@
+<%# Chuẩn bị cơ sở (#266): in Bắt đầu, and on top of Hôm nay until the homestay has a room. locals: (place:) -%>
+<% rows = [ [ "Tên và địa chỉ cơ sở", "Đã nhập khi tạo tài khoản", true, nil ],
+            [ "Phòng và giá", "Tên phòng, số khách, giá mỗi đêm", place.rooms.exists?, new_pms_room_path ],
+            [ "Mời nhân viên", "Không bắt buộc nếu bạn tự làm một mình", place.place_memberships.many?, pms_members_path ] ] %>
+<div id="setup" class="pms-panel divide-y divide-pms-border">
+  <% rows.each do |label, sub, done, path| %>
+    <%= tag.send(path ? :a : :div, href: path, class: "flex items-center gap-3 min-h-14 px-3 py-1.5 no-underline") do %>
+      <span class="flex-none flex items-center justify-center size-6 rounded-full <%= done ? "bg-pms-pos text-white" : "border-2 border-pms-border-strong" %>">
+        <% if done %><svg role="img" aria-label="Đã xong" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg><% end %>
+      </span>
+      <span class="flex-1 min-w-0"><b class="block font-semibold"><%= label %></b><span class="block text-[13px] text-pms-text-2"><%= sub %></span></span>
+      <% if path %><svg class="flex-none text-pms-text-2" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg><% end %>
+    <% end %>
+  <% end %>
+</div>
