@@ -36,6 +36,13 @@ class Place < ApplicationRecord
     super(value.transform_values { Float(it, exception: false) || it })
   end
 
+  # Đồng bộ tất cả (#125): queues every feed not synced in the last minute; returns how many.
+  def sync_feeds
+    feeds = CalendarFeed.where(room: rooms).reject(&:synced_recently?)
+    feeds.each { SyncCalendarFeedJob.perform_later(it.id, "manual") }
+    feeds.size
+  end
+
   # Tài khoản chuyển khoản (#139): shown when a guest pays by Chuyển khoản. Owner-set, not from hueni.
   normalizes :bank_name, :bank_account, :bank_holder, with: ->(value) { value.squish.presence }
   validates :bank_name, :bank_holder, length: { maximum: 100 }
