@@ -41,6 +41,7 @@
   --color-pms-warn-line: #e9c48f;
   --color-pms-info: #1d4e89;
   --color-pms-info-bg: #e8eef7;
+  --color-pms-info-line: #b7c8e2;
   --color-pms-danger: #b42318;
   --color-pms-danger-bg: #fbeae8;
 }
@@ -88,6 +89,24 @@
     background: var(--color-pms-text); color: #fff; animation: pms-toast-out 0s 6s forwards;
   }
   @keyframes pms-toast-out { to { visibility: hidden; } }
+  /* Lịch phòng (#230): a bar inside a 52px row is 44px tall. */
+  .pms-bar {
+    position: relative; z-index: 1; min-width: 0; margin-block: 4px; padding: 0 3px; border-radius: 3px; border: 1px solid transparent;
+    display: flex; align-items: center; font: 600 12px/1.2 var(--font-pms); text-align: left;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+  }
+  .pms-bar-in { background: var(--color-pms-primary); color: #fff; }
+  .pms-bar-ok { background: var(--color-pms-info-bg); color: var(--color-pms-info); border-color: var(--color-pms-info-line); }
+  .pms-bar-warn { background: var(--color-pms-warn-bg); color: var(--color-pms-warn); border-color: var(--color-pms-warn-line); }
+  .pms-bar-out { background: var(--color-pms-surface); color: var(--color-pms-text-2); border: 1px dashed var(--color-pms-text-2); }
+  .pms-bar-maint { background: var(--color-pms-muted); color: var(--color-pms-text-2); }
+  .pms-bar-conflict { outline: 2px solid var(--color-pms-danger); outline-offset: -2px; }
+  .pms-badge { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .pms-badge-in { background: var(--color-pms-primary-bg); color: var(--color-pms-primary); }
+  .pms-badge-ok { background: var(--color-pms-info-bg); color: var(--color-pms-info); }
+  .pms-badge-warn { background: var(--color-pms-warn-bg); color: var(--color-pms-warn); }
+  .pms-badge-out, .pms-badge-maint { background: var(--color-pms-muted); color: var(--color-pms-text-2); }
+  .pms-badge-danger { background: var(--color-pms-danger-bg); color: var(--color-pms-danger); }
   .pms-app :focus-visible { outline: 2px solid var(--color-pms-primary); outline-offset: 2px; }
   .pms-app .turbo-progress-bar { background: var(--color-pms-primary); }
 }

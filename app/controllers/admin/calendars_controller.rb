@@ -17,15 +17,9 @@ class Admin::CalendarsController < Admin::BaseController
     @room_types = Room::ROOM_TYPES.keys & @rooms.distinct.pluck(:room_type)
     @room_type = params[:type].presence_in(@room_types)
     @rooms = @rooms.where(room_type: @room_type) if @room_type
-    # In-house guests too: an overdue one still holds the room, one due out today is listed by the room name.
-    bookings = Booking.blocking.where(room: @rooms).merge(Booking.overlapping(@days.begin, @days.end).or(Booking.in_house))
-      .includes(:calendar_feed, :room, :payments).order(:start_date).to_a
-    @bookings = bookings.group_by(&:room_id)
-    # The OTA already sold an iCal booking's nights, so an overlap with a manual one is for the owner to resolve.
-    @conflicts = bookings.select(&:ical?).flat_map do |ical|
-      bookings.select { it.manual? && it.room_id == ical.room_id && it.overlaps?(ical) }.map { [ ical, it ] }
-    end
-    # Bookings made before a Bảo trì was set on their room stay; the owner moves or cancels them.
-    @maintenance_conflicts = bookings.select(&:in_maintenance?)
+    @calendar = RoomCalendar.new(@rooms, @days.begin, @days.end)
+    @bookings = @calendar.by_room
+    @conflicts = @calendar.conflicts
+    @maintenance_conflicts = @calendar.maintenance_conflicts
   end
 end

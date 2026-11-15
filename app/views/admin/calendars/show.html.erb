@@ -1,6 +1,6 @@
 <% content_for :title, "Lịch phòng · #{@place.name} · hueni admin" %>
 <% grid = "grid grid-cols-[4.75rem_repeat(14,2.75rem)]" %>
-<% conflict_ids = (@conflicts.flatten + @maintenance_conflicts).map(&:id).to_set %>
+<% conflict_ids = @calendar.conflict_ids %>
 
 <%= render "admin/rooms/header", back: admin_place_path(@place.slug), back_label: @place.name, title: "Lịch phòng" %>
 
