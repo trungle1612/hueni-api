@@ -12,7 +12,7 @@ class MiniApp::V1::RefundRequestsController < MiniApp::V1::BaseController
   def index
     @place = Current.user.accessible_places.find(params[:place_id])
     authorize!(:manage, @place)
-    requests = RefundRequest.pending.joins(booking: :room).where(rooms: { place_id: @place.id }).includes(:requested_by, booking: :room).order(:created_at)
+    requests = RefundRequest.pending_at(@place).includes(:requested_by, booking: :room)
     render json: { refund_requests: requests.map { request_json(it) } }
   end
 

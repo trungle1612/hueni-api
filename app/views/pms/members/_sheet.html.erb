@@ -1,0 +1,35 @@
+<%# One member's sheet: Vai trò and Quyền thêm, Khoá / Mở khoá, Tạo link liên kết mới, Xoá khỏi cơ sở; Rời cơ sở for yourself. -%>
+<%# locals: (membership:) -%>
+<% user = membership.user %>
+<% sheet = dom_id(membership, :sheet) %>
+<div id="<%= sheet %>" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="<%= sheet %>_t">
+  <div class="flex flex-col gap-3">
+    <div>
+      <h2 id="<%= sheet %>_t" class="text-base font-semibold"><%= user.name %></h2>
+      <p class="text-[13px] text-pms-text-2"><%= [ pms_role(membership.role), user.phone_number ].compact.join(" · ") %></p>
+    </div>
+    <% if user == Current.user %>
+      <div class="rounded-md bg-pms-info-bg text-pms-info px-3 py-2.5 text-[13px]">Đây là tài khoản của bạn. Chủ cơ sở có mọi quyền.</div>
+      <%= button_to "Rời cơ sở", pms_member_path(membership), method: :delete, class: "pms-btn w-full text-pms-danger border-pms-border", form_class: "w-full",
+            form: { data: { turbo_confirm: "Rời #{membership.place.name}? Bạn không vào được cơ sở này nữa." } } %>
+    <% else %>
+      <%= form_with model: membership, scope: :member, url: pms_member_path(membership), method: :patch, namespace: dom_id(membership), class: "group flex flex-col gap-3" do |form| %>
+        <%= render "roles", form:, membership: %>
+        <%= form.button "Lưu", class: "pms-btn pms-btn-primary w-full" %>
+      <% end %>
+      <% if membership.locked? %>
+        <%= button_to "Mở khoá tài khoản", unlock_pms_member_path(membership), class: "pms-btn w-full", form_class: "w-full" %>
+      <% elsif membership.staff? %>
+        <%= button_to "Khoá tài khoản", lock_pms_member_path(membership), class: "pms-btn pms-btn-danger w-full", form_class: "w-full",
+              form: { data: { turbo_confirm: "Khoá ngay: #{user.name} bị đăng xuất trên mọi thiết bị. Dữ liệu và nhật ký giữ nguyên." } } %>
+      <% end %>
+      <% if user.login_link_by?(Current.user) %>
+        <%= button_to "Tạo link liên kết mới", setup_link_pms_member_path(membership), class: "pms-btn w-full", form_class: "w-full",
+              form: { data: { turbo_confirm: "Link cũ và mọi lần đăng nhập của #{user.name} bị huỷ. Gửi link mới để #{user.name} liên kết Zalo lại." } } %>
+      <% end %>
+      <%= button_to "Xoá khỏi cơ sở", pms_member_path(membership), method: :delete, class: "pms-btn w-full text-pms-danger border-pms-border", form_class: "w-full",
+            form: { data: { turbo_confirm: "#{user.name} không vào được cơ sở này nữa. Nhật ký giữ nguyên." } } %>
+    <% end %>
+    <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="<%= sheet %>" popovertargetaction="hide">Đóng</button>
+  </div>
+</div>

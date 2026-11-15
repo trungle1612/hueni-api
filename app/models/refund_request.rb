@@ -12,6 +12,9 @@ class RefundRequest < ApplicationRecord
   enum :status, { pending: "pending", approved: "approved", rejected: "rejected" }, validate: true
   enum :payment_method, Payment::METHODS.keys.index_with(&:itself), validate: true
 
+  # Chờ duyệt for one homestay, oldest first.
+  scope :pending_at, ->(place) { pending.joins(booking: :room).where(rooms: { place_id: place.id }).order(:created_at) }
+
   vnd_price :amount
   validates :amount, presence: true, numericality: { greater_than: 0 }
   normalizes :note, with: ->(value) { value.squish.presence }

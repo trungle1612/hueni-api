@@ -2,6 +2,15 @@ module PmsHelper
   # "T4 21/10/2026", as in the design's top bar.
   def pms_day(date) = "#{%w[CN T2 T3 T4 T5 T6 T7][date.wday]} #{date.strftime("%d/%m/%Y")}"
 
+  # A member's role in the PWA's words (Thêm, Nhân viên).
+  def pms_role(role) = { "owner" => "Chủ cơ sở", "staff" => "Lễ tân" }[role]
+
+  # "hôm nay 15:02", "hôm qua 23:10", "21/10 15:02": when someone last did something (Nhân viên, Nhật ký).
+  def pms_when(time)
+    day = { Date.current => "hôm nay", Date.yesterday => "hôm qua" }.fetch(time.to_date) { time.strftime("%d/%m") }
+    "#{day} #{time.strftime("%H:%M")}"
+  end
+
   # "600.000đ", as in the design.
   def pms_money(amount) = "#{number_with_delimiter(amount, delimiter: ".")}đ"
 
