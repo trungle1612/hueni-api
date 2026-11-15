@@ -1,0 +1,12 @@
+<%# The toast after an action (flash[:toast]); Hoàn tác when undo (the booking, owners only) can still be undone. -%>
+<%# locals: (undo: nil) -%>
+<% if (toast = flash[:toast]) %>
+  <div class="pms-toast" role="status">
+    <span class="flex-1"><%= toast %></span>
+    <% step = flash[:undo]&.last %>
+    <% if undo && (step == "check_in" ? undo.can_undo_check_in? : undo.can_undo_check_out?) %>
+      <%= button_to "Hoàn tác", step == "check_in" ? pms_stay_undo_check_in_path(undo) : pms_stay_undo_check_out_path(undo),
+            class: "min-h-11 px-3 font-semibold text-[#ddb8ca] cursor-pointer" %>
+    <% end %>
+  </div>
+<% end %>

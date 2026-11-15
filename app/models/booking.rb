@@ -246,8 +246,10 @@ class Booking < ApplicationRecord
   end
 
   # The booking form's save (#139): cancelling with money paid refunds all of it as #refund when refund_method is
-  # given (owners only, the controller decides); without, it is kept.
+  # given (owners only, the controller decides); without, it is kept. A checked-out stay is history: refused (the
+  # iCal sync writes directly, so it still updates one).
   def update_and_refund(attributes, refund_method)
+    return refuse("Khách đã trả phòng, không sửa được đặt phòng.") if checked_out_at
     transaction do
       next false unless update_with_status(attributes)
       @refund = payments.create!(kind: "refund", amount: paid, payment_method: refund_method, note: "Hoàn cọc", user: Current.user) if refund_method && cancelled? && paid.positive?

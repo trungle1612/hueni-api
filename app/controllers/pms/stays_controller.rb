@@ -1,4 +1,4 @@
-# Nhận phòng / Trả phòng from Hôm nay (#229), Hoàn tác for owners. Same model calls as Admin::BookingsController;
+# Nhận phòng / Trả phòng from Hôm nay (#229) and Chi tiết đặt phòng (#231), Hoàn tác for owners. Same model calls as Admin::BookingsController;
 # the toast after it offers Hoàn tác (flash[:undo]).
 class Pms::StaysController < Pms::BaseController
   before_action :set_booking
@@ -31,6 +31,6 @@ class Pms::StaysController < Pms::BaseController
       else
         flash[:alert] = @booking.errors.full_messages.to_sentence
       end
-      redirect_to pms_today_path, status: :see_other
+      redirect_back_or_to pms_today_path, status: :see_other
     end
 end
