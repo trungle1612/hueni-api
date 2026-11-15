@@ -27,6 +27,34 @@ module PmsHelper
     end
   end
 
+  # Phòng's filter for a RoomDay (#233): co-khach / can-don / san-sang / bao-tri; nil for a room not taking guests.
+  def pms_room_filter(day)
+    case day.state
+    when :off then nil
+    when :occupied, :leaving then "co-khach"
+    when :maintenance then "bao-tri"
+    else day.room.dirty? ? "can-don" : "san-sang"
+    end
+  end
+
+  # A Phòng row: [tone, badge, title, line] as in the design.
+  def pms_room_row(day)
+    room, booking, upcoming = day.room, day.booking, day.next_booking
+    arrival = (booking if day.state == :arriving) || upcoming
+    expected = arrival && "#{arrival.label} đến #{arrival.start_date == Date.current ? "hôm nay" : arrival.start_date.strftime("%d/%m")}"
+    case pms_room_filter(day)
+    when "co-khach"
+      due = booking.due if booking.due&.positive?
+      leave = booking.end_date <= Date.current ? "Trả phòng hôm nay" : "Đến #{booking.end_date.strftime("%d/%m")}"
+      leave = "Quá hạn trả phòng" if booking.overdue?
+      [ :ok, "Có khách", booking.label, [ leave, ("còn thu #{pms_money(due)}" if due) ].compact.join(" · ") ]
+    when "bao-tri" then [ :maint, "Bảo trì", "Bảo trì", "#{room.maintenance_reason} · đến #{room.maintenance_until.strftime("%d/%m")}" ]
+    when "can-don" then [ :warn, "Cần dọn", "Cần dọn", expected || "Chưa có khách đặt" ]
+    when "san-sang" then [ :pos, "Sẵn sàng", "Trống", expected || "Chưa có khách đặt" ]
+    else [ :out, "Tạm ngưng", "Tạm ngưng", "Không nhận đặt phòng mới" ]
+    end
+  end
+
   # "22 – 25/10", or "30/10 – 03/11" across months.
   def pms_range(from, to)
     "#{from.strftime(from.month == to.month ? "%d" : "%d/%m")} – #{to.strftime("%d/%m")}"

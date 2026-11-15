@@ -1,0 +1,41 @@
+<%# A room's bottom sheet on Phòng: its booking, Tình trạng (staff too; the model refuses Bảo trì while a guest is in),
+    Đặt phòng, Sửa thông tin phòng (owners). -%>
+<%# locals: (day:, line:, manage:) -%>
+<% room = day.room %>
+<% sheet = dom_id(room, :sheet) %>
+<% booking = day.booking || day.next_booking %>
+<div id="<%= sheet %>" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="<%= sheet %>_t">
+  <div class="flex flex-col gap-3">
+    <div>
+      <h2 id="<%= sheet %>_t" class="text-base font-semibold">Phòng <%= room.name %><%= " · tầng #{room.floor}" if room.floor %></h2>
+      <p class="text-[13px] text-pms-text-2"><%= line %></p>
+    </div>
+    <% if booking %><%= link_to "Mở đặt phòng của #{booking.label}", pms_booking_path(booking), class: "pms-btn w-full" %><% end %>
+    <% if room.active? %>
+      <%= form_with model: room, url: status_pms_room_path(room), method: :patch, class: "group flex flex-col gap-3" do |form| %>
+        <fieldset>
+          <legend class="mb-1.5 text-[13px] font-semibold">Tình trạng</legend>
+          <div class="pms-panel divide-y divide-pms-border">
+            <% [ [ "clean", "Sẵn sàng đón khách" ], [ "dirty", "Cần dọn" ], [ "maintenance", "Bảo trì" ] ].each do |value, name| %>
+              <label class="flex items-center gap-2.5 min-h-11 px-3 cursor-pointer"><%= form.radio_button :housekeeping, value, class: "size-4.5 accent-pms-primary" %><%= name %></label>
+            <% end %>
+          </div>
+          <% if day.state.in?(%i[occupied leaving]) %><p class="mt-1.5 text-[13px] text-pms-text-2">Phòng đang có khách: bảo trì được sau khi trả phòng.</p><% end %>
+        </fieldset>
+        <div class="hidden group-has-[input[value=maintenance]:checked]:flex flex-col gap-3">
+          <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Lý do bảo trì
+            <%= form.text_field :maintenance_reason, maxlength: 200, placeholder: "Ví dụ: hỏng máy lạnh", class: "pms-input font-normal" %>
+          </label>
+          <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Dự kiến xong
+            <%= form.date_field :maintenance_until, value: room.maintenance_until || Date.current, min: Date.current, class: "pms-input font-normal" %>
+          </label>
+          <p class="-mt-1.5 text-[13px] text-pms-text-2">Phòng sẽ bị khoá trên lịch đến ngày này.</p>
+        </div>
+        <%= form.button "Lưu tình trạng", class: "pms-btn pms-btn-primary w-full" %>
+      <% end %>
+      <% unless booking %><%= link_to "Đặt phòng #{room.name}", new_pms_booking_path(room_id: room.id), class: "pms-btn w-full" %><% end %>
+    <% end %>
+    <% if manage %><%= link_to "Sửa thông tin phòng #{room.name}", edit_pms_room_path(room), class: "pms-btn w-full border-pms-border" %><% end %>
+    <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="<%= sheet %>" popovertargetaction="hide">Đóng</button>
+  </div>
+</div>

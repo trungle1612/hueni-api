@@ -108,6 +108,7 @@
   .pms-badge-ok { background: var(--color-pms-info-bg); color: var(--color-pms-info); }
   .pms-badge-warn { background: var(--color-pms-warn-bg); color: var(--color-pms-warn); }
   .pms-badge-out, .pms-badge-maint { background: var(--color-pms-muted); color: var(--color-pms-text-2); }
+  .pms-badge-pos { background: var(--color-pms-pos-bg); color: var(--color-pms-pos); }
   .pms-badge-danger { background: var(--color-pms-danger-bg); color: var(--color-pms-danger); }
   .pms-app :focus-visible { outline: 2px solid var(--color-pms-primary); outline-offset: 2px; }
   .pms-app .turbo-progress-bar { background: var(--color-pms-primary); }

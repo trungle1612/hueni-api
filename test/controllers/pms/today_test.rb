@@ -17,7 +17,7 @@ class Pms::TodayTest < ActionDispatch::IntegrationTest
     assert_select "header", text: /T6 02\/10\/2026 · tomo homestay/
     assert_select "header a[href='#{admin_search_path}'][aria-label='Tìm đặt phòng']"
     assert_select "header a[href='#{new_pms_booking_path}']", "+ Đặt phòng"
-    assert_select "#stats a[href='#{admin_place_path("tomo-homestay")}']", text: /1\s*Cần dọn/
+    assert_select "#stats a[href=?]", pms_rooms_path(loc: "can-don"), text: /1\s*Cần dọn/
     assert_select "#issues a.pms-notice", text: /Khách đến, phòng chưa dọn · Anh Minh · Phòng Limdim\s*Xem/
     assert_select "#nhan-phong", text: /Nhận phòng · 1 chờ \/ 1/
     assert_select "#tra-phong", text: /Trả phòng · 1 chờ \/ 1/

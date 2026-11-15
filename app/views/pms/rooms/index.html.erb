@@ -1,0 +1,65 @@
+<% content_for :title, "Phòng · hueni" %>
+<% manage = current_place && allowed_to?(:manage, current_place) %>
+<% rooms = current_place&.rooms.to_a %>
+<% floors = rooms.filter_map(&:floor).uniq.size if current_place %>
+<% content_for :bar, render("pms/bar", title: "Phòng", border: !current_place,
+      sub: ([ "#{rooms.size} phòng", ("#{floors} tầng" if floors.positive?), current_place.name ].compact.join(" · ") if current_place),
+      actions: (link_to("+ Thêm phòng", new_pms_room_path, class: "pms-btn px-3") if manage)) %>
+
+<% if current_place %>
+  <div class="sticky top-14 z-10 bg-pms-surface border-b border-pms-border">
+    <%= form_with url: pms_rooms_path, method: :get, class: "px-4 pb-2" do |form| %>
+      <%= form.hidden_field :loc, value: @filter %>
+      <%= form.search_field :q, value: @query, placeholder: "Tìm số phòng hoặc tên khách", "aria-label": "Tìm phòng", class: "pms-input" %>
+    <% end %>
+    <nav class="flex overflow-x-auto px-2" aria-label="Lọc theo tình trạng">
+      <% [ [ nil, "Tất cả", @all ], *Pms::RoomsController::FILTERS.map { |key, name| [ key, name, @counts[key] ] } ].each do |key, name, count| %>
+        <%= link_to pms_rooms_path(loc: key, q: @query.presence), "aria-current": ("page" if @filter == key),
+              class: "flex-none flex items-center gap-1 min-h-11 px-2.5 border-b-2 no-underline whitespace-nowrap #{@filter == key ? "border-pms-primary font-semibold" : "border-transparent text-pms-text-2 font-medium"}" do %>
+          <%= name %><small class="text-xs text-pms-text-2"><%= count %></small>
+        <% end %>
+      <% end %>
+    </nav>
+  </div>
+
+  <% @days.group_by { it.room.floor }.each do |floor, days| %>
+    <section class="px-4 pt-4">
+      <h2 class="pms-sec-h"><%= floor ? "Tầng #{floor}" : "Chưa ghi tầng" %> · <%= days.size %> phòng</h2>
+      <div class="pms-panel divide-y divide-pms-border">
+        <% days.each do |day| %>
+          <% room = day.room %>
+          <% tone, badge, title, line = pms_room_row(day) %>
+          <% dirty = pms_room_filter(day) == "can-don" %>
+          <div id="<%= dom_id(room) %>" class="flex items-center gap-2 min-h-14 py-1.5 pr-3">
+            <button type="button" popovertarget="<%= dom_id(room, :sheet) %>" aria-label="Phòng <%= room.name %>, <%= badge %>, <%= line %>"
+                    class="flex-1 min-w-0 flex items-center gap-3 min-h-11 pl-3 text-left cursor-pointer">
+              <span class="flex-none min-w-9 max-w-24 text-[15px] font-semibold truncate"><%= room.name %></span>
+              <span class="flex-1 min-w-0">
+                <span class="block font-semibold truncate <%= { "can-don" => "text-pms-warn", "san-sang" => "text-pms-text-2 font-medium", "bao-tri" => "text-pms-text-2 font-medium" }[pms_room_filter(day)] %>"><%= title %></span>
+                <span class="block text-[13px] text-pms-text-2 truncate"><%= line %></span>
+              </span>
+              <% unless dirty %><span class="pms-badge pms-badge-<%= tone %>"><%= badge %></span><% end %>
+            </button>
+            <% if dirty %>
+              <%= button_to "Đã dọn", status_pms_room_path(room), method: :patch, params: { room: { housekeeping: "clean" } },
+                    class: "pms-btn px-3", "aria-label": "Đánh dấu phòng #{room.name} đã dọn xong" %>
+            <% end %>
+          </div>
+          <%= render "sheet", day:, line: "#{badge} · #{line}", manage: %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <% if @days.empty? %>
+    <div class="px-4 py-8 flex flex-col items-center gap-3 text-center text-pms-text-2">
+      <% what = @filter ? "phòng #{Pms::RoomsController::FILTERS[@filter].downcase}" : "phòng" %>
+      <p><%= @query.present? ? "Không có #{what} khớp “#{@query}”." : rooms.empty? ? "Chưa có phòng nào." : "Không có #{what} lúc này." %></p>
+      <% if @query.present? %><%= link_to "Xoá tìm kiếm", pms_rooms_path(loc: @filter), class: "pms-btn" %><% end %>
+    </div>
+  <% end %>
+  <p class="px-4 pt-3 pb-6 text-[13px] text-pms-text-2">Chạm vào một phòng để đổi tình trạng hoặc mở đặt phòng.</p>
+  <%= render "pms/toast" %>
+<% else %>
+  <%= render "pms/no_place" %>
+<% end %>
