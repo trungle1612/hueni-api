@@ -13,6 +13,16 @@ module PmsHelper
     tag.p model.errors.full_messages_for(attribute).to_sentence, id: "#{attribute}_error", class: "text-[13px] font-semibold text-pms-danger"
   end
 
+  # A VND text field: shows 500.000 and formats as you type (money_controller.js); after an error, what was typed.
+  # value: overrides the model's (e.g. Thu tiền prefilled with what is due); data: action is added after money#format.
+  def pms_money_field(form, attribute, value: :model, data: {}, aria: {}, **options)
+    model = form.object
+    value = model.errors.include?(attribute) ? model.public_send(:"#{attribute}_before_type_cast") : model.public_send(attribute) if value == :model
+    value = number_with_delimiter(value, delimiter: ".") if value.is_a?(Integer)
+    form.text_field attribute, value:, inputmode: "numeric", autocomplete: "off", class: pms_input_class(model, attribute), aria: field_aria(model, attribute).compact.merge(aria),
+      data: { **data, controller: "money", action: [ "input->money#format", data[:action] ].compact.join(" ") }, **options
+  end
+
   # "T4 21/10", as in Chi tiết đặt phòng.
   def pms_short_day(date) = "#{%w[CN T2 T3 T4 T5 T6 T7][date.wday]} #{date.strftime("%d/%m")}"
 

@@ -27,12 +27,15 @@ class PmsRoomsTest < ApplicationSystemTestCase
     fill_in "Số phòng", with: "103"
     select "Phòng gia đình", from: "Loại phòng"
     fill_in "Số khách tối đa", with: 4
-    fill_in "Giá mỗi đêm (đ)", with: "450.000"
+    fill_in "Giá mỗi đêm (đ)", with: "450000"
+    assert_field "Giá mỗi đêm (đ)", with: "450.000"
+    fill_in "Thứ 6, thứ 7 (đ)", with: "500k"
+    assert_field "Thứ 6, thứ 7 (đ)", with: "500k"
     check "Máy lạnh", allow_label_click: true
     click_button "Thêm phòng"
 
     assert_selector ".pms-toast", text: "Đã thêm phòng 103"
     room = places(:tomo).rooms.find_by!(name: "103")
-    assert_equal [ "family", 4, 450_000, [ "ac" ] ], room.values_at(:room_type, :max_guests, :price, :amenities)
+    assert_equal [ "family", 4, 450_000, 500_000, [ "ac" ] ], room.values_at(:room_type, :max_guests, :price, :weekend_price, :amenities)
   end
 end

@@ -60,17 +60,13 @@
           <% if manage %>
             <div class="flex flex-col gap-1.5 min-w-0">
               <%= form.label :price, "Giá mỗi đêm (đ)", class: "text-[13px] font-semibold" %>
-              <%= form.text_field :price, inputmode: "numeric", placeholder: "Giá phòng", class: pms_input_class(b, :price), aria: field_aria(b, :price),
-                    value: b.errors.include?(:price) ? b.price_before_type_cast : b.price&.then { number_with_delimiter(it, delimiter: ".") },
-                    data: { action: "input->pms-booking#refresh" } %>
+              <%= pms_money_field form, :price, placeholder: "Giá phòng", data: { action: "input->pms-booking#refresh" } %>
               <%= pms_field_error(b, :price) %>
             </div>
           <% end %>
           <div class="flex flex-col gap-1.5 min-w-0 <%= "col-span-2" unless manage %>">
             <%= form.label :deposit, class: "text-[13px] font-semibold" do %>Đã cọc (đ) <span class="font-normal text-pms-text-2">· nếu có</span><% end %>
-            <%= form.text_field :deposit, inputmode: "numeric", placeholder: "0", class: pms_input_class(b, :deposit), aria: field_aria(b, :deposit),
-                  value: b.errors.include?(:deposit) ? b.deposit_before_type_cast : b.deposit&.then { number_with_delimiter(it, delimiter: ".") },
-                  data: { action: "input->pms-booking#refresh" } %>
+            <%= pms_money_field form, :deposit, placeholder: "0", data: { action: "input->pms-booking#refresh" } %>
             <%= form.select :deposit_method, Payment::METHODS.invert, {}, class: "pms-input", aria: { label: "Hình thức cọc" } %>
           </div>
         </div>

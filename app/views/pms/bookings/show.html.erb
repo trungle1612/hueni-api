@@ -169,8 +169,7 @@
     <%= form_with model: Payment.new, url: pms_booking_payments_path(b), class: "group flex flex-col gap-3" do |form| %>
       <h2 id="pay_t" class="text-base font-semibold">Ghi nhận thanh toán</h2>
       <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Số tiền (đ)
-        <%= form.text_field :amount, inputmode: "numeric", required: true, value: (number_with_delimiter(b.due, delimiter: ".") if b.due&.positive?),
-              class: "pms-input", aria: { describedby: "amount_hint" } %>
+        <%= pms_money_field form, :amount, value: (b.due if b.due&.positive?), required: true, aria: { describedby: "amount_hint" } %>
       </label>
       <p id="amount_hint" class="-mt-1.5 text-[13px] text-pms-text-2"><%= b.due ? "Còn phải thu #{pms_money(b.due)}. Có thể thu một phần." : "Ví dụ 300.000 hoặc 300k." %></p>
       <fieldset class="flex flex-col gap-1.5">

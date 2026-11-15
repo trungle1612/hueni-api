@@ -51,8 +51,7 @@
         <% [ [ :price, "Giá mỗi đêm (đ)", "450.000", nil ], [ :weekend_price, "Thứ 6, thứ 7 (đ)", "Như ngày thường", " · nếu khác" ] ].each do |attr, name, placeholder, opt| %>
           <div class="flex flex-col gap-1.5 min-w-0">
             <%= form.label attr, class: "text-[13px] font-semibold" do %><%= name %><% if opt %><span class="font-normal text-pms-text-2"><%= opt %></span><% end %><% end %>
-            <%= form.text_field attr, inputmode: "numeric", placeholder:, class: pms_input_class(room, attr), aria: field_aria(room, attr),
-                  value: room.errors.include?(attr) ? room.public_send(:"#{attr}_before_type_cast") : room.public_send(attr)&.then { number_with_delimiter(it, delimiter: ".") } %>
+            <%= pms_money_field form, attr, placeholder: %>
             <%= pms_field_error(room, attr) %>
           </div>
         <% end %>

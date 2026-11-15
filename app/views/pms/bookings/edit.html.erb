@@ -63,8 +63,7 @@
         <div class="grid grid-cols-2 gap-3">
           <% [ [ :price, "Giá mỗi đêm (đ)", "Giá phòng" ], [ :weekend_price, "Thứ 6, thứ 7 (đ)", "Như thường" ] ].each do |attr, name, placeholder| %>
             <label class="flex flex-col gap-1.5 min-w-0 text-[13px] font-semibold"><%= name %>
-              <%= form.text_field attr, inputmode: "numeric", placeholder:, class: pms_input_class(b, attr), aria: field_aria(b, attr),
-                    value: b.errors.include?(attr) ? b.public_send(:"#{attr}_before_type_cast") : b.public_send(attr)&.then { number_with_delimiter(it, delimiter: ".") } %>
+              <%= pms_money_field form, attr, placeholder: %>
               <%= pms_field_error(b, attr) %>
             </label>
           <% end %>
