@@ -1,0 +1,122 @@
+<% content_for :title, "Thông báo · hueni" %>
+<% icon = ->(paths, size = 20) { tag.svg(paths.html_safe, width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": true) } %>
+<% unread = @items&.count(&:unread).to_i %>
+<% content_for :bar do %>
+  <header class="sticky top-0 z-10 flex items-center gap-1 min-h-14 pl-1 pr-2 bg-pms-surface border-b border-pms-border">
+    <%= link_to pms_today_path, class: "flex-none flex items-center justify-center size-11 rounded-md", "aria-label": "Quay lại" do %><%= icon.('<path d="M15 5l-7 7 7 7"/>') %><% end %>
+    <div class="flex-1 min-w-0 flex flex-col">
+      <h1 class="text-[17px] leading-tight font-semibold">Thông báo</h1>
+      <% if current_place %><span class="text-xs text-pms-text-2 truncate"><%= unread.positive? ? "#{unread} chưa đọc" : "Đã đọc hết" %> · <%= current_place.name %></span><% end %>
+    </div>
+    <% if current_place %>
+      <button type="button" popovertarget="settings_sheet" class="flex-none flex items-center justify-center size-11 rounded-md cursor-pointer" aria-label="Cài đặt thông báo">
+        <%= icon.('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>') %>
+      </button>
+    <% end %>
+  </header>
+<% end %>
+
+<% if current_place %>
+  <% action = @items.count { it.unread && it.urgent } %>
+  <% shown = @items.select { @filter.nil? || it.unread && (@filter == "chua-doc" || it.urgent) } %>
+  <nav class="flex items-center gap-1 px-3 bg-pms-surface border-b border-pms-border overflow-x-auto" aria-label="Lọc thông báo">
+    <% [ [ nil, "Tất cả" ], [ "chua-doc", "Chưa đọc#{" · #{unread}" if unread.positive?}" ], [ "can-xu-ly", "Cần xử lý#{" · #{action}" if action.positive?}" ] ].each do |key, label| %>
+      <%= link_to label, pms_notifications_path(loc: key), "aria-current": ("page" if @filter == key),
+            class: "flex-none flex items-center min-h-11 px-2.5 border-b-2 no-underline whitespace-nowrap #{@filter == key ? "border-pms-primary text-pms-primary font-semibold" : "border-transparent text-pms-text-2"}" %>
+    <% end %>
+    <%= button_to "Đọc hết", pms_read_all_notifications_path(loc: @filter), disabled: unread.zero?, form_class: "ml-auto flex-none",
+          class: "min-h-11 px-2 font-semibold text-pms-primary cursor-pointer disabled:text-pms-text-2 disabled:font-medium disabled:cursor-default" %>
+  </nav>
+
+  <% if shown.empty? %>
+    <div class="px-6 py-10 text-center text-pms-text-2">
+      <% title, text = { nil => [ "Chưa có thông báo", "Thông báo mới sẽ hiện ở đây." ], "chua-doc" => [ "Không có thông báo chưa đọc", "Thông báo mới sẽ hiện ở đây." ],
+                         "can-xu-ly" => [ "Không có việc cần xử lý", "Trùng phòng, lỗi kênh và yêu cầu chờ duyệt sẽ hiện ở đây." ] }[@filter] %>
+      <b class="block mb-1 text-[15px] text-pms-text"><%= title %></b><%= text %>
+    </div>
+  <% else %>
+    <% icons = {
+      "book" => '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>',
+      "money" => '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
+      "alert" => '<path d="M12 3l10 18H2z"/><path d="M12 10v4M12 18h0"/>',
+      "room" => '<path d="M3 18V7M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/>',
+      "team" => '<circle cx="9" cy="8" r="3.5"/><path d="M2 21a7 7 0 0 1 14 0M16 4a3.5 3.5 0 0 1 0 7M22 21a7 7 0 0 0-4-6.3"/>',
+      "news" => '<path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>'
+    } %>
+    <% tones = { "warn" => "bg-pms-warn-bg text-pms-warn", "err" => "bg-pms-danger-bg text-pms-danger", "pos" => "bg-pms-pos-bg text-pms-pos", "info" => "bg-pms-info-bg text-pms-info" } %>
+    <% shown.group_by { { Date.current => "Hôm nay", Date.yesterday => "Hôm qua" }.fetch(it.at.to_date, "Trước đó") }.each do |group, items| %>
+      <section aria-label="<%= group %>">
+        <h2 class="px-4 pt-4 pb-2 text-[13px] font-semibold text-pms-text-2"><%= group %></h2>
+        <div class="mx-4 pms-panel divide-y divide-pms-border">
+          <% items.each do |item| %>
+            <%= link_to pms_open_notification_path(item.key), id: "notification_#{item.key}", class: "flex items-start gap-3 p-3 no-underline #{"bg-[#fbf7fa]" if item.unread}",
+                  "aria-label": [ ("Chưa đọc." if item.unread), "#{item.title}.", item.body ].compact.join(" ") do %>
+              <span class="flex-none flex items-center justify-center size-8 rounded-md <%= tones.fetch(item.tone, "bg-pms-muted text-pms-text-2") %>"><%= icon.(icons.fetch(item.icon), 18) %></span>
+              <span class="flex-1 min-w-0">
+                <span class="block <%= item.unread ? "font-semibold" : "font-medium" %>"><%= item.title %></span>
+                <% if item.body %><span class="block mt-0.5 text-[13px] text-pms-text-2"><%= item.body %></span><% end %>
+                <span class="block mt-1 text-xs text-pms-text-2"><%= group == "Trước đó" ? pms_short_day(item.at.to_date) : item.at.strftime("%H:%M") %> · <%= item.source %></span>
+              </span>
+              <span class="flex-none size-2 mt-1.5 rounded-full <%= item.unread ? "bg-pms-primary" : "bg-transparent" %>" aria-hidden="true"></span>
+            <% end %>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+    <p class="px-4 pt-4 text-[13px] text-pms-text-2">Thông báo được giữ <%= Notification::DAYS %> ngày.</p>
+  <% end %>
+
+  <% if (toast = flash[:toast]) %>
+    <div class="pms-toast" role="status">
+      <span class="flex-1"><%= toast %></span>
+      <% if flash[:read_at] %>
+        <%= button_to "Hoàn tác", pms_undo_read_notifications_path, params: { at: flash[:read_at], loc: @filter }, class: "min-h-11 px-3 font-semibold text-[#ddb8ca] cursor-pointer" %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if (a = @announcement&.announcement) %>
+    <div id="announcement_sheet" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="announcement_t" data-controller="open">
+      <div class="flex flex-col gap-3">
+        <p class="text-xs font-semibold tracking-wide text-pms-text-2"><%= a[:kicker] %></p>
+        <h2 id="announcement_t" class="text-base font-semibold"><%= a[:title] %></h2>
+        <% if a[:intro] %><p><%= a[:intro] %></p><% end %>
+        <% a[:blocks].each do |block| %>
+          <div>
+            <% if block[:h] %><h3 class="mb-1.5 font-semibold"><%= block[:h] %></h3><% end %>
+            <%= content_tag block[:ordered] ? :ol : :ul, class: "pl-5 leading-relaxed #{block[:ordered] ? "list-decimal" : "list-disc"}" do %>
+              <% block[:items].each do |text| %><li><%= text %></li><% end %>
+            <% end %>
+          </div>
+        <% end %>
+        <% if a[:note] %><p class="rounded-md border border-pms-info-line bg-pms-info-bg px-3 py-2.5 text-[13px] font-medium text-pms-info"><%= a[:note] %></p><% end %>
+        <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="announcement_sheet" popovertargetaction="hide"><%= a[:kind] == "maintenance" ? "Đã hiểu" : "Để sau" %></button>
+      </div>
+    </div>
+  <% end %>
+
+  <% user = Current.user %>
+  <div id="settings_sheet" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="settings_t" <%= "data-controller=open" if params[:"cai-dat"] %>>
+    <div class="flex flex-col gap-3">
+      <h2 id="settings_t" class="text-base font-semibold">Cài đặt thông báo</h2>
+      <p class="text-[13px] text-pms-text-2">Áp dụng cho tài khoản của bạn. Bạn chỉ nhận loại thông báo mà vai trò của mình được xem.</p>
+      <%= form_with url: pms_notification_settings_path(loc: @filter), method: :patch, data: { controller: "autosubmit", action: "change->autosubmit#submit" }, class: "flex flex-col gap-3" do %>
+        <%= hidden_field_tag "on[]", "", id: nil %>
+        <div class="pms-panel divide-y divide-pms-border">
+          <% [ [ "book", "Đặt phòng mới và huỷ", "Từ mọi kênh" ], [ "money", "Tiền", "Thu tiền, giao ca lệch tiền" ],
+               [ "reg", "Khai báo lưu trú", "Nhắc lúc 08:00 và 21:00 nếu còn khách chưa gửi" ], [ "room", "Buồng phòng", "Phòng dọn xong, sự cố" ],
+               [ "approve", "Yêu cầu chờ duyệt", "Hoàn tiền" ], [ "news", "Tính năng mới và bảo trì", "Bảo trì luôn báo trước ít nhất 2 ngày" ],
+               [ "channel", "Trùng phòng và lỗi kênh", "Luôn bật vì có thể gây mất khách" ] ].each do |type, label, sub| %>
+            <label class="flex items-center gap-3 min-h-14 px-3 py-1.5 <%= "cursor-pointer" unless type == "channel" %>">
+              <span class="flex-1 min-w-0"><span class="block"><%= label %></span><span class="block text-[13px] text-pms-text-2"><%= sub %></span></span>
+              <%= check_box_tag "on[]", type, type == "channel" || !type.in?(user.notifications_off), id: "on_#{type}", disabled: type == "channel", role: "switch", class: "pms-switch" %>
+            </label>
+          <% end %>
+        </div>
+      <% end %>
+      <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="settings_sheet" popovertargetaction="hide">Xong</button>
+    </div>
+  </div>
+<% else %>
+  <%= render "pms/no_place" %>
+<% end %>
