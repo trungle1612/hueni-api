@@ -84,6 +84,18 @@
     box-shadow: 0 -4px 16px rgba(0, 0, 0, .12); font: 14px/1.45 var(--font-pms);
   }
   .pms-sheet::backdrop { background: rgba(26, 31, 28, .45); }
+  /* On/off switch (Thông báo): a checkbox, or a button with role=switch + aria-checked. */
+  .pms-switch {
+    appearance: none; flex: none; position: relative; width: 44px; height: 26px; margin: 9px 0; padding: 0; border-radius: 13px; cursor: pointer;
+    border: 1px solid var(--color-pms-border-strong); background: var(--color-pms-muted);
+  }
+  .pms-switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; border: 1px solid var(--color-pms-border-strong);
+  }
+  .pms-switch:checked, .pms-switch[aria-checked="true"] { background: var(--color-pms-primary); border-color: var(--color-pms-primary); }
+  .pms-switch:checked::after, .pms-switch[aria-checked="true"]::after { left: 20px; border-color: var(--color-pms-primary); }
+  .pms-switch:disabled { opacity: .45; cursor: default; }
   /* Gone after 6 s, as in the design; CSS only. */
   .pms-toast {
     position: fixed; left: 12px; right: 12px; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 30; max-width: 34rem; margin: 0 auto;

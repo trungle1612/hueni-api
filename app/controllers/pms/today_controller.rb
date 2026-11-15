@@ -5,6 +5,7 @@ class Pms::TodayController < Pms::BaseController
     @tomorrow = params[:day] == "mai"
     @today = Today.new(current_place.rooms, tomorrow: @tomorrow)
     @open_rooms = current_place.rooms.where(active: true).count
+    @unread = Notification.for(Current.user, current_place).count(&:unread)
     # Hoàn tác in the toast after Nhận / Trả phòng: owners only, like the action.
     @undo = Booking.where(room: current_place.rooms).find_by(id: flash[:undo]&.first) if allowed_to?(:manage, current_place)
   end

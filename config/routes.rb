@@ -39,6 +39,11 @@ Rails.application.routes.draw do
       post :setup_link, on: :member, path: "link-moi"
     end
     get "nhat-ky", to: "activities#show", as: :activity
+    get "thong-bao", to: "notifications#show", as: :notifications
+    post "thong-bao/doc-het", to: "notifications#read_all", as: :read_all_notifications
+    post "thong-bao/hoan-tac", to: "notifications#undo_read", as: :undo_read_notifications
+    patch "thong-bao/cai-dat", to: "notifications#settings", as: :notification_settings
+    get "thong-bao/:key", to: "notifications#open", as: :open_notification, constraints: { key: /[\w-]{1,40}/ }
     get "kenh", to: "channels#show", as: :channels
     post "kenh/dong-bo", to: "channels#sync", as: :channels_sync
     patch "kenh/hoa-hong", to: "channels#commissions", as: :channels_commissions
