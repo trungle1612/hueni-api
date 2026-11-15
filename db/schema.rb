@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_08_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_15_090000) do
   create_table "announcements", force: :cascade do |t|
     t.string "kind", default: "feature", null: false
     t.string "title", null: false
@@ -257,6 +257,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_150000) do
     t.check_constraint "cancel_policy IN ('flex', 'mid', 'strict')", name: "places_cancel_policy"
   end
 
+  create_table "push_subscriptions", force: :cascade do |t|
+    t.integer "session_id", null: false
+    t.string "endpoint", null: false
+    t.string "p256dh", null: false
+    t.string "auth", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["endpoint"], name: "index_push_subscriptions_on_endpoint", unique: true
+    t.index ["session_id"], name: "index_push_subscriptions_on_session_id"
+  end
+
   create_table "refund_requests", force: :cascade do |t|
     t.integer "booking_id", null: false
     t.integer "requested_by_id"
@@ -416,6 +427,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_150000) do
     t.datetime "terms_accepted_at"
     t.datetime "deleted_at"
     t.json "notifications_off", default: ["room"], null: false
+    t.boolean "quiet_hours", default: true, null: false
     t.index ["phone_number"], name: "index_users_on_phone_number", unique: true
     t.index ["zalo_id"], name: "index_users_on_zalo_id", unique: true
     t.check_constraint "role IN ('admin', 'user')", name: "users_role_values"
@@ -457,6 +469,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_150000) do
   add_foreign_key "payments", "users"
   add_foreign_key "place_memberships", "places"
   add_foreign_key "place_memberships", "users"
+  add_foreign_key "push_subscriptions", "sessions", on_delete: :cascade
   add_foreign_key "refund_requests", "bookings"
   add_foreign_key "refund_requests", "payments", on_delete: :nullify
   add_foreign_key "refund_requests", "users", column: "decided_by_id"

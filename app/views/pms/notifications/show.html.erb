@@ -99,6 +99,18 @@
   <div id="settings_sheet" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="settings_t" <%= "data-controller=open" if params[:"cai-dat"] %>>
     <div class="flex flex-col gap-3">
       <h2 id="settings_t" class="text-base font-semibold">Cài đặt thông báo</h2>
+      <% if WebPush.enabled? %>
+        <div class="pms-panel">
+          <div class="flex items-center gap-3 min-h-14 px-3 py-1.5">
+            <span class="flex-1 min-w-0">
+              <span class="block">Thông báo trên điện thoại này</span>
+              <span class="block text-[13px] text-pms-text-2" data-push-target="status">Đang kiểm tra…</span>
+            </span>
+            <button type="button" role="switch" aria-checked="false" aria-label="Thông báo trên điện thoại này" class="pms-switch" disabled
+                    data-push-target="toggle" data-action="push#toggle"></button>
+          </div>
+        </div>
+      <% end %>
       <p class="text-[13px] text-pms-text-2">Áp dụng cho tài khoản của bạn. Bạn chỉ nhận loại thông báo mà vai trò của mình được xem.</p>
       <%= form_with url: pms_notification_settings_path(loc: @filter), method: :patch, data: { controller: "autosubmit", action: "change->autosubmit#submit" }, class: "flex flex-col gap-3" do %>
         <%= hidden_field_tag "on[]", "", id: nil %>
@@ -112,6 +124,13 @@
               <%= check_box_tag "on[]", type, type == "channel" || !type.in?(user.notifications_off), id: "on_#{type}", disabled: type == "channel", role: "switch", class: "pms-switch" %>
             </label>
           <% end %>
+        </div>
+        <div class="pms-panel">
+          <label class="flex items-center gap-3 min-h-14 px-3 py-1.5 cursor-pointer">
+            <span class="flex-1 min-w-0"><span class="block">Giờ yên lặng 22:00 – 06:00</span><span class="block text-[13px] text-pms-text-2">Không rung, không chuông. Trùng phòng và lỗi kênh vẫn báo.</span></span>
+            <%= hidden_field_tag :quiet, "0", id: nil %>
+            <%= check_box_tag :quiet, "1", user.quiet_hours, role: "switch", class: "pms-switch" %>
+          </label>
         </div>
       <% end %>
       <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="settings_sheet" popovertargetaction="hide">Xong</button>

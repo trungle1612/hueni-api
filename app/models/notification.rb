@@ -10,6 +10,9 @@ class Notification < ApplicationRecord
   OPTIONAL = (TYPES - %w[channel]).freeze
   # Khai báo lưu trú reminders, while guests are undeclared.
   REMINDER_HOURS = [ 8, 21 ].freeze
+  # Giờ yên lặng 22:00 – 06:00 (users.quiet_hours).
+  QUIET_FROM = 22
+  QUIET_UNTIL = 6
 
   # type: the setting it belongs to; icon: book | money | alert | room | team | news; tone: "" | err | warn | pos | info;
   # link: the Mini App screen to open ({ screen:, id: }), nil for none.
@@ -70,6 +73,30 @@ class Notification < ApplicationRecord
 
   def self.dates(booking) = [ booking.start_date, booking.end_date ].map { it.strftime("%d/%m") }.join("–")
 
+  def key = "n#{id}"
+  def type = KINDS.fetch(kind).first
+
+  def link
+    screen = KINDS.fetch(kind)[4]
+    screen && { screen:, id: (booking_id if screen == "booking") }
+  end
+
+  # Web Push (#237): the members who see this in their inbox (saved below, their settings): not who did it, money and
+  # approvals for owners only, a locked membership counts as none.
+  def recipients
+    memberships = place.place_memberships.unlocked
+    memberships = memberships.where(role: "owner") if kind.in?(OWNER_ONLY)
+    User.where(id: memberships.select(:user_id)).where.not(id: actor_id).reject { type.in?(it.notifications_off & OPTIONAL) }
+  end
+
+  # What the phone shows: the inbox's own words (no more guest data), tapped → opens it like a tap in Thông báo.
+  # Giờ yên lặng: no sound or vibration from 22:00 to 06:00, except Trùng phòng và lỗi kênh.
+  def push_payload(user)
+    quiet = user.quiet_hours && !Time.current.hour.in?(QUIET_UNTIL...QUIET_FROM) && type != "channel"
+    { title: "#{title} · #{place.name}", body:, tag: key, silent: quiet,
+      url: Rails.application.routes.url_helpers.pms_open_notification_path(key, co_so: place.slug) }
+  end
+
   def self.prune = where(created_at: ...(DAYS + 1).days.ago).delete_all
 
   def self.for(user, place)
@@ -87,9 +114,9 @@ class Notification < ApplicationRecord
     rows = where(place:, kind: kinds, created_at: DAYS.days.ago..).where("actor_id IS NULL OR actor_id <> ?", user.id).to_a
     pending = RefundRequest.pending.where(id: rows.filter_map(&:refund_request_id)).ids.to_set
     rows.map do |row|
-      type, icon, tone, _, screen = KINDS.fetch(row.kind)
-      Item.new(key: "n#{row.id}", type:, icon:, tone:, title: row.title, body: row.body, source: row.source, at: row.created_at,
-        urgent: pending.include?(row.refund_request_id), link: screen && { screen:, id: (row.booking_id if screen == "booking") })
+      type, icon, tone = KINDS.fetch(row.kind)
+      Item.new(key: row.key, type:, icon:, tone:, title: row.title, body: row.body, source: row.source, at: row.created_at,
+        urgent: pending.include?(row.refund_request_id), link: row.link)
     end
   end
 

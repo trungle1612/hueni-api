@@ -22,7 +22,9 @@
     <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("/service-worker.js")</script>
   </head>
 
-  <body class="bg-pms-bg text-pms-text font-pms text-sm leading-[1.45] tabular-nums">
+  <%# Web Push (#237): keeps this phone's subscription with the signed-in login; the switch is in Thông báo. %>
+  <%= tag.body class: "bg-pms-bg text-pms-text font-pms text-sm leading-[1.45] tabular-nums",
+        data: ({ controller: "push", push_key_value: WebPush.public_key, push_url_value: pms_push_subscription_path } if authenticated? && WebPush.enabled?) do %>
     <div class="mx-auto w-full max-w-xl min-h-dvh flex flex-col">
       <%= yield :bar %>
       <% flash.to_hash.slice("notice", "alert").each do |type, message| %>
@@ -36,5 +38,5 @@
         <%= render "pms/nav" %>
       <% end %>
     </div>
-  </body>
+  <% end %>
 </html>

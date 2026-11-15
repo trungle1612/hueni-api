@@ -43,6 +43,8 @@ Rails.application.routes.draw do
     post "thong-bao/doc-het", to: "notifications#read_all", as: :read_all_notifications
     post "thong-bao/hoan-tac", to: "notifications#undo_read", as: :undo_read_notifications
     patch "thong-bao/cai-dat", to: "notifications#settings", as: :notification_settings
+    post "thong-bao/thiet-bi", to: "push_subscriptions#create", as: :push_subscription
+    delete "thong-bao/thiet-bi", to: "push_subscriptions#destroy"
     get "thong-bao/:key", to: "notifications#open", as: :open_notification, constraints: { key: /[\w-]{1,40}/ }
     get "kenh", to: "channels#show", as: :channels
     post "kenh/dong-bo", to: "channels#sync", as: :channels_sync
