@@ -1,4 +1,4 @@
-# Bookings in the Mini App (#153, #154): the same model calls and rules as Admin::BookingsController.
+# Bookings in the Mini App (#153, #154): the same model calls and rules as Pms::BookingsController.
 # Every change answers with the booking detail; a refusal is 422 with errors per field.
 class MiniApp::V1::BookingsController < MiniApp::V1::BaseController
   before_action :set_place, only: :create

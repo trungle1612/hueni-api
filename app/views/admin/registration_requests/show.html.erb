@@ -3,7 +3,7 @@
 <% owners = @registration.place_owners %>
 <% note_needed = @registration.pending? && !@registration.verifiable? %>
 
-<%= render "admin/rooms/header", back: admin_users_path(anchor: "registrations"), back_label: "Yêu cầu đăng ký", title: @registration.name %>
+<%= render "admin/header", back: admin_users_path(anchor: "registrations"), back_label: "Yêu cầu đăng ký", title: @registration.name %>
 
 <div class="flex flex-col gap-3 max-w-xl">
   <% unless @registration.pending? %>

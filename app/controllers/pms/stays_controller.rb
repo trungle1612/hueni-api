@@ -1,8 +1,8 @@
-# Nhận phòng / Trả phòng from Hôm nay (#229) and Chi tiết đặt phòng (#231), Hoàn tác for owners. Same model calls as Admin::BookingsController;
-# the toast after it offers Hoàn tác (flash[:undo]).
+# Nhận phòng / Trả phòng from Hôm nay (#229) and Chi tiết đặt phòng (#231), Hoàn tác for owners; Đổi phòng and Đã khai báo lưu trú
+# for anyone at the desk (#247). The toast after Nhận / Trả offers Hoàn tác (flash[:undo]).
 class Pms::StaysController < Pms::BaseController
   before_action :set_booking
-  before_action -> { authorize!(:operate, @booking.room.place) }, only: %i[check_in check_out]
+  before_action -> { authorize!(:operate, @booking.room.place) }, only: %i[check_in check_out move declare]
   before_action -> { authorize!(:manage, @booking.room.place) }, only: %i[undo_check_in undo_check_out]
 
   def check_in
@@ -15,6 +15,15 @@ class Pms::StaysController < Pms::BaseController
 
   def undo_check_in = done("Đã hoàn tác nhận phòng", nil, @booking.undo_check_in)
   def undo_check_out = done("Đã hoàn tác trả phòng", nil, @booking.undo_check_out)
+
+  # A free room of the same homestay; the old one turns dirty.
+  def move
+    from = @booking.room.name
+    room = @booking.room.place.rooms.find(params.expect(:room_id))
+    done "Đã đổi phòng #{from} →", nil, @booking.move_to(room)
+  end
+
+  def declare = done("Đã khai báo lưu trú", nil, @booking.declare)
 
   private
     def set_booking

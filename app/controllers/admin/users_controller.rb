@@ -1,6 +1,5 @@
 # Admin only. No email: the admin sends each user a one-time link over Zalo, to link Zalo (or, for admins, set a password).
 class Admin::UsersController < Admin::BaseController
-  before_action :require_admin
   before_action :set_user, only: %i[edit update reset_password]
 
   def index

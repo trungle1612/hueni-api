@@ -1,6 +1,5 @@
 # Thông báo hệ thống (#213), admins only (like Mã mời): Tính năng mới and Bảo trì for every Mini App user's Thông báo.
 class Admin::AnnouncementsController < Admin::BaseController
-  before_action :require_admin
   before_action :set_announcement, only: %i[edit update destroy]
 
   def index

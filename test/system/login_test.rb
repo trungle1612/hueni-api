@@ -3,12 +3,12 @@ require "application_system_test_case"
 class LoginTest < ApplicationSystemTestCase
   test "owner logs in with Zalo, lands on the page they asked for, and logs out" do
     OmniAuth.config.mock_auth[:zalo2] = OmniAuth::AuthHash.new(provider: "zalo2", uid: "zalo-chi-lan")
-    visit admin_place_path("tomo-homestay")
+    visit pms_more_path
     assert_current_path new_session_path
 
     click_button "Đăng nhập bằng Zalo"
 
-    assert_current_path admin_place_path("tomo-homestay")
+    assert_current_path pms_more_path
     assert_text "Chị Lan"
 
     click_button "Đăng xuất"

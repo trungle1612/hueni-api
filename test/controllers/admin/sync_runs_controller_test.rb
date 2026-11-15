@@ -55,12 +55,9 @@ class Admin::SyncRunsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a", text: "Xem cũ hơn", count: 0
   end
 
-  test "owners and staff get 404 and no menu item" do
+  test "owners and staff are sent to the PWA" do
     log_in users(:owner)
     get admin_sync_runs_path
-    assert_response :not_found
-
-    get admin_root_path
-    assert_select "aside a", text: /Đồng bộ/, count: 0
+    assert_redirected_to pms_today_path
   end
 end

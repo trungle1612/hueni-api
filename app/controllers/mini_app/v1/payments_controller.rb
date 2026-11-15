@@ -1,4 +1,4 @@
-# Thanh toán (#154), like Admin::PaymentsController: anyone at the desk takes money; refunds need the refund right
+# Thanh toán (#154), like Pms::PaymentsController: anyone at the desk takes money; refunds need the refund right
 # (owners, staff given it, #168; others send a refund request); deleting a wrong entry is owners only. Answers with the booking detail.
 class MiniApp::V1::PaymentsController < MiniApp::V1::BaseController
   before_action do

@@ -1,39 +1,13 @@
-# Parent of every /admin controller. Look records up only through Current.user.accessible_*
-# with find / find_by! (e.g. Current.user.accessible_rooms.find(params[:id])): out of scope →
-# RecordNotFound → 404. Never permit place_id / room_id / calendar_feed_id in params; build
-# children through a scoped parent (Current.user.accessible_rooms.find(params[:room_id]).bookings.build).
+# Parent of every /admin controller. /admin is the admins' area only (#85, #247): accounts, registrations, invites,
+# announcements and sync runs. Owners and staff work in the PMS PWA, so they are sent there.
 class Admin::BaseController < ApplicationController
-  # Owner-only action on a homestay you can see but don't own (e.g. you're staff there).
-  class Forbidden < StandardError; end
+  before_action :require_admin
 
-  rescue_from Forbidden, with: -> { render "admin/forbidden", status: :forbidden, formats: :html }
-  # Out of scope (or gone): a friendly 404 inside the admin layout, also in development.
+  # A missing record: a friendly 404 inside the admin layout, also in development.
   rescue_from ActiveRecord::RecordNotFound, with: -> { render "admin/not_found", status: :not_found, formats: :html }
 
-  helper_method :allowed_to?
-
   private
-    def allowed_to?(action, place) = Current.user.allowed_to?(action, place)
-
-    # After the accessible_* lookup (404 when out of scope): 403 when in scope but not allowed.
-    def authorize!(action, place)
-      raise Forbidden unless allowed_to?(action, place)
-    end
-
-    # Accounts and registrations are the admins' job; everyone else gets the same 404 as a missing page.
     def require_admin
-      raise ActiveRecord::RecordNotFound unless Current.user.admin?
-    end
-
-    # Homestays where you are owner (owner-only menu entries).
-    def owned_places
-      Current.user.accessible_places.where(id: Current.user.place_memberships.where(role: "owner").select(:place_id)).order(:name)
-    end
-
-    # A YYYY-MM-DD query param, or nil when missing or malformed.
-    def date_param(key)
-      Date.iso8601(params[key].to_s)
-    rescue Date::Error
-      nil
+      redirect_to pms_today_path unless Current.user.admin?
     end
 end

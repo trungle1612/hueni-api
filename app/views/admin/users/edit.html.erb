@@ -1,7 +1,7 @@
 <% content_for :title, "#{@user.name} · hueni admin" %>
-<%= render "admin/rooms/header", back: admin_users_path, back_label: "Người dùng", title: @user.name %>
+<%= render "admin/header", back: admin_users_path, back_label: "Người dùng", title: @user.name %>
 
-<% if (link = flash[:setup_link]) %><%= render "admin/members/setup_link", user: @user, link: %><% end %>
+<% if (link = flash[:setup_link]) %><%= render "setup_link", user: @user, link: %><% end %>
 
 <%= render "form", user: @user %>
 <div class="mt-2"><%= render "terms", record: @user %></div>

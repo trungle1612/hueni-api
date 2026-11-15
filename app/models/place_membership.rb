@@ -23,7 +23,7 @@ class PlaceMembership < ApplicationRecord
   def locked? = locked_at.present?
   def allows?(permission) = owner? || permissions.include?(permission.to_s)
 
-  # Thêm thành viên (owners in /admin, the PWA and the Mini App): a new account, which logs in through the one-time
+  # Thêm thành viên (owners in the PWA and the Mini App, admins in Người dùng): a new account, which logs in through the one-time
   # Zalo link, and its membership; both or neither. A phone already in use is refused without saying whose it is:
   # linking an existing account stays an admin task. Errors are on the returned membership or its user.
   def self.add(place, name: nil, phone_number: nil, role: nil, permissions: [])

@@ -1,11 +1,9 @@
 require "test_helper"
 
 class Admin::ActivityHelperTest < ActionView::TestCase
-  include Admin::RoomsHelper, Admin::CalendarFeedsHelper
-
   setup { travel_to Time.zone.local(2026, 10, 5, 12) }
 
-  def entry = activity_entry(PaperTrail::Version.last).values_at(:kind, :action, :detail)
+  def entry = Activity.entry(PaperTrail::Version.last).values_at(:kind, :action, :detail)
 
   test "Bảo trì rows" do
     room = rooms(:garden)
@@ -89,7 +87,7 @@ class Admin::ActivityHelperTest < ActionView::TestCase
     feed = rooms(:garden).calendar_feeds.create!(url: "https://1.1.1.1/x.ics", provider: "booking")
     assert_equal [ :feed, "Thêm kênh", "Booking.com" ], entry
     feed.update!(last_error: "RuntimeError: HTTP 404")
-    assert_equal [ :error, "Đồng bộ lỗi", sync_error_message("RuntimeError: HTTP 404") ], entry
+    assert_equal [ :error, "Đồng bộ lỗi", CalendarFeed::ERROR_MESSAGES.fetch("gone") ], entry
     feed.update!(last_error: nil)
     assert_equal [ :ok, "Đồng bộ lại được", nil ], entry
     feed.destroy!
@@ -102,9 +100,9 @@ class Admin::ActivityHelperTest < ActionView::TestCase
     PaperTrail.request(whodunnit: "999999") { rooms(:garden).update!(max_guests: 5) }
     rooms(:garden).update!(max_guests: 6)
 
-    names = activity_names(PaperTrail::Version.order(:id).to_a)
+    names = Activity.actors(PaperTrail::Version.order(:id).to_a)
     assert_equal({ users(:owner).id.to_s => "Chị Lan", "booking" => "Booking.com", "999999" => "Hệ thống", nil => "Hệ thống" }, names)
-    assert_equal({ rooms(:garden).id => "Garden" }, activity_room_names(PaperTrail::Version.all.to_a))
+    assert_equal({ rooms(:garden).id => "Garden" }, Activity.room_names(PaperTrail::Version.all.to_a))
   end
 
   test "day headings" do

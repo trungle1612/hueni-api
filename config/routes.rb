@@ -61,7 +61,9 @@ Rails.application.routes.draw do
       get :saved, on: :member, path: "da-luu"
       get :rooms, on: :collection, path: "phong-trong"
       get :guest, on: :collection, path: "khach-cu"
-      resources :payments, path: "thu-tien", only: :create
+      patch :discount, on: :member, path: "giam-gia"
+      resources :payments, path: "thu-tien", only: %i[create destroy]
+      resources :refund_requests, path: "yeu-cau-hoan-tien", only: :create
       resources :charges, path: "dich-vu", only: %i[create destroy]
     end
     resources :rooms, path: "phong", except: :show, path_names: { new: "moi", edit: "sua" } do
@@ -72,36 +74,39 @@ Rails.application.routes.draw do
       post "tra-phong", action: :check_out, as: :check_out
       post "hoan-tac-nhan-phong", action: :undo_check_in, as: :undo_check_in
       post "hoan-tac-tra-phong", action: :undo_check_out, as: :undo_check_out
+      post "doi-phong", action: :move, as: :move
+      post "khai-bao", action: :declare, as: :declare
     end
   end
   root "sessions#new"
 
+  # Old owner/staff /admin URLs (#247): bookmarks and links already sent open the matching PWA screen, on that homestay.
+  pms = ->(path, keep = []) do
+    redirect do |params, request|
+      query = request.query_parameters.slice(*keep).merge("co_so" => params[:place_slug]).compact_blank
+      [ path.gsub(/:(\w+)/) { params[$1.to_sym] }, query.to_query.presence ].compact.join("?")
+    end
+  end
+  scope "admin" do
+    get "calendar", to: pms.("/lich", %w[from])
+    get "report", to: pms.("/bao-cao", %w[period month])
+    get "tim", to: pms.("/tim", %w[q])
+    get "places/:place_slug", to: pms.("/hom-nay")
+    get "places/:place_slug/calendar", to: pms.("/lich", %w[from])
+    get "places/:place_slug/activity", to: pms.("/nhat-ky")
+    get "places/:place_slug/report", to: pms.("/bao-cao", %w[period month])
+    get "places/:place_slug/bookings/new", to: pms.("/dat-phong/moi", %w[room_id start_date end_date])
+    get "places/:place_slug/members(/*rest)", to: pms.("/nhan-vien")
+    get "places/:place_slug/rooms/new", to: pms.("/phong/moi")
+    get "rooms", to: pms.("/phong")
+    get "rooms/:id/edit", to: pms.("/phong/:id/sua")
+    get "calendar_feeds", to: pms.("/kenh")
+    get "bookings/:id(/edit)", to: pms.("/dat-phong/:id"), constraints: { id: /\d+/ }
+    get "bookings/:id/history", to: pms.("/dat-phong/:id"), constraints: { id: /\d+/ }
+  end
+
   namespace :admin do
     root "dashboard#show"
-    get "calendar", to: "calendars#index"
-    get "report", to: "reports#index"
-    get "tim", to: "searches#show", as: :search
-    resources :places, only: :show, param: :slug do
-      post :sync_feeds, on: :member
-      patch :commissions, on: :member
-      patch :bank, on: :member
-      resources :services, only: %i[create update destroy]
-      resource :calendar, only: :show
-      resource :activity, only: :show
-      resource :report, only: :show
-      resources :rooms, only: %i[new create]
-      resources :bookings, only: %i[new create] do
-        get :availability, on: :collection
-      end
-      resources :members, only: %i[new create edit update destroy] do
-        post :setup_link, on: :member
-      end
-    end
-    resources :rooms, only: %i[index edit update destroy] do
-      post :clean, on: :member
-      patch :maintenance, on: :member
-      resources :calendar_feeds, only: :create
-    end
     resources :sync_runs, only: :index, path: "dong-bo"
     resources :invites, only: %i[index create destroy], path: "ma-moi"
     resources :announcements, only: %i[index create edit update destroy], path: "thong-bao"
@@ -113,24 +118,6 @@ Rails.application.routes.draw do
         patch :approve
         patch :reject
       end
-    end
-    resources :calendar_feeds, only: %i[index destroy] do
-      post :sync, on: :member
-    end
-    resources :bookings, only: %i[edit update] do
-      member do
-        post :check_in
-        post :check_out
-        post :no_show
-        post :undo_check_in
-        post :undo_check_out
-        post :move
-        post :declare
-        patch :discount
-        get :history
-      end
-      resources :payments, only: %i[create destroy]
-      resources :charges, controller: "booking_charges", only: %i[create destroy]
     end
   end
 

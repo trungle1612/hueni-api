@@ -1,4 +1,4 @@
-# Lịch phòng (#230): a week of the current homestay's open rooms from ?from= (default today), from RoomCalendar like /admin.
+# Lịch phòng (#230): a week of the current homestay's open rooms from ?from= (default today), from RoomCalendar like the Mini App.
 class Pms::CalendarsController < Pms::BaseController
   DAYS = 7
 

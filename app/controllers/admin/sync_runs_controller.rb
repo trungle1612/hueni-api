@@ -3,8 +3,6 @@
 class Admin::SyncRunsController < Admin::BaseController
   PER_PAGE = 50
 
-  before_action { raise ActiveRecord::RecordNotFound unless Current.user.admin? }
-
   def index
     @places = Place.joins(rooms: :calendar_feeds).distinct.order(:name)
     @place = @places.find_by(slug: params[:place]) if params[:place].is_a?(String)

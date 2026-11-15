@@ -9,17 +9,17 @@ class Admin::RegistrationRequestsControllerTest < ActionDispatch::IntegrationTes
 
   def choose(place: places(:hiuhill), note: "") = { registration_request: { place_id: place&.id, admin_note: note } }
 
-  test "non-admins get 404 on every action and change nothing" do
+  test "non-admins are sent to the PWA on every action and change nothing" do
     delete session_path
     log_in users(:owner)
     get admin_registration_request_path(@registration)
-    assert_response :not_found
+    assert_redirected_to pms_today_path
     patch admin_registration_request_path(@registration), params: choose(note: "x")
-    assert_response :not_found
+    assert_redirected_to pms_today_path
     patch approve_admin_registration_request_path(@registration), params: choose.merge(called: "1")
-    assert_response :not_found
+    assert_redirected_to pms_today_path
     patch reject_admin_registration_request_path(@registration), params: choose
-    assert_response :not_found
+    assert_redirected_to pms_today_path
     assert @registration.reload.pending?
     assert_nil @registration.admin_note
   end

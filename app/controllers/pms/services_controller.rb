@@ -1,4 +1,4 @@
-# Dịch vụ on Cài đặt cơ sở (#244), owners only, like Admin::ServicesController. Bookings that already have
+# Dịch vụ on Cài đặt cơ sở (#244), owners only, like MiniApp::V1::ServicesController. Bookings that already have
 # a service keep their copy (BookingCharge).
 class Pms::ServicesController < Pms::BaseController
   before_action :set_service, only: %i[update destroy]

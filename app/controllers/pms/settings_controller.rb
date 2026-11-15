@@ -1,5 +1,5 @@
 # Cài đặt cơ sở (#244, owners): Tài khoản chuyển khoản (shown on Thu tiền) and the Dịch vụ catalog
-# (Pms::ServicesController), same model rules as /admin's homestay page.
+# (Pms::ServicesController), same model rules as the Mini App.
 class Pms::SettingsController < Pms::BaseController
   before_action -> { authorize!(:manage, current_place) if current_place }
 

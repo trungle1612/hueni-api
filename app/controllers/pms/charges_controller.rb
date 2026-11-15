@@ -1,5 +1,5 @@
 # Dịch vụ on Chi tiết đặt phòng (#231): anyone at the desk adds one from the homestay's catalog or removes it,
-# like Admin::BookingChargesController.
+# like the Mini App (MiniApp::V1::ChargesController).
 class Pms::ChargesController < Pms::BaseController
   before_action do
     @booking = Current.user.accessible_bookings.manual.find(params[:booking_id])

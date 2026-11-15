@@ -92,11 +92,12 @@ class Pms::RoomsTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert_select "#name_error", text: /Tên phòng|đã/
 
-    post pms_rooms_path, params: { room: { name: "103", floor: 1, room_type: "family", max_guests: 4, price: "450k", weekend_price: "550.000", amenities: [ "", "ac", "desk" ], note: "Gần cầu thang" } }
+    post pms_rooms_path, params: { room: { name: "103", floor: 1, room_type: "family", max_guests: 4, price: "450k", weekend_price: "550.000", amenities: [ "", "ac", "desk" ], note: "Gần cầu thang", place_id: places(:hiuhill).id } }
     assert_redirected_to pms_rooms_path
     room = places(:tomo).rooms.find_by!(name: "103")
     assert_equal [ 1, "family", 4, 450_000, 550_000, %w[ac desk], "Gần cầu thang", true ],
       room.values_at(:floor, :room_type, :max_guests, :price, :weekend_price, :amenities, :note, :active)
+    assert_equal users(:owner).id.to_s, room.versions.last.whodunnit
     follow_redirect!
     assert_select ".pms-toast", text: "Đã thêm phòng 103"
   end

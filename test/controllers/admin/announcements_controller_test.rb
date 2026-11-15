@@ -44,15 +44,13 @@ class Admin::AnnouncementsControllerTest < ActionDispatch::IntegrationTest
     WebPush.key = nil
   end
 
-  test "owners get 404 and no menu entry" do
+  test "owners are sent to the PWA and change nothing" do
     announcement = Announcement.create!(PARAMS)
     log_in users(:owner)
-    get admin_root_path
-    assert_select "a[href=?]", admin_announcements_path, count: 0
     get admin_announcements_path
-    assert_response :not_found
+    assert_redirected_to pms_today_path
     delete admin_announcement_path(announcement)
-    assert_response :not_found
+    assert_redirected_to pms_today_path
     assert Announcement.exists?(announcement.id)
   end
 end

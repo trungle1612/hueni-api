@@ -1,31 +1,15 @@
 module ApplicationHelper
-  # Single source for the admin dock (phone) and sidebar (desktop). path: nil = page not built yet;
+  # Single source for the admin dock (phone) and sidebar (desktop); /admin is for admins only (#247).
   # count: a number shown as a badge (pending registrations).
   def admin_menu_items
-    items = [
+    [
       { label: "Tổng quan", icon: "home", path: admin_root_path, active: current_page?(admin_root_path) },
-      { label: "Lịch phòng", icon: "calendar", path: admin_calendar_path, active: controller_name.in?(%w[calendars bookings]) },
-      { label: "Kênh OTA", icon: "refresh", path: admin_calendar_feeds_path, active: controller_name == "calendar_feeds" }
+      { label: "Người dùng", count: RegistrationRequest.pending.count, icon: "users", path: admin_users_path,
+        active: controller_name.in?(%w[users registration_requests]) },
+      { label: "Đồng bộ", icon: "activity", path: admin_sync_runs_path, active: controller_name == "sync_runs" },
+      { label: "Mã mời", icon: "key", path: admin_invites_path, active: controller_name == "invites" },
+      { label: "Thông báo", icon: "bell", path: admin_announcements_path, active: controller_name == "announcements" }
     ]
-    if Current.user&.place_memberships&.exists?(role: "owner")
-      items << { label: "Phòng", icon: "bed", path: admin_rooms_path, active: controller_name == "rooms" }
-      items << { label: "Báo cáo", icon: "chart", path: admin_report_path, active: controller_name == "reports" }
-    end
-    if Current.user&.admin?
-      pending = RegistrationRequest.pending.count
-      items << { label: "Người dùng", count: pending, icon: "users", path: admin_users_path,
-                 active: controller_name.in?(%w[users registration_requests]) }
-      items << { label: "Đồng bộ", icon: "activity", path: admin_sync_runs_path, active: controller_name == "sync_runs" }
-      items << { label: "Mã mời", icon: "key", path: admin_invites_path, active: controller_name == "invites" }
-      items << { label: "Thông báo", icon: "bell", path: admin_announcements_path, active: controller_name == "announcements" }
-    end
-    items
-  end
-
-  # "Chủ" / "Nhân viên" at this homestay.
-  def place_role_badge(place)
-    role = Current.user.role_at(place) or return
-    tag.span(PlaceMembership::ROLE_LABELS.fetch(role), class: "badge badge-soft badge-sm #{role == "owner" ? "badge-primary" : "badge-info"}")
   end
 
   # Owners and staff can only log in once Zalo is linked (#97); admins also have a password.

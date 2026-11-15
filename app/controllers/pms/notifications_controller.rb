@@ -4,7 +4,6 @@
 class Pms::NotificationsController < Pms::BaseController
   FILTERS = %w[chua-doc can-xu-ly].freeze
 
-  before_action :switch_place, only: :open
   before_action(except: :show) { redirect_to pms_today_path unless current_place }
 
   def show
@@ -43,10 +42,6 @@ class Pms::NotificationsController < Pms::BaseController
   end
 
   private
-    def switch_place
-      session[:pms_place] = params[:co_so] if params[:co_so] && places.exists?(slug: params[:co_so])
-    end
-
     # Where a notification's link opens in the PWA; nil for a screen it does not have yet (Giao ca).
     def target(link)
       case link&.dig(:screen)

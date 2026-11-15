@@ -25,18 +25,16 @@ class Admin::InvitesControllerTest < ActionDispatch::IntegrationTest
     assert_not Invite.exists?(invite.id)
   end
 
-  test "owners and staff get 404 and no menu entry" do
+  test "owners and staff are sent to the PWA and change nothing" do
     invite = places(:tomo).invites.create!(created_by: users(:admin))
     log_in users(:owner)
-    get admin_place_path("tomo-homestay")
-    assert_select "a[href=?]", admin_invites_path, 0
     assert_no_difference -> { Invite.count } do
       get admin_invites_path
-      assert_response :not_found
+      assert_redirected_to pms_today_path
       post admin_invites_path, params: { invite: { place_id: places(:tomo).id, role: "staff", max_uses: 1, days: 7 } }
-      assert_response :not_found
+      assert_redirected_to pms_today_path
       delete admin_invite_path(invite)
-      assert_response :not_found
+      assert_redirected_to pms_today_path
     end
   end
 end

@@ -1,5 +1,5 @@
 # Nhân viên (#168, ADR-001), owners only: invite, role and Quyền thêm, lock / unlock, remove, a new login link.
-# Like Admin::MembersController. :id is a PlaceMembership. Changes are in Hoạt động.
+# Like Pms::MembersController. :id is a PlaceMembership. Changes are in Hoạt động.
 class MiniApp::V1::MembershipsController < MiniApp::V1::BaseController
   before_action :set_place, only: %i[index create]
   before_action :set_membership, except: %i[index create]

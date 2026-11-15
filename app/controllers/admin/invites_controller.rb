@@ -1,8 +1,6 @@
 # Mã mời (#211), admins only (like Người dùng): a code for any homestay, with its role, uses and days.
 # Whoever enters it in the Mini App with an unknown Zalo joins that homestay (Invite.redeem).
 class Admin::InvitesController < Admin::BaseController
-  before_action :require_admin
-
   def index
     @invites = Invite.usable.includes(:place).order(:id)
     @places = Place.order(:name)

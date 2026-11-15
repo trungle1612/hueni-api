@@ -74,4 +74,11 @@ class CalendarFeedTest < ActiveSupport::TestCase
       Booking.new(room: rooms(:garden), start_date: "2026-11-01", end_date: "2026-11-02", calendar_feed_id: 0).save(validate: false)
     end
   end
+
+  test "sync errors in words: dead link, not a calendar, anything else" do
+    message = ->(error) { CalendarFeed::ERROR_MESSAGES.fetch(CalendarFeed.error_kind(error)) }
+    assert_match "Lấy link mới", message.("RuntimeError: HTTP 404")
+    assert_match "không đọc được thành lịch iCal", message.("RuntimeError: not an iCalendar feed")
+    assert_match "tự thử lại mỗi giờ", message.("Net::OpenTimeout: execution expired")
+  end
 end

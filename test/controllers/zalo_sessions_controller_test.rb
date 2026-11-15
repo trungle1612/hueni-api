@@ -8,9 +8,9 @@ class ZaloSessionsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a linked Zalo id logs in and goes where they were headed, else owners to the PWA, admins to /admin" do
-    get admin_calendar_path
+    get pms_calendar_path
     zalo "zalo-chi-lan"
-    assert_redirected_to admin_calendar_url
+    assert_redirected_to pms_calendar_url
     assert_equal 1, users(:owner).sessions.count
 
     delete session_path
@@ -121,14 +121,6 @@ class ZaloSessionsControllerTest < ActionDispatch::IntegrationTest
     zalo "zalo-moi", link: "me"
     assert_redirected_to new_session_path
     assert_nil User.find_by(zalo_id: "zalo-moi")
-  end
-
-  test "unlinked non-admins see the Liên kết Zalo banner on the dashboard" do
-    log_in users(:owner)
-    assert_select "#link_zalo", 0
-    users(:owner).update!(zalo_id: nil)
-    get admin_root_path
-    assert_select "#link_zalo form[action$='?link=me']"
   end
 
   test "an unknown Zalo id with an owner's phone number links that owner and logs in (#98)" do

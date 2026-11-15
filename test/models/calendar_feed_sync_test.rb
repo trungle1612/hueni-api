@@ -221,7 +221,7 @@ class CalendarFeedSyncTest < ActiveSupport::TestCase
     assert checked_out.reload.removed_from_feed_at
     assert_not Booking.exists?(waiting.id)
     assert_equal "OTA đã huỷ, khách đang ở",
-      ApplicationController.helpers.activity_entry(in_house.versions.reorder(:id).last)[:action]
+      Activity.entry(in_house.versions.reorder(:id).last)[:action]
 
     travel 1.hour
     assert @feed.sync

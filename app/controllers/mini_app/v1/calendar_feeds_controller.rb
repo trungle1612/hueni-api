@@ -1,4 +1,4 @@
-# Đồng bộ ngay for one OTA feed (#157), like Admin::CalendarFeedsController#sync: owners and staff, inline so the
+# Đồng bộ ngay for one OTA feed (#157): owners and staff, inline so the
 # answer says straight away whether the link works. Adding / removing feeds stays on the web.
 class MiniApp::V1::CalendarFeedsController < MiniApp::V1::BaseController
   def sync
