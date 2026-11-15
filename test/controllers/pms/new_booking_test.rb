@@ -70,13 +70,19 @@ class Pms::NewBookingTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", new_pms_booking_path, text: "Đặt phòng khác"
   end
 
-  test "a busy room sent anyway is refused by the model, as is a deposit over the total" do
+  test "the model refuses a busy room sent anyway, a missing name or phone, a deposit over the total" do
     log_in users(:owner)
     assert_no_difference -> { Booking.count } do
       post pms_bookings_path, params: form(room_id: rooms(:limdim).id)
     end
     assert_response :unprocessable_entity
     assert_select "#dates_error", text: /Trùng lịch đêm 01\/10–02\/10 với Anh Minh/
+
+    post pms_bookings_path, params: form(room_id: rooms(:garden).id, guest_name: " ", guest_phone: "")
+    assert_response :unprocessable_entity
+    assert_select "#guest_name_error", text: /Tên khách/
+    assert_select "#guest_phone_error", text: /Số điện thoại/
+    assert_select "input[name='booking[guest_name]'][aria-invalid=true]"
 
     post pms_bookings_path, params: form(room_id: rooms(:garden).id, deposit: "600k")
     assert_response :unprocessable_entity

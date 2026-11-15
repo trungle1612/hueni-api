@@ -21,10 +21,10 @@ class Pms::BookingsController < Pms::BaseController
     render partial: "returning", locals: { guest: Guest.returning(@place, params.dig(:booking, :guest_phone)) }
   end
 
-  # The overlap and deposit rules are the model's: a busy room sent anyway is refused by the validation.
+  # Name and phone required (context :desk); the overlap and deposit rules are the model's: a busy room sent anyway is refused by the validation.
   def create
     @booking = @place.rooms.find(params.dig(:booking, :room_id)).bookings.build(booking_params)
-    if @booking.save
+    if @booking.save(context: %i[create desk])
       redirect_to saved_pms_booking_path(@booking), status: :see_other
     else
       @booking = draft(booking_params, @booking.room_id).tap { it.errors.merge!(@booking.errors) }
