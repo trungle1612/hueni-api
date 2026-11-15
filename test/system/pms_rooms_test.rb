@@ -38,4 +38,22 @@ class PmsRoomsTest < ApplicationSystemTestCase
     room = places(:tomo).rooms.find_by!(name: "103")
     assert_equal [ "family", 4, 450_000, 500_000, [ "ac" ] ], room.values_at(:room_type, :max_guests, :price, :weekend_price, :amenities)
   end
+
+  # #259: a slow save locks its button with "Đang lưu…"; the old screen stays until the answer.
+  test "a save button reads Đang lưu… and is locked while the form is sent" do
+    log_in_with_zalo
+    visit edit_pms_room_path(rooms(:garden))
+    page.execute_script(<<~JS)
+      const fetch = window.fetch
+      window.fetch = (...args) => new Promise(resolve => setTimeout(() => resolve(fetch(...args)), 1500))
+    JS
+    fill_in "Ghi chú nội bộ", with: "Gần cầu thang"
+    click_button "Lưu thay đổi"
+
+    assert_button "Đang lưu…", disabled: true
+    assert_selector "button[aria-busy='true']", text: "Đang lưu…"
+    assert_selector "h1", text: "Sửa phòng Garden"
+    assert_selector ".pms-toast", text: "Đã lưu phòng Garden."
+    assert_equal "Gần cầu thang", rooms(:garden).reload.note
+  end
 end

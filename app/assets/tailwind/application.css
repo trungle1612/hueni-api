@@ -55,6 +55,13 @@
     font: 600 14px/1.2 var(--font-pms); text-decoration: none;
   }
   .pms-btn:disabled { opacity: .45; cursor: not-allowed; }
+  /* Đang lưu (#259): the locked submit button spins. */
+  .pms-btn[aria-busy="true"] { opacity: .6; cursor: progress; }
+  .pms-btn[aria-busy="true"]::before {
+    content: ""; flex: none; width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid currentColor; border-right-color: transparent; animation: pms-spin .8s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) { .pms-btn[aria-busy="true"]::before { animation: none; } }
   .pms-btn-primary { background: var(--color-pms-primary); border-color: var(--color-pms-primary); color: #fff; }
   .pms-btn-ghost { background: transparent; border-color: transparent; color: var(--color-pms-text-2); }
   .pms-btn-danger { background: var(--color-pms-danger-bg); border-color: var(--color-pms-danger); color: var(--color-pms-danger); }
@@ -134,3 +141,5 @@
   .pms-app :focus-visible { outline: 2px solid var(--color-pms-primary); outline-offset: 2px; }
   .pms-app .turbo-progress-bar { background: var(--color-pms-primary); }
 }
+
+@keyframes pms-spin { to { transform: rotate(360deg); } }

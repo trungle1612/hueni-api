@@ -17,9 +17,9 @@
       <% end %>
     <% end %>
     <% if register %>
-      <button class="pms-btn w-full"><%= label %></button>
+      <button class="pms-btn w-full" data-turbo-submits-with="Đang mở Zalo…"><%= label %></button>
     <% else %>
-      <button class="pms-btn pms-btn-zalo w-full"><%= label %></button>
+      <button class="pms-btn pms-btn-zalo w-full" data-turbo-submits-with="Đang mở Zalo…"><%= label %></button>
     <% end %>
   <% end %>
 <% else %>
