@@ -134,4 +134,23 @@ module PmsHelper
       ("OTA đã huỷ" if booking.removed_from_feed_at)
     ].compact.join(" · ")
   end
+
+  # 0.527 → "53%"; nil → "—"
+  def percent(value) = value ? "#{(value * 100).round}%" : "—"
+
+  # 15.5 → "15,5", 15.0 → "15"; nil stays blank.
+  def commission(value) = value && number_with_precision(value, precision: 1, strip_insignificant_zeros: true, separator: ",")
+
+  # Lịch phòng: [[booking, lane], ...], each booking in the first lane free by its start date, so overlaps stack.
+  def timeline_lanes(bookings)
+    lane_ends = []
+    bookings.sort_by(&:start_date).map do |booking|
+      lane = lane_ends.index { it <= booking.start_date } || lane_ends.size
+      lane_ends[lane] = booking_bar_end(booking)
+      [ booking, lane ]
+    end
+  end
+
+  # A checked-out bar keeps its booked dates; an overdue one grows through today.
+  def booking_bar_end(booking) = booking.overdue? ? booking.occupied_until : booking.end_date
 end

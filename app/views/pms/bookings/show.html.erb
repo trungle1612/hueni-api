@@ -54,6 +54,15 @@
       <div class="flex justify-between gap-3 px-3 py-2.5"><dt class="text-pms-text-2"><%= name %></dt><dd class="font-medium text-right"><%= parts.compact.join(" · ") %></dd></div>
     <% end %>
   </dl>
+  <% free_rooms = operate && b.can_check_out? ? @place.rooms.where(active: true).order(:name).select { b.can_move_to?(it) } : [] %>
+  <% if free_rooms.any? || (operate && b.needs_declaration?) %>
+    <div class="flex gap-2 pt-2">
+      <% if free_rooms.any? %><button type="button" class="pms-btn flex-1" popovertarget="move">Đổi phòng</button><% end %>
+      <% if operate && b.needs_declaration? %>
+        <%= button_to "Đã khai báo lưu trú", pms_stay_declare_path(b), class: "pms-btn w-full", form_class: "flex-1" %>
+      <% end %>
+    </div>
+  <% end %>
 </section>
 
 <section id="thanh-toan" class="px-4 pt-4" aria-labelledby="h-pay">
@@ -95,9 +104,17 @@
           <div class="flex justify-between gap-3 px-3 py-2.5"><dt class="font-semibold">Tổng</dt><dd class="font-semibold"><%= pms_money(b.total) %></dd></div>
         <% end %>
         <% b.payments.sort_by(&:created_at).each do |payment| %>
-          <div id="<%= dom_id(payment) %>" class="flex justify-between gap-3 px-3 py-2.5">
+          <div id="<%= dom_id(payment) %>" class="flex justify-between items-center gap-3 px-3 <%= manage ? "py-1" : "py-2.5" %>">
             <dt class="text-pms-text-2 min-w-0"><%= [ payment.note || (payment.refund? ? "Hoàn tiền" : "Đã thu"), payment.method_label.downcase, payment.created_at.strftime("%d/%m") ].join(" · ") %></dt>
-            <dd class="font-medium shrink-0"><%= payment.refund? ? "+" : "−" %><%= pms_money(payment.amount) %></dd>
+            <dd class="flex items-center gap-1 font-medium shrink-0">
+              <%= payment.refund? ? "+" : "−" %><%= pms_money(payment.amount) %>
+              <% if manage %>
+                <%= button_to pms_booking_payment_path(b, payment), method: :delete, class: "flex items-center justify-center size-11 -mr-2 text-pms-danger cursor-pointer",
+                      "aria-label": "Xoá khoản #{pms_money(payment.amount)}", form: { data: { turbo_confirm: "Xoá khoản #{payment.refund? ? "hoàn" : "thu"} #{pms_money(payment.amount)}? Chỉ xoá khi ghi nhầm." } } do %>
+                  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                <% end %>
+              <% end %>
+            </dd>
           </div>
         <% end %>
         <div id="due" class="flex justify-between gap-3 px-3 py-2.5 font-semibold">
@@ -112,12 +129,16 @@
           <% end %>
         </div>
       </dl>
-      <% if operate && !b.cancelled? %>
+      <% if operate && (!b.cancelled? || paid.positive?) %>
         <div class="flex flex-col gap-2 px-3 pt-2 pb-3">
-          <% if due.nil? || due.positive? %>
-            <button type="button" class="pms-btn w-full" popovertarget="pay">Ghi nhận thanh toán</button>
+          <% unless b.cancelled? %>
+            <% if due.nil? || due.positive? %>
+              <button type="button" class="pms-btn w-full" popovertarget="pay">Ghi nhận thanh toán</button>
+            <% end %>
+            <button type="button" class="pms-btn w-full" popovertarget="add-service">+ Thêm dịch vụ</button>
+            <% if total && allowed_to?(:discount, @place) %><button type="button" class="pms-btn w-full" popovertarget="discount-sheet">Giảm giá</button><% end %>
           <% end %>
-          <button type="button" class="pms-btn w-full" popovertarget="add-service">+ Thêm dịch vụ</button>
+          <% if paid.positive? %><button type="button" class="pms-btn w-full" popovertarget="give-back">Hoàn tiền</button><% end %>
         </div>
       <% end %>
     <% end %>
@@ -188,7 +209,7 @@
           <% if @place.bank_holder %><div><%= @place.bank_holder %></div><% end %>
           <div>Nội dung: <b><%= b.code&.delete("-") %></b></div>
         <% else %>
-          Chưa có tài khoản chuyển khoản. Chủ cơ sở thêm ở trang homestay.
+          Chưa có tài khoản chuyển khoản. Chủ cơ sở thêm ở Thêm → Cài đặt cơ sở.
         <% end %>
       </div>
       <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Ghi chú
@@ -211,9 +232,74 @@
         </label>
         <%= form.button "Thêm", class: "pms-btn pms-btn-primary w-full" %>
       <% else %>
-        <p class="text-pms-text-2">Chưa có dịch vụ nào. Chủ cơ sở thêm danh sách dịch vụ ở trang homestay.</p>
+        <p class="text-pms-text-2">Chưa có dịch vụ nào. Chủ cơ sở thêm ở Thêm → Cài đặt cơ sở.</p>
       <% end %>
       <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="add-service" popovertargetaction="hide">Đóng</button>
+    <% end %>
+  </div>
+<% end %>
+
+<% if operate && b.manual? && !b.cancelled? && b.room_total && allowed_to?(:discount, @place) %>
+  <div id="discount-sheet" popover class="pms-sheet" role="dialog" aria-modal="true" aria-labelledby="discount-sheet_t">
+    <%= form_with model: b, url: discount_pms_booking_path(b), method: :patch, class: "flex flex-col gap-3" do |form| %>
+      <h2 id="discount-sheet_t" class="text-base font-semibold">Giảm giá</h2>
+      <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Số tiền hoặc %
+        <%= form.text_field :discount, value: (number_with_delimiter(b.discount, delimiter: ".") if b.discount), placeholder: "50k hoặc 10%",
+              autocomplete: "off", class: "pms-input font-normal", aria: { describedby: "discount_hint" } %>
+      </label>
+      <p id="discount_hint" class="-mt-1.5 text-[13px] text-pms-text-2">Giảm trên tiền phòng <%= pms_money(b.room_total) %>.<%= " Nhân viên giảm tối đa #{Booking::STAFF_DISCOUNT_PERCENT}%." unless manage %> Để trống để bỏ giảm giá.</p>
+      <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Lý do
+        <%= form.text_field :discount_reason, maxlength: 200, placeholder: "Ví dụ: khách quen", class: "pms-input font-normal" %>
+      </label>
+      <%= form.button "Lưu giảm giá", class: "pms-btn pms-btn-primary w-full" %>
+      <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="discount-sheet" popovertargetaction="hide">Đóng</button>
+    <% end %>
+  </div>
+<% end %>
+
+<% if operate && b.manual? && (paid = b.paid).positive? %>
+  <%# Hoàn tiền: written at once with the refund right, else sent to the owner as a request (Chờ duyệt, #168). %>
+  <% refund = allowed_to?(:refund, @place) %>
+  <div id="give-back" popover class="pms-sheet" role="dialog" aria-modal="true" aria-labelledby="give-back_t">
+    <%= form_with model: (refund ? Payment.new : RefundRequest.new), url: (refund ? pms_booking_payments_path(b) : pms_booking_refund_requests_path(b)), class: "flex flex-col gap-3" do |form| %>
+      <%= form.hidden_field :kind, value: "refund" if refund %>
+      <h2 id="give-back_t" class="text-base font-semibold"><%= refund ? "Hoàn tiền" : "Yêu cầu hoàn tiền" %></h2>
+      <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Số tiền (đ)
+        <%= pms_money_field form, :amount, value: paid, required: true, aria: { describedby: "refund_hint" } %>
+      </label>
+      <p id="refund_hint" class="-mt-1.5 text-[13px] text-pms-text-2">Đã thu <%= pms_money(paid) %>.<%= " Chủ cơ sở duyệt rồi mới ghi khoản hoàn." unless refund %></p>
+      <fieldset>
+        <legend class="mb-1.5 text-[13px] font-semibold">Hình thức</legend>
+        <div class="pms-panel divide-y divide-pms-border">
+          <% Payment::METHODS.each do |key, name| %>
+            <label class="flex items-center gap-2.5 min-h-11 px-3 cursor-pointer"><%= form.radio_button :payment_method, key, checked: key == "cash", class: "size-4.5 accent-pms-primary" %><%= name %></label>
+          <% end %>
+        </div>
+      </fieldset>
+      <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Ghi chú
+        <%= form.text_field :note, maxlength: 200, placeholder: "Ví dụ: trả lại tiền dư", class: "pms-input font-normal" %>
+      </label>
+      <%= form.button refund ? "Hoàn tiền" : "Gửi yêu cầu", class: "pms-btn pms-btn-primary w-full" %>
+      <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="give-back" popovertargetaction="hide">Đóng</button>
+    <% end %>
+  </div>
+<% end %>
+
+<% if free_rooms.any? %>
+  <div id="move" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="move_t">
+    <%= form_with url: pms_stay_move_path(b), class: "flex flex-col gap-3" do |form| %>
+      <h2 id="move_t" class="text-base font-semibold">Đổi phòng</h2>
+      <p class="-mt-1.5 text-[13px] text-pms-text-2">Phòng <%= b.room.name %> sẽ chuyển sang cần dọn.</p>
+      <fieldset>
+        <legend class="mb-1.5 text-[13px] font-semibold">Phòng trống</legend>
+        <div class="pms-panel divide-y divide-pms-border">
+          <% free_rooms.each_with_index do |room, i| %>
+            <label class="flex items-center gap-2.5 min-h-11 px-3 cursor-pointer"><%= form.radio_button :room_id, room.id, required: i.zero?, class: "size-4.5 accent-pms-primary" %><%= room.name %></label>
+          <% end %>
+        </div>
+      </fieldset>
+      <%= form.button "Đổi phòng", class: "pms-btn pms-btn-primary w-full" %>
+      <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="move" popovertargetaction="hide">Đóng</button>
     <% end %>
   </div>
 <% end %>

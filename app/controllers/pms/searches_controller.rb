@@ -1,4 +1,4 @@
-# Tìm đặt phòng (#235): bookings of every homestay you are a member of, owner or staff (Booking.search_sections, as /admin/tim).
+# Tìm đặt phòng (#235): bookings of every homestay you are a member of, owner or staff (Booking.search_sections, as in the Mini App).
 class Pms::SearchesController < Pms::BaseController
   def show
     @query = Booking.search_query(params[:q])

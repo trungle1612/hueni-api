@@ -1,7 +1,7 @@
-# Đặt phòng mới (#232), Chi tiết đặt phòng and Sửa đặt phòng (#231). Same model calls as Admin::BookingsController: anyone at the desk edits,
+# Đặt phòng mới (#232), Chi tiết đặt phòng and Sửa đặt phòng (#231). Same model calls as the Mini App: anyone at the desk edits,
 # cancels and restores; prices and refunds per allowed_to?. iCal bookings open read-only (the OTA owns them).
 class Pms::BookingsController < Pms::BaseController
-  before_action :set_booking, only: %i[edit update availability]
+  before_action :set_booking, only: %i[edit update availability discount]
   before_action :set_place, only: %i[new create rooms guest]
 
   # From a Lịch phòng cell the room and day are given; else today and the first free room.
@@ -67,6 +67,18 @@ class Pms::BookingsController < Pms::BaseController
     else
       render :edit, status: :unprocessable_entity
     end
+  end
+
+  # Giảm giá (#140): 50k or 10% of the room total, blank removes it; staff with the right up to STAFF_DISCOUNT_PERCENT.
+  def discount
+    authorize!(:discount, @place)
+    cap = Booking::STAFF_DISCOUNT_PERCENT unless allowed_to?(:manage, @place)
+    if @booking.apply_discount(params.dig(:booking, :discount), params.dig(:booking, :discount_reason), cap:)
+      flash[:toast] = @booking.discount ? "Đã giảm #{helpers.pms_money(@booking.discount)}" : "Đã bỏ giảm giá"
+    else
+      flash[:alert] = @booking.errors.full_messages.to_sentence
+    end
+    redirect_to pms_booking_path(@booking), status: :see_other
   end
 
   private

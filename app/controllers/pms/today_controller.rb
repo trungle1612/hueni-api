@@ -1,4 +1,4 @@
-# Hôm nay / Ngày mai (#229) for the current homestay: the lists come from Today, as on /admin Tổng quan.
+# Hôm nay / Ngày mai (#229) for the current homestay: the lists come from Today, as in the Mini App.
 class Pms::TodayController < Pms::BaseController
   def show
     return unless current_place

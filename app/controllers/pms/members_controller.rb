@@ -1,5 +1,5 @@
 # Nhân viên (#245, ADR-001), owners only: members with role and Quyền thêm, Mời nhân viên (a one-time Zalo link),
-# lock / unlock, remove, leave, a new link; Chờ duyệt refund requests on top. Same model rules as /admin and the Mini App.
+# lock / unlock, remove, leave, a new link; Chờ duyệt refund requests on top. Same model rules as the Mini App.
 class Pms::MembersController < Pms::BaseController
   before_action :set_membership, except: %i[index create]
   before_action -> { authorize!(:manage, @place) }, except: %i[index create]

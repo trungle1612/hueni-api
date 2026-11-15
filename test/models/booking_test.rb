@@ -336,7 +336,7 @@ class BookingTest < ActiveSupport::TestCase
     end
     assert booking.reload.checked_in_at
     assert booking.confirmed?
-    assert_equal "Nhận phòng", ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)[:action]
+    assert_equal "Nhận phòng", Activity.entry(booking.versions.reorder(:id).last)[:action]
   end
 
   test "check-in of a manual booking overlapping an iCal one succeeds and is logged" do
@@ -495,7 +495,7 @@ class BookingTest < ActiveSupport::TestCase
       assert_nil booking.reload.checked_in_at
       assert booking.can_check_in?
     end
-    assert_equal "Hoàn tác nhận phòng", ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)[:action]
+    assert_equal "Hoàn tác nhận phòng", Activity.entry(booking.versions.reorder(:id).last)[:action]
 
     travel_to(Time.zone.local(2026, 10, 1, 15)) { booking.check_in(guests: 1) }
     travel_to(Time.zone.local(2026, 10, 2, 9)) { assert_refused booking, :undo_check_in, "Chỉ hoàn tác được trong ngày nhận phòng" }
@@ -509,7 +509,7 @@ class BookingTest < ActiveSupport::TestCase
       assert_refused booking, :undo_check_in, "Khách đã trả phòng, hoàn tác trả phòng trước"
       assert booking.undo_check_out
       assert booking.reload.can_check_out?
-      assert_equal "Hoàn tác trả phòng", ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)[:action]
+      assert_equal "Hoàn tác trả phòng", Activity.entry(booking.versions.reorder(:id).last)[:action]
 
       booking.check_out
       other = saved(start_date: "2026-10-03", end_date: "2026-10-05")
@@ -565,7 +565,7 @@ class BookingTest < ActiveSupport::TestCase
     end
     assert_equal rooms(:limdim), booking.reload.room
     assert rooms(:garden).reload.dirty?
-    entry = ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)
+    entry = Activity.entry(booking.versions.reorder(:id).last)
     assert_equal [ "Đổi phòng", "Chị Mai: Garden → Limdim" ], entry.values_at(:action, :detail)
   end
 
@@ -602,6 +602,6 @@ class BookingTest < ActiveSupport::TestCase
       assert_refused booking, :declare, "Đã khai báo lưu trú rồi"
     end
     assert_equal Time.zone.local(2026, 10, 1, 14), booking.reload.declared_at
-    assert_equal "Khai báo lưu trú", ApplicationController.helpers.activity_entry(booking.versions.reorder(:id).last)[:action]
+    assert_equal "Khai báo lưu trú", Activity.entry(booking.versions.reorder(:id).last)[:action]
   end
 end

@@ -1,4 +1,4 @@
-# Rooms in the Mini App, like Admin::RoomsController: setup (create / update / destroy, #162) is owners only;
+# Rooms in the Mini App, like Pms::RoomsController: setup (create / update / destroy, #162) is owners only;
 # Dọn xong and Bảo trì (#154) are staff too. Answers with the room.
 class MiniApp::V1::RoomsController < MiniApp::V1::BaseController
   before_action :set_room, except: :create

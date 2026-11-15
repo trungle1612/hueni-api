@@ -65,9 +65,9 @@ class ZaloSessionsController < ApplicationController
       return redirect_to new_session_path unless authenticated?
 
       if Current.user.update(zalo_id:)
-        redirect_to admin_root_path, notice: "Đã liên kết Zalo. Lần sau bấm Đăng nhập bằng Zalo."
+        redirect_to home_url, notice: "Đã liên kết Zalo. Lần sau bấm Đăng nhập bằng Zalo."
       else
-        redirect_to admin_root_path, alert: ALREADY_LINKED
+        redirect_to home_url, alert: ALREADY_LINKED
       end
     end
 end

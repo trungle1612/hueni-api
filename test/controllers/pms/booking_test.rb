@@ -79,11 +79,97 @@ class Pms::BookingTest < ActionDispatch::IntegrationTest
     assert_select "[role=alert]", text: /không được lớn hơn số còn phải thu \(300.000 ₫\)/
     assert_equal 100_000, @booking.reload.paid
 
-    post pms_booking_payments_path(@booking), params: { payment: { amount: "300.000", payment_method: "bank", kind: "refund" } }
+    post pms_booking_payments_path(@booking), params: { payment: { amount: "300.000", payment_method: "bank" } }
     follow_redirect!
     assert_select ".pms-toast", text: "Đã ghi nhận 300.000đ · Chuyển khoản"
     assert_select "#due", text: /0đ · đã thu đủ/
     assert_select "button", text: "Ghi nhận thanh toán", count: 0
+  end
+
+  test "Hoàn tiền: owners write it, staff without the right send a request, a refund to staff without it is 403" do
+    staff!
+    get pms_booking_path(@booking)
+    assert_select "#give-back form[action=?]", pms_booking_refund_requests_path(@booking)
+    post pms_booking_payments_path(@booking), params: { payment: { amount: "50k", payment_method: "cash", kind: "refund" } }
+    assert_response :forbidden
+    post pms_booking_refund_requests_path(@booking), params: { refund_request: { amount: "50k", payment_method: "cash", note: "Trả dư" } }
+    follow_redirect!
+    assert_select ".pms-toast", text: "Đã gửi yêu cầu hoàn 50.000đ, chờ chủ cơ sở duyệt"
+    assert_equal [ 50_000, "pending" ], @booking.refund_requests.sole.values_at(:amount, :status)
+    assert_equal 100_000, @booking.reload.paid
+
+    log_in users(:owner)
+    get pms_booking_path(@booking)
+    assert_select "#give-back form[action=?] input[name='payment[kind]'][value=refund]", pms_booking_payments_path(@booking)
+    post pms_booking_payments_path(@booking), params: { payment: { amount: "200k", payment_method: "cash", kind: "refund" } }
+    follow_redirect!
+    assert_select "[role=alert]", text: /100.000 ₫/
+    post pms_booking_payments_path(@booking), params: { payment: { amount: "40k", payment_method: "cash", kind: "refund" } }
+    follow_redirect!
+    assert_select ".pms-toast", text: "Đã hoàn 40.000đ · Tiền mặt"
+    assert_equal 60_000, @booking.reload.paid
+  end
+
+  test "Xoá khoản thu sai: owners only" do
+    payment = @booking.payments.sole
+    staff!
+    get pms_booking_path(@booking)
+    assert_select "##{ActionView::RecordIdentifier.dom_id(payment)} form", 0
+    delete pms_booking_payment_path(@booking, payment)
+    assert_response :forbidden
+
+    log_in users(:owner)
+    get pms_booking_path(@booking)
+    assert_select "##{ActionView::RecordIdentifier.dom_id(payment)} form[action=?]", pms_booking_payment_path(@booking, payment)
+    delete pms_booking_payment_path(@booking, payment)
+    follow_redirect!
+    assert_select ".pms-toast", text: "Đã xoá khoản thu 100.000đ"
+    assert_empty @booking.payments.reload
+  end
+
+  test "Giảm giá: owners any amount, staff capped, without the right 403, blank removes it" do
+    staff!
+    patch discount_pms_booking_path(@booking), params: { booking: { discount: "50%", discount_reason: "Khách quen" } }
+    follow_redirect!
+    assert_select "[role=alert]", text: /#{Booking::STAFF_DISCOUNT_PERCENT}%/
+    assert_nil @booking.reload.discount
+    patch discount_pms_booking_path(@booking), params: { booking: { discount: "10%", discount_reason: "Khách quen" } }
+    follow_redirect!
+    assert_select ".pms-toast", text: "Đã giảm 40.000đ"
+    assert_select "#discount", text: /Khách quen\s*−40.000đ/
+
+    places(:tomo).place_memberships.find_by!(user: users(:admin)).update!(permissions: [])
+    patch discount_pms_booking_path(@booking), params: { booking: { discount: "" } }
+    assert_response :forbidden
+
+    log_in users(:owner)
+    patch discount_pms_booking_path(@booking), params: { booking: { discount: "" } }
+    follow_redirect!
+    assert_select ".pms-toast", text: "Đã bỏ giảm giá"
+    assert_nil @booking.reload.discount
+  end
+
+  test "Đổi phòng and Đã khai báo lưu trú for a guest in the room, staff too" do
+    @booking.update!(guests: 2)
+    @booking.check_in
+    staff!
+    get pms_booking_path(@booking)
+    assert_select "#move input[name=room_id][value=?]", rooms(:garden).id.to_s
+    post pms_stay_move_path(@booking), params: { room_id: rooms(:garden).id }, headers: { "Referer" => pms_booking_url(@booking) }
+    follow_redirect!
+    assert_select ".pms-toast", text: /Đã đổi phòng Limdim → Garden/
+    assert_equal rooms(:garden), @booking.reload.room
+    assert rooms(:limdim).reload.dirty?
+
+    post pms_stay_declare_path(@booking), headers: { "Referer" => pms_booking_url(@booking) }
+    follow_redirect!
+    assert_select ".pms-toast", text: /Đã khai báo lưu trú/
+    assert @booking.reload.declared_at
+    assert_select "form[action=?]", pms_stay_declare_path(@booking), 0
+
+    post pms_stay_move_path(@booking), params: { room_id: rooms(:garden).id }
+    follow_redirect!
+    assert_select "[role=alert]"
   end
 
   test "Dịch vụ: added from the catalog, removed by staff" do

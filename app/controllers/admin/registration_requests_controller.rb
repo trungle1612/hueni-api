@@ -1,7 +1,6 @@
 # Owner registration requests (RegistrationsController). Admin only, like Người dùng: the admin calls the
 # homestay's number on hueni to verify, then approves, which creates the account already linked to Zalo.
 class Admin::RegistrationRequestsController < Admin::BaseController
-  before_action :require_admin
   before_action :set_registration
   before_action :save_choices, only: %i[update approve reject]
 

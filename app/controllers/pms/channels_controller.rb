@@ -1,6 +1,6 @@
 # Kênh bán phòng (#246, board Channels.dc.html): the current homestay's iCal links grouped by OTA, recent syncs and
 # Đồng bộ tất cả for anyone at the desk; Hoa hồng for owners. Links are added / synced / removed in
-# Pms::CalendarFeedsController. Same model rules as /admin's Kênh OTA.
+# Pms::CalendarFeedsController. Same model rules as the Mini App.
 class Pms::ChannelsController < Pms::BaseController
   before_action -> { authorize!(:operate, current_place) if current_place }, only: :show
   before_action :set_place, only: %i[sync commissions]

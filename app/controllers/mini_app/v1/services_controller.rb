@@ -1,4 +1,4 @@
-# Dịch vụ catalog (#162), like Admin::ServicesController: owners only. Listing it (GET /places/:id/services) is staff too.
+# Dịch vụ catalog (#162), like Pms::ServicesController: owners only. Listing it (GET /places/:id/services) is staff too.
 class MiniApp::V1::ServicesController < MiniApp::V1::BaseController
   def create
     @place = Current.user.accessible_places.find(params[:place_id])

@@ -6,19 +6,19 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
 
   setup { log_in users(:admin) }
 
-  test "owners can't see or change users" do
+  test "owners can't see or change users: sent to the PWA" do
     delete session_path
     log_in users(:owner)
     get admin_users_path
-    assert_response :not_found
+    assert_redirected_to pms_today_path
     get new_admin_user_path
-    assert_response :not_found
+    assert_redirected_to pms_today_path
     post admin_users_path, params: { user: { name: "X", phone_number: "0987000009", role: "admin" } }
-    assert_response :not_found
+    assert_redirected_to pms_today_path
     get edit_admin_user_path(users(:admin))
-    assert_response :not_found
+    assert_redirected_to pms_today_path
     post reset_password_admin_user_path(users(:admin))
-    assert_response :not_found
+    assert_redirected_to pms_today_path
     assert_not User.exists?(phone_number: "0987000009")
     assert users(:admin).reload.authenticate("password123")
   end

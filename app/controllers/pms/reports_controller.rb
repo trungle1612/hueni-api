@@ -1,4 +1,4 @@
-# Báo cáo (#234): the current homestay's Report, the same numbers as /admin; owners and staff with the report right.
+# Báo cáo (#234): the current homestay's Report, the same numbers as the Mini App; owners and staff with the report right.
 # bao-cao.csv = Xuất CSV.
 class Pms::ReportsController < Pms::BaseController
   def show

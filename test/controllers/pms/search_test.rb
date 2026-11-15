@@ -46,6 +46,8 @@ class Pms::SearchTest < ActionDispatch::IntegrationTest
     assert_select "#no_results a[href=?]", new_pms_booking_path, text: "+ Đặt phòng mới"
     get pms_search_path(q: "mai")
     assert_select "[id^=search_booking]", 4
+    filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
+    assert_equal({ "q" => "[FILTERED]", "quantity" => "2" }, filter.filter("q" => "Chị Mai", "quantity" => "2"))
   end
 
   test "another homestay's booking is neither found nor opened" do

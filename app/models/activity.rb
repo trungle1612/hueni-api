@@ -1,5 +1,5 @@
 # The activity log (#46) in words: one paper_trail version → { kind:, action:, detail: } in Vietnamese, plus who did it
-# and in which room. The admin's Hoạt động / Lịch sử (Admin::ActivityHelper) and the Mini App (#158) both read it.
+# and in which room. The PWA's Nhật ký / Lịch sử and the Mini App (#158) both read it.
 class Activity
   # whodunnit of bookings a guest made on the homestay's booking page (#172).
   SITE = "site"

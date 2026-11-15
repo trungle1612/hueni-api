@@ -1,8 +1,21 @@
-# Chờ duyệt on Nhân viên (#245): an owner approves a staff refund request (the refund is written) or rejects it.
+# Chờ duyệt (#245, #247): staff without the refund right ask for a refund on Chi tiết đặt phòng; an owner approves it on
+# Nhân viên (the refund is written) or rejects it.
 class Pms::RefundRequestsController < Pms::BaseController
-  before_action do
+  before_action only: %i[approve reject] do
     @request = RefundRequest.joins(:booking).merge(Current.user.accessible_bookings).find(params[:id])
     authorize!(:manage, @request.booking.room.place)
+  end
+
+  def create
+    booking = Current.user.accessible_bookings.manual.find(params[:booking_id])
+    authorize!(:operate, booking.room.place)
+    request = booking.refund_requests.build(params.expect(refund_request: %i[amount payment_method note]).merge(requested_by: Current.user))
+    if request.save
+      flash[:toast] = "Đã gửi yêu cầu hoàn #{helpers.pms_money(request.amount)}, chờ chủ cơ sở duyệt"
+    else
+      flash[:alert] = request.errors.full_messages.to_sentence
+    end
+    redirect_to pms_booking_path(booking), status: :see_other
   end
 
   def approve

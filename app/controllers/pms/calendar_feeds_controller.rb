@@ -1,4 +1,4 @@
-# A room's iCal link on Kênh bán phòng (#246), like Admin::CalendarFeedsController: Kết nối (owners, syncs inline so
+# A room's iCal link on Kênh bán phòng (#246): Kết nối (owners, syncs inline so
 # the owner sees straight away whether the link works), Đồng bộ ngay (staff too), Ngắt kết nối (owners).
 # Never echo the URL: it carries the OTA's token.
 class Pms::CalendarFeedsController < Pms::BaseController

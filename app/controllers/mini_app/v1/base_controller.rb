@@ -1,5 +1,5 @@
 # Zalo Mini App API (#119 C): JSON under /api/v1 with a bearer token from POST /api/v1/session (#152).
-# Same access rules as /admin (see Admin::BaseController): look up through Current.user.accessible_*, then authorize!.
+# Same access rules as the PWA (see PlaceAuthorization): look up through Current.user.accessible_*, then authorize!.
 # Any origin may call it: there are no cookies, only the token.
 class MiniApp::V1::BaseController < ActionController::API
   class Forbidden < StandardError; end
@@ -51,7 +51,7 @@ class MiniApp::V1::BaseController < ActionController::API
     # Each request reads or changes one homestay, @place.
     def manage? = Current.user.allowed_to?(:manage, @place)
 
-    # Serializer params: staff never get the nightly quote or the owner's room note (same as /admin).
+    # Serializer params: staff never get the nightly quote or the owner's room note (same as the PWA).
     def serializer_params = { manage: manage? }
 
     # Every change answers with the booking as it is now, like GET /bookings/:id.

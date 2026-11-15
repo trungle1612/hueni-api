@@ -83,7 +83,7 @@ class Booking < ApplicationRecord
   STAFF_DISCOUNT_PERCENT = 10
   attr_accessor :discount_cap
   validates :guest_name, length: { maximum: 100 }
-  # Đặt phòng mới in the PWA (#232) needs who to call; /admin and the Mini App still allow neither. save(context: %i[create desk]).
+  # Đặt phòng mới in the PWA (#232) needs who to call; the Mini App still allows neither. save(context: %i[create desk]).
   validates :guest_name, :guest_phone, presence: true, on: :desk
   # Kept as typed (foreign guests: "+82 10 1234 5678"), but it must be dialable for the Gọi button.
   validate -> { errors.add(:guest_phone, "không hợp lệ: cần 8–15 chữ số") unless guest_phone.match?(/\A\+?[\d\s.\-()]+\z/) && guest_phone.count("0-9").between?(8, 15) },

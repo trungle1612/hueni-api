@@ -1,53 +1,65 @@
 require "test_helper"
 
-# #85: admins run accounts, not homestays. Without a membership every homestay page is out of scope.
+# #247: /admin is the admins' area. Owners and staff are sent to the PWA; their old /admin URLs open the matching screen.
 class Admin::AdminScopeTest < ActionDispatch::IntegrationTest
-  setup do
-    travel_to Time.zone.local(2026, 10, 1, 12)
-    log_in users(:admin)
-  end
+  setup { travel_to Time.zone.local(2026, 10, 1, 12) }
 
-  test "a homestay's pages are not found for an admin who isn't a member" do
-    booking = bookings(:limdim_confirmed)
-    feed = calendar_feeds(:limdim_airbnb)
-    owner = place_memberships(:owner_tomo)
-    {
-      admin_place_path("tomo-homestay") => :get,
-      admin_place_calendar_path("tomo-homestay") => :get,
-      admin_place_activity_path("tomo-homestay") => :get,
-      admin_place_report_path("tomo-homestay") => :get,
-      new_admin_place_booking_path("tomo-homestay") => :get,
-      edit_admin_booking_path(booking) => :get,
-      admin_booking_path(booking) => :patch,
-      check_in_admin_booking_path(booking) => :post,
-      new_admin_place_room_path("tomo-homestay") => :get,
-      edit_admin_room_path(rooms(:garden)) => :get,
-      admin_room_path(rooms(:garden)) => :patch,
-      admin_room_calendar_feeds_path(rooms(:garden)) => :post,
-      sync_admin_calendar_feed_path(feed) => :post,
-      admin_calendar_feed_path(feed) => :delete,
-      new_admin_place_member_path("tomo-homestay") => :get,
-      edit_admin_place_member_path("tomo-homestay", owner) => :get
-    }.each do |path, verb|
-      public_send(verb, path)
-      assert_response :not_found, "#{verb} #{path}"
+  test "owners and staff are sent to the PWA from every /admin page, writes included" do
+    registration = RegistrationRequest.create!(zalo_id: "zalo-lan", name: "Lan", phone_number: "0905999888", place_name: "Hieu Hil")
+    staff = User.create!(name: "Bé Na", phone_number: "0987654321", password: "password123")
+    places(:tomo).place_memberships.create!(user: staff, role: "staff")
+    [ users(:owner), staff ].each do |user|
+      sign_in_as user
+      [ admin_root_path, admin_users_path, new_admin_user_path, edit_admin_user_path(user), admin_sync_runs_path, admin_invites_path,
+        admin_announcements_path, admin_registration_request_path(registration) ].each do |path|
+        get path
+        assert_redirected_to pms_today_path, path
+      end
+      post admin_users_path, params: { user: { name: "X", phone_number: "0911222333", role: "admin" } }
+      assert_redirected_to pms_today_path
+      post admin_invites_path, params: { invite: { place_id: places(:tomo).id, role: "owner" } }
+      assert_redirected_to pms_today_path
+      patch approve_admin_registration_request_path(registration)
+      assert_redirected_to pms_today_path
     end
-    assert_nil booking.reload.checked_in_at
+    assert_nil User.find_by(phone_number: "0911222333")
+    assert_empty Invite.all
+    assert registration.reload.pending?
   end
 
-  test "menu entries lead nowhere private without a membership" do
-    get admin_calendar_path
-    assert_redirected_to admin_root_path
-    get admin_report_path
-    assert_redirected_to admin_root_path
-    get admin_calendar_feeds_path
+  test "old owner URLs open the matching PWA screen on that homestay" do
+    booking = bookings(:limdim_confirmed)
+    {
+      "/admin/calendar?from=2026-10-05" => "/lich?from=2026-10-05",
+      "/admin/report?month=2026-09" => "/bao-cao?month=2026-09",
+      "/admin/tim?q=mai" => "/tim?q=mai",
+      "/admin/places/tomo-homestay" => "/hom-nay?co_so=tomo-homestay",
+      "/admin/places/tomo-homestay/calendar?from=2026-10-05&x=1" => "/lich?co_so=tomo-homestay&from=2026-10-05",
+      "/admin/places/tomo-homestay/activity" => "/nhat-ky?co_so=tomo-homestay",
+      "/admin/places/tomo-homestay/report?period=7d" => "/bao-cao?co_so=tomo-homestay&period=7d",
+      "/admin/places/tomo-homestay/bookings/new?room_id=#{rooms(:garden).id}&start_date=2026-10-05" =>
+        "/dat-phong/moi?co_so=tomo-homestay&room_id=#{rooms(:garden).id}&start_date=2026-10-05",
+      "/admin/places/tomo-homestay/members/new" => "/nhan-vien?co_so=tomo-homestay",
+      "/admin/places/tomo-homestay/rooms/new" => "/phong/moi?co_so=tomo-homestay",
+      "/admin/rooms" => "/phong",
+      "/admin/rooms/#{rooms(:garden).id}/edit" => "/phong/#{rooms(:garden).id}/sua",
+      "/admin/calendar_feeds" => "/kenh",
+      "/admin/bookings/#{booking.id}/edit" => "/dat-phong/#{booking.id}",
+      "/admin/bookings/#{booking.id}/history" => "/dat-phong/#{booking.id}"
+    }.each do |old, new|
+      get old
+      assert_redirected_to "http://www.example.com#{new}", old
+    end
+  end
+
+  test "?co_so= switches the PWA to a homestay you are a member of, and ignores others" do
+    places(:hiuhill).place_memberships.create!(user: users(:owner), role: "owner")
+    log_in users(:owner)
+    get "/admin/places/hiuhill-homestay/calendar"
+    follow_redirect!
     assert_response :success
-    assert_select "main", text: /Limdim|Garden/, count: 0
-  end
-
-  test "the menu has no Báo cáo for an admin who owns no homestay" do
-    get admin_root_path
-    assert_select "aside a[href='#{admin_report_path}']", count: 0
-    assert_select "aside a[href='#{admin_users_path}']"
+    assert_equal "hiuhill-homestay", session[:pms_place]
+    get pms_calendar_path(co_so: "unknown")
+    assert_equal "hiuhill-homestay", session[:pms_place]
   end
 end

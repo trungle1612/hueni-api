@@ -1,5 +1,5 @@
 # Phòng (#233): the current homestay's rooms with today's state (RoomDay) and Tình trạng for anyone at the desk;
-# Thêm / sửa / xoá phòng for owners, with the same model rules as Admin::RoomsController.
+# Thêm / sửa / xoá phòng for owners, with the same model rules as the Mini App (MiniApp::V1::RoomsController).
 class Pms::RoomsController < Pms::BaseController
   FILTERS = { "co-khach" => "Có khách", "can-don" => "Cần dọn", "san-sang" => "Sẵn sàng", "bao-tri" => "Bảo trì" }.freeze
 

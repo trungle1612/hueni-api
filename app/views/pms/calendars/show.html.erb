@@ -118,8 +118,7 @@
 <% else %>
   <div class="m-4 pms-panel px-4 py-8 text-center">
     <p class="font-semibold">Chưa có phòng nào đang mở</p>
-    <%# Until Phòng (#233): /admin. %>
-    <%= link_to "Quản lý phòng", admin_place_path(current_place.slug), class: "pms-btn mt-3" %>
+    <% if allowed_to?(:manage, current_place) %><%= link_to "Quản lý phòng", pms_rooms_path, class: "pms-btn mt-3" %><% end %>
   </div>
 <% end %>
 <% end %>

@@ -71,7 +71,7 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
     render json: { date: Date.current, days: MiniApp::RoomDaySerializer.new(days, params: serializer_params) }
   end
 
-  # Active rooms × [from, to) (default 14 days, at most 62), like /admin calendar: confirmed bookings in the range
+  # Active rooms × [from, to) (default 14 days, at most 62), like the PWA's Lịch phòng: confirmed bookings in the range
   # plus guests still in, OTA conflicts and bookings caught by a Bảo trì.
   def calendar
     from = date_param(:from) || Date.current

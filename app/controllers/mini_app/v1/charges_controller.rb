@@ -1,4 +1,4 @@
-# Dịch vụ on a booking (#154), like Admin::BookingChargesController: anyone at the desk adds one from the homestay's
+# Dịch vụ on a booking (#154): anyone at the desk adds one from the homestay's
 # catalog (GET /places/:id/services) or removes it. Answers with the booking detail.
 class MiniApp::V1::ChargesController < MiniApp::V1::BaseController
   before_action do
