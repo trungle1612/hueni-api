@@ -14,7 +14,8 @@
 
 <% groups = {
   "Vận hành hằng ngày" => [ [ "Tìm đặt phòng", "Tên, số điện thoại hoặc mã đặt phòng", pms_search_path ] ],
-  "Thiết lập · chủ cơ sở" => ([ [ "Danh sách phòng", "#{current_place.rooms.count} phòng · thêm, sửa, giá", pms_rooms_path ] ] if current_place && allowed_to?(:manage, current_place)),
+  "Thiết lập · chủ cơ sở" => ([ [ "Danh sách phòng", "#{current_place.rooms.count} phòng · thêm, sửa, giá", pms_rooms_path ],
+    [ "Cài đặt cơ sở", "Tài khoản chuyển khoản, dịch vụ", pms_settings_path ] ] if current_place && allowed_to?(:manage, current_place)),
   "Trang quản lý" => [ [ "Mở trang quản lý", "Các mục chưa có trong ứng dụng", admin_root_path ] ]
 }.compact %>
 <% groups.each do |title, items| %>

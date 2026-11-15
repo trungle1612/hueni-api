@@ -1,0 +1,85 @@
+<% content_for :title, "Cài đặt cơ sở · hueni" %>
+<% content_for :bar do %>
+  <header class="sticky top-0 z-10 flex items-center gap-1 min-h-14 pl-1 pr-3 bg-pms-surface border-b border-pms-border">
+    <%= link_to pms_more_path, class: "flex-none flex items-center justify-center size-11 rounded-md", "aria-label": "Quay lại" do %>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    <% end %>
+    <div class="flex-1 min-w-0 flex flex-col">
+      <h1 class="text-[17px] leading-tight font-semibold truncate">Cài đặt cơ sở</h1>
+      <% if current_place %><span class="text-xs text-pms-text-2 truncate"><%= current_place.name %></span><% end %>
+    </div>
+  </header>
+<% end %>
+
+<% if (place = current_place) %>
+  <section class="px-4 pt-4" aria-labelledby="h-bank">
+    <h2 id="h-bank" class="pms-sec-h">Tài khoản chuyển khoản</h2>
+    <%= form_with model: place, url: pms_settings_bank_path, method: :patch, class: "pms-panel p-3 flex flex-col gap-3.5", html: { novalidate: true } do |form| %>
+      <% [ [ :bank_name, "Ngân hàng", 100, "Ví dụ: Vietcombank", "text" ], [ :bank_account, "Số tài khoản", 30, nil, "numeric" ],
+           [ :bank_holder, "Chủ tài khoản", 100, "Ví dụ: NGUYEN THI LAN", "text" ] ].each do |attr, name, max, placeholder, inputmode| %>
+        <div class="flex flex-col gap-1.5">
+          <%= form.label attr, name, class: "text-[13px] font-semibold" %>
+          <%= form.text_field attr, maxlength: max, placeholder:, inputmode:, autocomplete: "off", class: pms_input_class(place, attr), aria: field_aria(place, attr) %>
+          <%= pms_field_error(place, attr) %>
+        </div>
+      <% end %>
+      <p class="text-[13px] text-pms-text-2">Hiện cho lễ tân khi khách chuyển khoản, nội dung là mã đặt phòng (ví dụ DP0142).</p>
+      <%= form.button "Lưu tài khoản", class: "pms-btn pms-btn-primary w-full" %>
+    <% end %>
+  </section>
+
+  <% services = place.services.sort_by(&:name) %>
+  <section class="px-4 pt-4" aria-labelledby="h-services">
+    <div class="flex items-center justify-between gap-2">
+      <h2 id="h-services" class="pms-sec-h">Dịch vụ · <%= services.size %></h2>
+      <button type="button" popovertarget="service_sheet_new" class="pms-btn px-3 mb-1.5">+ Thêm dịch vụ</button>
+    </div>
+    <% if services.any? %>
+      <div class="pms-panel divide-y divide-pms-border">
+        <% services.each do |service| %>
+          <button type="button" id="<%= dom_id(service) %>" popovertarget="<%= dom_id(service, :sheet) %>" aria-label="Sửa dịch vụ <%= service.name %>"
+                  class="flex items-center gap-3 min-h-13 px-3 py-2 w-full text-left cursor-pointer">
+            <span class="flex-1 min-w-0 font-semibold truncate"><%= service.name %></span>
+            <span class="flex-none text-pms-text-2"><%= pms_money(service.price) %><%= " / #{service.unit}" if service.unit %></span>
+          </button>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="pms-panel p-3 text-pms-text-2">Chưa có dịch vụ nào. Thêm dịch vụ để lễ tân tính thêm vào đặt phòng.</p>
+    <% end %>
+    <p class="pt-2 text-[13px] text-pms-text-2">Lễ tân thêm dịch vụ vào đặt phòng. Đổi giá hoặc xoá không làm đổi đặt phòng đã có dịch vụ đó.</p>
+  </section>
+
+  <% [ *services, place.services.build ].each do |service| %>
+    <% sheet = service.persisted? ? dom_id(service, :sheet) : "service_sheet_new" %>
+    <div id="<%= sheet %>" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="<%= sheet %>_t">
+      <div class="flex flex-col gap-3">
+        <h2 id="<%= sheet %>_t" class="text-base font-semibold"><%= service.persisted? ? "Sửa dịch vụ #{service.name}" : "Thêm dịch vụ" %></h2>
+        <%= form_with model: service, url: service.persisted? ? pms_service_path(service) : pms_services_path, class: "flex flex-col gap-3" do |form| %>
+          <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Tên dịch vụ
+            <%= form.text_field :name, maxlength: 50, required: true, placeholder: "Ví dụ: Nước suối", autocomplete: "off", class: "pms-input font-normal" %>
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="flex flex-col gap-1.5 min-w-0 text-[13px] font-semibold">Giá (đ)
+              <%= pms_money_field form, :price, required: true, placeholder: "15.000" %>
+            </label>
+            <label class="flex flex-col gap-1.5 min-w-0 text-[13px] font-semibold"><span>Đơn vị <span class="font-normal text-pms-text-2">· nếu có</span></span>
+              <%= form.text_field :unit, maxlength: 20, placeholder: "chai, kg, ngày", autocomplete: "off", class: "pms-input font-normal" %>
+            </label>
+          </div>
+          <p class="-mt-1.5 text-[13px] text-pms-text-2">Để trống đơn vị nếu tính một lần.</p>
+          <%= form.button service.persisted? ? "Lưu dịch vụ" : "Thêm dịch vụ", class: "pms-btn pms-btn-primary w-full" %>
+        <% end %>
+        <% if service.persisted? %>
+          <%= button_to "Xoá dịch vụ #{service.name}", pms_service_path(service), method: :delete, class: "pms-btn w-full text-pms-danger border-pms-border",
+                form_class: "w-full", form: { data: { turbo_confirm: "Xoá dịch vụ #{service.name}?" } } %>
+        <% end %>
+        <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="<%= sheet %>" popovertargetaction="hide">Đóng</button>
+      </div>
+    </div>
+  <% end %>
+  <div class="pb-6"></div>
+  <%= render "pms/toast" %>
+<% else %>
+  <%= render "pms/no_place" %>
+<% end %>
