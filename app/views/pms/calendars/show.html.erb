@@ -32,12 +32,12 @@
 <% if conflict_ids.any? %>
   <div id="conflicts" class="px-4 py-3 flex flex-col gap-1.5">
     <% calendar.conflicts.each do |ical, manual| %>
-      <%= link_to pms_booking_href(manual), class: "pms-notice" do %>
+      <%= link_to pms_booking_path(manual), class: "pms-notice" do %>
         <span class="flex-1 min-w-0">Trùng lịch · <%= ical.room.name %>: <%= ical.label %> <%= pms_range(ical.start_date, ical.end_date) %> trùng với “<%= manual.label %>”. Sửa hoặc huỷ đặt phòng thủ công.</span><b>Xem</b>
       <% end %>
     <% end %>
     <% calendar.maintenance_conflicts.each do |booking| %>
-      <%= link_to pms_booking_href(booking), class: "pms-notice" do %>
+      <%= link_to pms_booking_path(booking), class: "pms-notice" do %>
         <span class="flex-1 min-w-0"><%= booking.room.name %> bảo trì đến <%= booking.room.maintenance_until.strftime("%d/%m") %> nhưng có “<%= booking.label %>” <%= pms_range(booking.start_date, booking.end_date) %>. Đổi phòng, đổi ngày hoặc huỷ đặt phòng.</span><b>Xem</b>
       <% end %>
     <% end %>

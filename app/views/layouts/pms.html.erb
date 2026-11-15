@@ -29,7 +29,12 @@
         <div role="<%= type == "alert" ? "alert" : "status" %>" class="mx-4 mt-4 rounded-md border px-3 py-2.5 text-[13px] font-medium <%= type == "alert" ? "border-pms-danger bg-pms-danger-bg text-pms-danger" : "border-pms-pos bg-pms-pos-bg text-pms-pos" %>"><%= message %></div>
       <% end %>
       <main class="flex-1 pb-6"><%= yield %></main>
-      <%= render "pms/nav" if authenticated? %>
+      <%# A screen with its own action bar (Chi tiết, Sửa đặt phòng) shows it instead of the tabs. %>
+      <% if content_for?(:footer) %>
+        <div class="sticky bottom-0 z-10 flex items-center gap-3 px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] bg-pms-surface border-t border-pms-border"><%= yield :footer %></div>
+      <% elsif authenticated? %>
+        <%= render "pms/nav" %>
+      <% end %>
     </div>
   </body>
 </html>

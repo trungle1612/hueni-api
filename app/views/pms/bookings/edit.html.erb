@@ -1,0 +1,94 @@
+<% b = @booking %>
+<% content_for :title, "Sửa #{b.code || "đặt phòng"} · hueni" %>
+<% manage = allowed_to?(:manage, @place) %>
+<% content_for :bar do %>
+  <header class="sticky top-0 z-10 flex items-center gap-1 min-h-14 pl-4 pr-2 bg-pms-surface border-b border-pms-border">
+    <%= link_to pms_booking_path(b), class: "flex-none flex items-center justify-center size-11 -ml-3 rounded-md", "aria-label": "Đóng" do %>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    <% end %>
+    <div class="flex-1 min-w-0 flex flex-col">
+      <h1 class="text-[17px] leading-tight font-semibold truncate">Sửa <%= b.code || "đặt phòng" %></h1>
+      <span class="text-xs text-pms-text-2 truncate"><%= [ b.guest_name_was, "đặt lúc #{b.created_at.strftime("%d/%m %H:%M")}" ].compact.join(" · ") %></span>
+    </div>
+  </header>
+<% end %>
+
+<% dates = b.date_problems if b.errors.any? %>
+<% other = b.errors[:base] - dates.to_a %>
+<% field = ->(attr) { "pms-input #{"border-pms-danger shadow-[inset_0_0_0_1px_var(--color-pms-danger)]" if b.errors.include?(attr)}" } %>
+<% error = ->(attr) { tag.p(b.errors.full_messages_for(attr).to_sentence, id: "#{attr}_error", class: "text-[13px] font-semibold text-pms-danger") if b.errors.include?(attr) } %>
+<% aria = ->(attr) { { invalid: (true if b.errors.include?(attr)), describedby: ("#{attr}_error" if b.errors.include?(attr)) } } %>
+<%= form_with model: b, url: pms_booking_path(b), method: :patch, id: "edit_booking", html: { novalidate: true },
+      data: { controller: "availability", availability_url_value: availability_pms_booking_path(b) } do |form| %>
+  <% if other.any? %>
+    <div class="px-4 pt-4"><div role="alert" class="rounded-md border border-pms-danger bg-pms-danger-bg text-pms-danger px-3 py-2.5 text-[13px] font-semibold"><%= other.to_sentence %></div></div>
+  <% end %>
+
+  <section class="px-4 pt-4" aria-labelledby="h-g">
+    <h2 id="h-g" class="pms-sec-h">Khách</h2>
+    <div class="pms-panel p-3 flex flex-col gap-3.5">
+      <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Số điện thoại
+        <%= form.telephone_field :guest_phone, autocomplete: "off", maxlength: 30, class: field[:guest_phone], aria: aria[:guest_phone] %>
+        <%= error[:guest_phone] %>
+      </label>
+      <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Tên khách
+        <%= form.text_field :guest_name, autocomplete: "off", maxlength: 100, class: field[:guest_name], aria: aria[:guest_name] %>
+        <%= error[:guest_name] %>
+      </label>
+      <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Số khách <span class="font-normal text-pms-text-2">tối đa <%= b.room.max_guests %></span>
+        <%= form.number_field :guests, min: 1, max: b.room.max_guests, inputmode: "numeric", class: field[:guests], aria: aria[:guests] %>
+        <%= error[:guests] %>
+      </label>
+    </div>
+  </section>
+
+  <section class="px-4 pt-4" aria-labelledby="h-s">
+    <h2 id="h-s" class="pms-sec-h">Lưu trú · Phòng <%= b.room.name %></h2>
+    <div class="pms-panel p-3 flex flex-col gap-3.5">
+      <div class="grid grid-cols-2 gap-3">
+        <% [ [ :start_date, "Nhận phòng", "start" ], [ :end_date, "Trả phòng", "end" ] ].each do |attr, name, target| %>
+          <label class="flex flex-col gap-1.5 min-w-0 text-[13px] font-semibold"><%= name %>
+            <%= form.date_field attr, required: true, class: "pms-input #{"border-pms-danger shadow-[inset_0_0_0_1px_var(--color-pms-danger)]" if dates.present?}",
+                  aria: { invalid: (true if dates.present?), describedby: ("dates_error" if dates.present?) },
+                  data: { availability_target: target, action: "availability#check" } %>
+          </label>
+        <% end %>
+      </div>
+      <%= render "availability", booking: b %>
+    </div>
+  </section>
+
+  <% if manage %>
+    <%# Owners quote the price; staff never see it. Money taken is changed on Chi tiết đặt phòng. %>
+    <section class="px-4 pt-4" aria-labelledby="h-p">
+      <h2 id="h-p" class="pms-sec-h">Thanh toán</h2>
+      <div class="pms-panel p-3 flex flex-col gap-3.5">
+        <div class="grid grid-cols-2 gap-3">
+          <% [ [ :price, "Giá mỗi đêm (đ)", "Giá phòng" ], [ :weekend_price, "Thứ 6, thứ 7 (đ)", "Như thường" ] ].each do |attr, name, placeholder| %>
+            <label class="flex flex-col gap-1.5 min-w-0 text-[13px] font-semibold"><%= name %>
+              <%= form.text_field attr, inputmode: "numeric", placeholder:, class: field[attr], aria: aria[attr],
+                    value: b.errors.include?(attr) ? b.public_send(:"#{attr}_before_type_cast") : b.public_send(attr)&.then { number_with_delimiter(it, delimiter: ".") } %>
+              <%= error[attr] %>
+            </label>
+          <% end %>
+        </div>
+        <p class="text-[13px] text-pms-text-2">Giá đã chốt cho đặt phòng này. Tiền đã thu được sửa ở phần Thanh toán của đặt phòng.</p>
+      </div>
+    </section>
+  <% end %>
+
+  <section class="px-4 pt-4 pb-6" aria-labelledby="h-n">
+    <h2 id="h-n" class="pms-sec-h">Ghi chú</h2>
+    <div class="pms-panel p-3">
+      <%= form.text_area :note, rows: 3, maxlength: 500, class: "pms-input h-auto py-2.5 resize-none", aria: { labelledby: "h-n" } %>
+    </div>
+  </section>
+<% end %>
+
+<% content_for :footer do %>
+  <div class="flex-1 min-w-0">
+    <b class="block text-[15px]">Phòng <%= b.room.name %></b>
+    <span class="text-xs text-pms-text-2"><%= "Tổng #{pms_money(b.total)} · " if b.total %><%= "còn thu #{pms_money([ b.due, 0 ].max)}" if b.due %></span>
+  </div>
+  <button type="submit" form="edit_booking" class="pms-btn pms-btn-primary min-h-12">Lưu thay đổi</button>
+<% end %>

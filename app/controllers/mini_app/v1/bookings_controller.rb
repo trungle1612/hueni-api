@@ -19,12 +19,7 @@ class MiniApp::V1::BookingsController < MiniApp::V1::BaseController
 
   # Edit, or cancel with status "cancelled" + cancel_reason; refund_method refunds what was paid (owners, or staff with the refund right).
   def update
-    if @booking.checked_out_at
-      @booking.errors.add(:base, "Khách đã trả phòng, không sửa được đặt phòng.")
-      render_invalid(@booking)
-    else
-      respond @booking.update_and_refund(booking_params, (params[:refund_method].presence_in(Payment::METHODS.keys) if Current.user.allowed_to?(:refund, @place)))
-    end
+    respond @booking.update_and_refund(booking_params, (params[:refund_method].presence_in(Payment::METHODS.keys) if Current.user.allowed_to?(:refund, @place)))
   end
 
   # Giảm giá: "50k" or "10%"; staff need the discount right and give at most Booking::STAFF_DISCOUNT_PERCENT. Blank removes it.

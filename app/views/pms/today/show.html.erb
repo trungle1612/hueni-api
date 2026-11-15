@@ -40,7 +40,7 @@
   <% if !@tomorrow && t.issues.any? %>
     <div id="issues" class="px-4 pt-4 flex flex-col gap-1.5">
       <% t.issues.each do |issue| %>
-        <%= link_to issue.kind == :clean ? admin_place_path(current_place.slug) : pms_booking_href(issue.booking), class: "pms-notice" do %>
+        <%= link_to issue.kind == :clean ? admin_place_path(current_place.slug) : pms_booking_path(issue.booking), class: "pms-notice" do %>
           <span class="flex-1 min-w-0"><%= issue.title %> · <%= issue.detail %></span><b><%= issue.kind == :stay ? "Khai báo" : "Xem" %></b>
         <% end %>
       <% end %>
@@ -62,16 +62,7 @@
     </section>
   <% end %>
 
-  <% if (toast = flash[:toast]) %>
-    <div class="pms-toast" role="status">
-      <span class="flex-1"><%= toast %></span>
-      <% step = flash[:undo]&.last %>
-      <% if @undo && (step == "check_in" ? @undo.can_undo_check_in? : @undo.can_undo_check_out?) %>
-        <%= button_to "Hoàn tác", step == "check_in" ? pms_stay_undo_check_in_path(@undo) : pms_stay_undo_check_out_path(@undo),
-              class: "min-h-11 px-3 font-semibold text-[#ddb8ca] cursor-pointer" %>
-      <% end %>
-    </div>
-  <% end %>
+  <%= render "pms/toast", undo: @undo %>
 <% else %>
   <%= render "pms/no_place" %>
 <% end %>

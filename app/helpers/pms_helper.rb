@@ -5,9 +5,18 @@ module PmsHelper
   # "600.000đ", as in the design.
   def pms_money(amount) = "#{number_with_delimiter(amount, delimiter: ".")}đ"
 
-  # Until the PWA has Chi tiết đặt phòng (#231), manual bookings open the /admin form, iCal ones the week on Lịch phòng.
-  def pms_booking_href(booking)
-    booking.manual? ? edit_admin_booking_path(booking) : pms_calendar_path(from: booking.start_date.iso8601)
+  # "T4 21/10", as in Chi tiết đặt phòng.
+  def pms_short_day(date) = "#{%w[CN T2 T3 T4 T5 T6 T7][date.wday]} #{date.strftime("%d/%m")}"
+
+  # Chi tiết đặt phòng's chip: [tone, chip, note] as in the design.
+  def pms_booking_state(booking)
+    if booking.cancelled? then [ :danger, "Đã huỷ", booking.cancel_reason || "Phòng #{booking.room.name} đã trống lại" ]
+    elsif booking.checked_out_at then [ :out, "Đã trả phòng", "Trả lúc #{booking.checked_out_at.strftime("%H:%M %d/%m")}" ]
+    elsif booking.overdue? then [ :warn, "Quá hạn trả phòng", "Trả phòng #{pms_short_day(booking.end_date)}" ]
+    elsif booking.checked_in_at then [ :in, "Đang ở", "Trả phòng #{pms_short_day(booking.end_date)}" ]
+    elsif booking.start_date <= Booking.arrival_date then [ :ok, "Sắp đến", booking.start_date == Date.current ? "Đến hôm nay" : "Trễ từ #{pms_short_day(booking.start_date)}" ]
+    else [ :ok, "Sắp đến", "Đến #{pms_short_day(booking.start_date)}" ]
+    end
   end
 
   # "22 – 25/10", or "30/10 – 03/11" across months.

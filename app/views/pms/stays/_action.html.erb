@@ -1,0 +1,42 @@
+<%# Nhận / Trả phòng button (Hôm nay rows, Chi tiết đặt phòng). Money due, a dirty room or a missing head count
+    first open a bottom sheet (native popover); otherwise the tap does it. -%>
+<%# locals: (booking:, step:, label:, css: "pms-btn px-3") -%>
+<% check_in = step == :check_in %>
+<% path = check_in ? pms_stay_check_in_path(booking) : pms_stay_check_out_path(booking) %>
+<% verb = check_in ? "nhận phòng" : "trả phòng" %>
+<% aria = "#{verb.upcase_first} #{booking.room.name}, #{booking.label}" %>
+<% due = booking.due if booking.due&.positive? %>
+<% dirty = check_in && booking.room.dirty? %>
+<% ask_guests = check_in && !booking.guests %>
+<% if due || dirty || ask_guests %>
+  <% sheet = dom_id(booking, :sheet) %>
+  <button type="button" class="<%= css %>" popovertarget="<%= sheet %>" aria-label="<%= aria %>"><%= label %></button>
+  <div id="<%= sheet %>" popover class="pms-sheet" role="dialog" aria-modal="true" aria-labelledby="<%= sheet %>_t">
+    <%= form_with url: path, class: "flex flex-col gap-3" do |form| %>
+      <h2 id="<%= sheet %>_t" class="text-base font-semibold"><%= verb.upcase_first %> <%= booking.room.name %> · <%= booking.label %></h2>
+      <% if dirty %>
+        <div class="pms-notice" role="alert">Phòng <%= booking.room.name %> chưa dọn xong. Nên đổi sang phòng đã sẵn sàng, hoặc mời khách chờ.</div>
+      <% end %>
+      <% if ask_guests %>
+        <label class="flex flex-col gap-1 font-medium">Số khách
+          <%= form.number_field :guests, in: 1..booking.room.max_guests, required: true, inputmode: "numeric", class: "pms-input" %>
+        </label>
+      <% end %>
+      <% if due %>
+        <dl class="pms-panel divide-y divide-pms-border">
+          <% [ [ "Tổng tiền phòng", booking.total ], [ "Đã thanh toán", booking.paid ] ].each do |name, amount| %>
+            <div class="flex justify-between gap-3 px-3 py-2.5"><dt class="text-pms-text-2"><%= name %></dt><dd class="font-semibold"><%= pms_money(amount) %></dd></div>
+          <% end %>
+          <div class="flex justify-between gap-3 px-3 py-2.5"><dt class="text-pms-text-2">Còn phải thu</dt><dd class="font-semibold text-pms-warn"><%= pms_money(due) %></dd></div>
+        </dl>
+        <%= form.button "Đã thu #{pms_money(due)}, #{verb}", name: "collect", value: "1", class: "pms-btn pms-btn-primary w-full" %>
+        <%= form.button "#{verb.upcase_first}, ghi nợ", class: "pms-btn w-full" %>
+      <% else %>
+        <%= form.button dirty ? "Vẫn #{verb}" : verb.upcase_first, class: "pms-btn pms-btn-primary w-full" %>
+      <% end %>
+      <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="<%= sheet %>" popovertargetaction="hide">Đóng</button>
+    <% end %>
+  </div>
+<% else %>
+  <%= button_to label, path, class: css, "aria-label": aria %>
+<% end %>

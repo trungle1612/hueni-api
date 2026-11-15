@@ -57,6 +57,7 @@
   .pms-btn:disabled { opacity: .45; cursor: not-allowed; }
   .pms-btn-primary { background: var(--color-pms-primary); border-color: var(--color-pms-primary); color: #fff; }
   .pms-btn-ghost { background: transparent; border-color: transparent; color: var(--color-pms-text-2); }
+  .pms-btn-danger { background: var(--color-pms-danger-bg); border-color: var(--color-pms-danger); color: var(--color-pms-danger); }
   .pms-btn-zalo { background: #0068ff; border-color: #0068ff; color: #fff; }
   .pms-panel { background: var(--color-pms-surface); border: 1px solid var(--color-pms-border); border-radius: 8px; overflow: hidden; }
   .pms-input {
