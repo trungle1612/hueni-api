@@ -41,7 +41,7 @@ class Pms::OnboardingTest < ActionDispatch::IntegrationTest
     push! { get pms_onboarding_path }
     assert_select "section[data-step]", count: 2
     assert_select "section[data-step=setup]", count: 0
-    assert_select "section[data-step=notif] button", text: "Vào Hôm nay"
+    assert_select "section[data-step=notif] button", text: "Vào Màn hình chính"
   end
 
   test "Chuẩn bị cơ sở on Hôm nay for an owner until the homestay has a room; never for staff" do

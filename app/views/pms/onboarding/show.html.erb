@@ -5,7 +5,7 @@
 <% step_no = "flex-none flex items-center justify-center size-6 rounded-full bg-pms-primary-bg text-pms-primary text-[13px] font-bold" %>
 <% key = "inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-pms-border-strong bg-pms-bg text-xs font-semibold whitespace-nowrap" %>
 <% done_box = "flex items-center gap-2 mt-4 px-3 py-2.5 rounded-md border border-pms-pos bg-pms-pos-bg text-pms-pos font-semibold" %>
-<% today = @steps.last == "notif" ? "Vào Hôm nay" : "Tiếp tục" %>
+<% today = @steps.last == "notif" ? "Vào Màn hình chính" : "Tiếp tục" %>
 
 <div class="min-h-dvh flex flex-col px-6" data-controller="onboarding" data-onboarding-done-value="<%= pms_today_path %>"
      data-action="push:changed@document->onboarding#pushed appinstalled@window->onboarding#installed beforeinstallprompt@window->onboarding#installable">
@@ -72,10 +72,10 @@
       <%= render "setup", place: current_place %>
       <div class="<%= foot %>">
         <% if current_place.rooms.exists? %>
-          <%= link_to "Vào Hôm nay", pms_today_path, class: "pms-btn pms-btn-primary min-h-12" %>
+          <%= link_to "Vào Màn hình chính", pms_today_path, class: "pms-btn pms-btn-primary min-h-12" %>
         <% else %>
           <%= link_to "Bắt đầu: thêm phòng", new_pms_room_path, class: "pms-btn pms-btn-primary min-h-12" %>
-          <%= link_to "Vào Hôm nay, làm sau", pms_today_path, class: "pms-btn pms-btn-ghost min-h-12" %>
+          <%= link_to "Vào Màn hình chính, làm sau", pms_today_path, class: "pms-btn pms-btn-ghost min-h-12" %>
         <% end %>
       </div>
     </section>

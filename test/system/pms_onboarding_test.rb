@@ -11,7 +11,7 @@ class PmsOnboardingTest < ApplicationSystemTestCase
     assert_text "BƯỚC 2 / 2"
     assert_selector "h1", text: "Chuẩn bị cơ sở của bạn"
     assert_no_selector "h1", text: "Đặt hueni ra màn hình chính"
-    click_link "Vào Hôm nay"
+    click_link "Vào Màn hình chính"
     assert_current_path pms_today_path
     assert_selector "h1", text: "Hôm nay"
   end
