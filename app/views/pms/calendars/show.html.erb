@@ -10,8 +10,7 @@
   <% unless days.begin == today %>
     <%= link_to "Hôm nay", pms_calendar_path, class: "flex-none flex items-center min-h-11 px-2 text-pms-primary font-semibold no-underline" %>
   <% end %>
-  <%# Until the PWA has Tìm (#235): /admin. %>
-  <%= link_to admin_search_path, class: icon_btn, "aria-label": "Tìm đặt phòng" do %>
+  <%= link_to pms_search_path, class: icon_btn, "aria-label": "Tìm đặt phòng" do %>
     <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
   <% end %>
   <%= link_to pms_calendar_path(from: (days.begin - days.count).iso8601), class: icon_btn, "aria-label": "Tuần trước" do %>

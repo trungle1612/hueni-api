@@ -1,0 +1,51 @@
+<% content_for :title, "Tìm đặt phòng · hueni" %>
+<% many_places = places.size > 1 %>
+<% content_for :bar do %>
+  <header class="sticky top-0 z-10 flex items-center gap-1 min-h-14 pl-1 pr-3 bg-pms-surface border-b border-pms-border">
+    <%= link_to pms_today_path, class: "flex-none flex items-center justify-center size-11 rounded-md", "aria-label": "Quay lại" do %>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    <% end %>
+    <%= form_with url: pms_search_path, method: :get, class: "flex-1 min-w-0", role: "search" do |form| %>
+      <%= form.label :q, "Tìm đặt phòng", class: "sr-only" %>
+      <%= form.search_field :q, value: @query, placeholder: "Tên, số điện thoại hoặc mã", autocomplete: "off", enterkeyhint: "search",
+            autofocus: @query.empty?, class: "pms-input h-10" %>
+    <% end %>
+  </header>
+<% end %>
+
+<% if @query.empty? %>
+  <p class="px-4 pt-4 text-[13px] text-pms-text-2">Tìm trong tất cả đặt phòng<%= " của các cơ sở" if many_places %>. Gõ tên có dấu hoặc không dấu, số điện thoại, hoặc mã như DP-0142, rồi bấm Tìm.</p>
+<% elsif !@sections %>
+  <p class="px-4 pt-4 text-[13px] text-pms-text-2">Nhập ít nhất 2 ký tự.</p>
+<% elsif @sections.values.all?(&:empty?) %>
+  <div id="no_results" class="px-4 py-6 flex flex-col gap-3 text-pms-text-2">
+    <p class="font-semibold text-pms-text">Không có đặt phòng khớp “<%= @query %>”.</p>
+    <p>Kiểm tra lại chính tả hoặc số điện thoại. Khách mới thì tạo đặt phòng.</p>
+    <div class="flex gap-2">
+      <% if current_place %><%= link_to "+ Đặt phòng mới", new_pms_booking_path, class: "pms-btn pms-btn-primary" %><% end %>
+      <%= link_to "Xoá tìm kiếm", pms_search_path, class: "pms-btn" %>
+    </div>
+  </div>
+<% else %>
+  <p class="px-4 pt-3 text-[13px] text-pms-text-2"><%= @sections.values.sum(&:size) %> đặt phòng</p>
+  <% { in_house: "Đang ở", upcoming: "Sắp đến", past: "Đã qua và đã huỷ" }.each do |key, title| %>
+    <% bookings = @sections[key] %>
+    <% next if bookings.empty? %>
+    <section id="<%= key %>" class="px-4 pt-3">
+      <h2 class="pms-sec-h flex justify-between"><span><%= title %></span><span class="font-normal"><%= bookings.size %></span></h2>
+      <div class="pms-panel divide-y divide-pms-border">
+        <% bookings.each do |booking| %>
+          <% tone, badge = { in_house: [ :in, "Đang ở" ], upcoming: [ :ok, "Sắp đến" ] }[key] ||
+               (booking.cancelled? ? [ :danger, "Đã huỷ" ] : [ :out, booking.checked_out_at ? "Đã trả" : "Đã qua" ]) %>
+          <%= link_to pms_booking_path(booking), id: dom_id(booking, :search), class: "flex items-center gap-3 min-h-14 px-3 py-2 no-underline" do %>
+            <span class="flex-1 min-w-0">
+              <span class="block font-semibold truncate"><%= booking.label %></span>
+              <span class="block text-[13px] text-pms-text-2 truncate"><%= [ booking.code, "Phòng #{booking.room.name}", pms_range(booking.start_date, booking.end_date), (booking.room.place.name if many_places) ].compact.join(" · ") %></span>
+            </span>
+            <span class="pms-badge pms-badge-<%= tone %>"><%= badge %></span>
+          <% end %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+<% end %>

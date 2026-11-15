@@ -119,9 +119,7 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
   # Tìm đặt phòng in this homestay: guest name (no diacritics needed), phone digits or DP code (Booking.search).
   # q comes in the body so guest names never sit in a URL; it is filtered from the logs.
   def search
-    query = params[:q].to_s.squish.first(50)
-    sections = query.empty? ? { in_house: [], upcoming: [], past: [] } :
-      Booking.where(room: @place.rooms).includes(:calendar_feed, :payments).search_sections(query, limit: Admin::SearchesController::LIMIT)
+    sections = Booking.where(room: @place.rooms).includes(:calendar_feed, :payments).search_sections(params[:q])
     render json: sections.transform_values { MiniApp::BookingSerializer.new(it, params: serializer_params) }
   end
 

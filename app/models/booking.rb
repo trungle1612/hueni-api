@@ -215,8 +215,16 @@ class Booking < ApplicationRecord
     where(id: ids)
   end
 
+  SEARCH_LIMIT = 30
+
+  # What Tìm đặt phòng searches for: the typed text squished, at most 50 characters.
+  def self.search_query(text) = text.to_s.squish.first(50)
+
   # Tìm đặt phòng's sections (#143): guests in, bookings still to come, and the rest newest first (at most `limit`).
-  def self.search_sections(query, limit: 30)
+  # A blank query finds nothing.
+  def self.search_sections(query, limit: SEARCH_LIMIT)
+    query = search_query(query)
+    return { in_house: [], upcoming: [], past: [] } if query.empty?
     results = search(query).to_a
     in_house = results.select(&:can_check_out?).sort_by(&:end_date)
     upcoming = results.select { it.confirmed? && !it.checked_in_at && it.end_date > Date.current }.sort_by(&:start_date)
