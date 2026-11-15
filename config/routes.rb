@@ -34,6 +34,9 @@ Rails.application.routes.draw do
       resources :payments, path: "thu-tien", only: :create
       resources :charges, path: "dich-vu", only: %i[create destroy]
     end
+    resources :rooms, path: "phong", except: :show, path_names: { new: "moi", edit: "sua" } do
+      patch :status, on: :member, path: "tinh-trang"
+    end
     scope "dat-phong/:id", controller: :stays, as: :stay do
       post "nhan-phong", action: :check_in, as: :check_in
       post "tra-phong", action: :check_out, as: :check_out

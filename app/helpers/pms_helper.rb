@@ -13,6 +13,16 @@ module PmsHelper
     tag.p model.errors.full_messages_for(attribute).to_sentence, id: "#{attribute}_error", class: "text-[13px] font-semibold text-pms-danger"
   end
 
+  # A VND text field: shows 500.000 and formats as you type (money_controller.js); after an error, what was typed.
+  # value: overrides the model's (e.g. Thu tiền prefilled with what is due); data: action is added after money#format.
+  def pms_money_field(form, attribute, value: :model, data: {}, aria: {}, **options)
+    model = form.object
+    value = model.errors.include?(attribute) ? model.public_send(:"#{attribute}_before_type_cast") : model.public_send(attribute) if value == :model
+    value = number_with_delimiter(value, delimiter: ".") if value.is_a?(Integer)
+    form.text_field attribute, value:, inputmode: "numeric", autocomplete: "off", class: pms_input_class(model, attribute), aria: field_aria(model, attribute).compact.merge(aria),
+      data: { **data, controller: "money", action: [ "input->money#format", data[:action] ].compact.join(" ") }, **options
+  end
+
   # "T4 21/10", as in Chi tiết đặt phòng.
   def pms_short_day(date) = "#{%w[CN T2 T3 T4 T5 T6 T7][date.wday]} #{date.strftime("%d/%m")}"
 
@@ -24,6 +34,34 @@ module PmsHelper
     elsif booking.checked_in_at then [ :in, "Đang ở", "Trả phòng #{pms_short_day(booking.end_date)}" ]
     elsif booking.start_date <= Booking.arrival_date then [ :ok, "Sắp đến", booking.start_date == Date.current ? "Đến hôm nay" : "Trễ từ #{pms_short_day(booking.start_date)}" ]
     else [ :ok, "Sắp đến", "Đến #{pms_short_day(booking.start_date)}" ]
+    end
+  end
+
+  # Phòng's filter for a RoomDay (#233): co-khach / can-don / san-sang / bao-tri; nil for a room not taking guests.
+  def pms_room_filter(day)
+    case day.state
+    when :off then nil
+    when :occupied, :leaving then "co-khach"
+    when :maintenance then "bao-tri"
+    else day.room.dirty? ? "can-don" : "san-sang"
+    end
+  end
+
+  # A Phòng row: [tone, badge, title, line] as in the design.
+  def pms_room_row(day)
+    room, booking, upcoming = day.room, day.booking, day.next_booking
+    arrival = (booking if day.state == :arriving) || upcoming
+    expected = arrival && "#{arrival.label} đến #{arrival.start_date == Date.current ? "hôm nay" : arrival.start_date.strftime("%d/%m")}"
+    case pms_room_filter(day)
+    when "co-khach"
+      due = booking.due if booking.due&.positive?
+      leave = booking.end_date <= Date.current ? "Trả phòng hôm nay" : "Đến #{booking.end_date.strftime("%d/%m")}"
+      leave = "Quá hạn trả phòng" if booking.overdue?
+      [ :ok, "Có khách", booking.label, [ leave, ("còn thu #{pms_money(due)}" if due) ].compact.join(" · ") ]
+    when "bao-tri" then [ :maint, "Bảo trì", "Bảo trì", "#{room.maintenance_reason} · đến #{room.maintenance_until.strftime("%d/%m")}" ]
+    when "can-don" then [ :warn, "Cần dọn", "Cần dọn", expected || "Chưa có khách đặt" ]
+    when "san-sang" then [ :pos, "Sẵn sàng", "Trống", expected || "Chưa có khách đặt" ]
+    else [ :out, "Tạm ngưng", "Tạm ngưng", "Không nhận đặt phòng mới" ]
     end
   end
 

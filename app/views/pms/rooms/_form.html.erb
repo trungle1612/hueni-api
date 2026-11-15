@@ -1,0 +1,109 @@
+<%# Thêm / sửa phòng (owners). The same fields and model rules as /admin's room form. -%>
+<%# locals: (room:) -%>
+<% content_for :bar do %>
+  <header class="sticky top-0 z-10 flex items-center gap-1 min-h-14 pl-4 pr-2 bg-pms-surface border-b border-pms-border">
+    <%= link_to pms_rooms_path, class: "flex-none flex items-center justify-center size-11 -ml-3 rounded-md", "aria-label": "Đóng" do %>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    <% end %>
+    <div class="flex-1 min-w-0 flex flex-col">
+      <h1 class="text-[17px] leading-tight font-semibold truncate"><%= room.persisted? ? "Sửa phòng #{room.name_was}" : "Thêm phòng" %></h1>
+      <span class="text-xs text-pms-text-2 truncate"><%= room.place.name %></span>
+    </div>
+  </header>
+<% end %>
+
+<%= form_with model: room, url: room.persisted? ? pms_room_path(room) : pms_rooms_path, id: "room_form", html: { novalidate: true } do |form| %>
+  <% if room.errors[:base].any? %>
+    <div class="px-4 pt-4"><div role="alert" class="rounded-md border border-pms-danger bg-pms-danger-bg text-pms-danger px-3 py-2.5 text-[13px] font-semibold"><%= room.errors[:base].to_sentence %></div></div>
+  <% end %>
+
+  <section class="px-4 pt-4" aria-labelledby="h-b">
+    <h2 id="h-b" class="pms-sec-h">Thông tin phòng</h2>
+    <div class="pms-panel p-3 flex flex-col gap-3.5">
+      <div class="grid grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1.5 min-w-0">
+          <%= form.label :name, "Số phòng", class: "text-[13px] font-semibold" %>
+          <%= form.text_field :name, maxlength: 50, placeholder: "111", autocomplete: "off", class: pms_input_class(room, :name), aria: field_aria(room, :name) %>
+        </div>
+        <div class="flex flex-col gap-1.5 min-w-0">
+          <%= form.label :floor, "Tầng", class: "text-[13px] font-semibold" %>
+          <%= form.number_field :floor, min: 0, max: 200, inputmode: "numeric", class: pms_input_class(room, :floor), aria: field_aria(room, :floor) %>
+        </div>
+      </div>
+      <%= pms_field_error(room, :name) %><%= pms_field_error(room, :floor) %>
+      <div class="flex flex-col gap-1.5">
+        <%= form.label :room_type, "Loại phòng", class: "text-[13px] font-semibold" %>
+        <%= form.select :room_type, Room::ROOM_TYPES.invert, { include_blank: "Chưa chọn" }, class: pms_input_class(room, :room_type), aria: { describedby: "room_type_help" } %>
+        <p id="room_type_help" class="text-[13px] text-pms-text-2">Phòng chưa chọn loại không hiện trên trang đặt phòng riêng.</p>
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <%= form.label :max_guests, "Số khách tối đa", class: "text-[13px] font-semibold" %>
+        <%= form.number_field :max_guests, min: 1, max: 50, inputmode: "numeric", required: true, class: pms_input_class(room, :max_guests), aria: field_aria(room, :max_guests) %>
+        <%= pms_field_error(room, :max_guests) %>
+      </div>
+    </div>
+  </section>
+
+  <section class="px-4 pt-4" aria-labelledby="h-p">
+    <h2 id="h-p" class="pms-sec-h">Giá</h2>
+    <div class="pms-panel p-3 flex flex-col gap-3.5">
+      <div class="grid grid-cols-2 gap-3">
+        <% [ [ :price, "Giá mỗi đêm (đ)", "450.000", nil ], [ :weekend_price, "Thứ 6, thứ 7 (đ)", "Như ngày thường", " · nếu khác" ] ].each do |attr, name, placeholder, opt| %>
+          <div class="flex flex-col gap-1.5 min-w-0">
+            <%= form.label attr, class: "text-[13px] font-semibold" do %><%= name %><% if opt %><span class="font-normal text-pms-text-2"><%= opt %></span><% end %><% end %>
+            <%= pms_money_field form, attr, placeholder: %>
+            <%= pms_field_error(room, attr) %>
+          </div>
+        <% end %>
+      </div>
+      <% if room.persisted? %><p class="text-[13px] text-pms-text-2">Giá mới áp dụng cho đặt phòng tạo sau khi lưu; đặt phòng đã có giữ giá cũ.</p><% end %>
+    </div>
+  </section>
+
+  <section class="px-4 pt-4" aria-labelledby="h-a">
+    <h2 id="h-a" class="pms-sec-h">Tiện nghi <span class="font-normal">· hiện trong chi tiết đặt phòng</span></h2>
+    <div class="pms-panel px-3 py-1 grid grid-cols-2 gap-x-3">
+      <%= form.collection_check_boxes :amenities, Room::AMENITIES, :first, :last do |box| %>
+        <label class="flex items-center gap-2.5 min-h-11 cursor-pointer"><%= box.check_box(class: "size-4.5 accent-pms-primary") %><%= box.text %></label>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="px-4 pt-4 <%= "pb-6" unless room.persisted? %>" aria-labelledby="h-o">
+    <h2 id="h-o" class="pms-sec-h">Vận hành</h2>
+    <div class="pms-panel p-3 flex flex-col gap-3.5">
+      <label class="flex items-center gap-3 min-h-11 cursor-pointer">
+        <span class="flex-1 min-w-0">
+          <span class="block font-semibold">Nhận đặt phòng mới</span>
+          <span class="block text-[13px] text-pms-text-2">Tắt: phòng ẩn khỏi lịch và lựa chọn khi đặt mới; đặt phòng đã có vẫn giữ.</span>
+        </span>
+        <%= form.check_box :active, role: "switch", class: "size-6 accent-pms-primary" %>
+      </label>
+      <div class="flex flex-col gap-1.5">
+        <%= form.label :note, class: "text-[13px] font-semibold" do %>Ghi chú nội bộ <span class="font-normal text-pms-text-2">· nếu có</span><% end %>
+        <%= form.text_area :note, rows: 3, maxlength: 1000, placeholder: "Ví dụ: cửa sổ nhìn ra hẻm, ồn buổi sáng", class: "#{pms_input_class(room, :note)} h-auto py-2.5 resize-none" %>
+        <%= pms_field_error(room, :note) %>
+      </div>
+    </div>
+  </section>
+<% end %>
+
+<% if room.persisted? %>
+  <%# Xoá phòng: the model refuses a room that ever had a booking (Phòng đã có đặt phòng nên không xoá được). %>
+  <section class="px-4 pt-4 pb-6" aria-labelledby="h-d">
+    <h2 id="h-d" class="pms-sec-h">Xoá phòng</h2>
+    <div class="pms-panel p-3 flex flex-col gap-3">
+      <p class="text-[13px] text-pms-text-2">Chỉ xoá được phòng chưa từng có đặt phòng (thêm nhầm). Muốn tạm ngưng, hãy tắt “Nhận đặt phòng mới”.</p>
+      <%= button_to "Xoá phòng #{room.name_was}…", pms_room_path(room), method: :delete, class: "pms-btn w-full text-pms-danger border-pms-border",
+            form: { data: { turbo_confirm: "Xoá phòng #{room.name_was}? Không hoàn tác được." } } %>
+    </div>
+  </section>
+<% end %>
+
+<% content_for :footer do %>
+  <div class="flex-1 min-w-0">
+    <b class="block text-[15px] truncate"><%= room.persisted? ? "Phòng #{room.name_was}" : "Phòng mới" %></b>
+    <span class="block text-xs text-pms-text-2 truncate"><%= room.price_was ? "#{pms_money(room.price_was)}/đêm" : "Chưa có giá" %> · <%= room.max_guests_was || room.max_guests %> khách</span>
+  </div>
+  <button type="submit" form="room_form" class="pms-btn pms-btn-primary min-h-12"><%= room.persisted? ? "Lưu thay đổi" : "Thêm phòng" %></button>
+<% end %>
