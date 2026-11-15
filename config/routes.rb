@@ -26,8 +26,11 @@ Rails.application.routes.draw do
     get "lich", to: "calendars#show", as: :calendar
     get "them", to: "more#show", as: :more
     patch "co-so/:slug", to: "places#update", as: :place
-    resources :bookings, path: "dat-phong", only: %i[show edit update], path_names: { edit: "sua" } do
+    resources :bookings, path: "dat-phong", only: %i[new create show edit update], path_names: { new: "moi", edit: "sua" } do
       get :availability, on: :member, path: "lich-trong"
+      get :saved, on: :member, path: "da-luu"
+      get :rooms, on: :collection, path: "phong-trong"
+      get :guest, on: :collection, path: "khach-cu"
       resources :payments, path: "thu-tien", only: :create
       resources :charges, path: "dich-vu", only: %i[create destroy]
     end

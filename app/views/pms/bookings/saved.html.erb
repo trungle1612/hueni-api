@@ -1,0 +1,22 @@
+<% b = @booking %>
+<% content_for :title, "Đã lưu · hueni" %>
+<% content_for :bar, render("pms/bar", title: "Đã lưu") %>
+<div class="px-4 pt-4 flex flex-col gap-3">
+  <div class="flex flex-col gap-0.5 p-3 rounded-md border border-[#b9d9c4] bg-pms-pos-bg text-pms-pos" role="status">
+    <b>Đã lưu đặt phòng<%= " #{b.code}" if b.code %></b>
+    <span class="text-[13px]">Lịch phòng đã được cập nhật.</span>
+  </div>
+  <dl id="summary" class="pms-panel divide-y divide-pms-border">
+    <% [ [ "Khách", b.label ], [ "Phòng", "Phòng #{b.room.name}" ],
+         [ "Ngày ở", "#{pms_range(b.start_date, b.end_date)} · #{(b.end_date - b.start_date).to_i} đêm" ],
+         [ "Tổng tiền", b.total ? pms_money(b.total) : "Chưa có giá" ], [ "Đã cọc", pms_money(b.paid) ] ].each do |name, value| %>
+      <div class="flex justify-between gap-3 px-3 py-2.5"><dt class="text-pms-text-2"><%= name %></dt><dd class="font-medium text-right"><%= value %></dd></div>
+    <% end %>
+    <% if b.due %>
+      <div class="flex justify-between gap-3 px-3 py-2.5 font-semibold"><dt>Còn phải thu</dt><dd><%= pms_money(b.due) %></dd></div>
+    <% end %>
+  </dl>
+  <%= link_to "Xem trên lịch", pms_calendar_path(from: (b.start_date unless b.start_date.between?(Date.current, Date.current + 6))), class: "pms-btn pms-btn-primary w-full" %>
+  <%= link_to "Đặt phòng khác", new_pms_booking_path, class: "pms-btn w-full" %>
+  <%= link_to "Mở đặt phòng", pms_booking_path(b), class: "pms-btn pms-btn-ghost w-full" %>
+</div>

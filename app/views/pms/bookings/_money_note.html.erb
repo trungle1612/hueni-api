@@ -1,0 +1,5 @@
+<%# locals: (booking:) -%>
+<%= pms_field_error(booking, :deposit) %>
+<% if allowed_to?(:manage, @place) && booking.room&.price && !booking.price %>
+  <p class="text-[13px] text-pms-text-2">Để trống: lấy giá phòng <%= booking.room.name %> <%= pms_money(booking.room.price) %><%= ", T6–T7 #{pms_money(booking.room.weekend_price)}" if booking.room.weekend_price %>.</p>
+<% end %>

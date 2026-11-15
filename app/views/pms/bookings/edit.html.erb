@@ -15,9 +15,6 @@
 
 <% dates = b.date_problems if b.errors.any? %>
 <% other = b.errors[:base] - dates.to_a %>
-<% field = ->(attr) { "pms-input #{"border-pms-danger shadow-[inset_0_0_0_1px_var(--color-pms-danger)]" if b.errors.include?(attr)}" } %>
-<% error = ->(attr) { tag.p(b.errors.full_messages_for(attr).to_sentence, id: "#{attr}_error", class: "text-[13px] font-semibold text-pms-danger") if b.errors.include?(attr) } %>
-<% aria = ->(attr) { { invalid: (true if b.errors.include?(attr)), describedby: ("#{attr}_error" if b.errors.include?(attr)) } } %>
 <%= form_with model: b, url: pms_booking_path(b), method: :patch, id: "edit_booking", html: { novalidate: true },
       data: { controller: "availability", availability_url_value: availability_pms_booking_path(b) } do |form| %>
   <% if other.any? %>
@@ -28,16 +25,16 @@
     <h2 id="h-g" class="pms-sec-h">Khách</h2>
     <div class="pms-panel p-3 flex flex-col gap-3.5">
       <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Số điện thoại
-        <%= form.telephone_field :guest_phone, autocomplete: "off", maxlength: 30, class: field[:guest_phone], aria: aria[:guest_phone] %>
-        <%= error[:guest_phone] %>
+        <%= form.telephone_field :guest_phone, autocomplete: "off", maxlength: 30, class: pms_input_class(b, :guest_phone), aria: field_aria(b, :guest_phone) %>
+        <%= pms_field_error(b, :guest_phone) %>
       </label>
       <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Tên khách
-        <%= form.text_field :guest_name, autocomplete: "off", maxlength: 100, class: field[:guest_name], aria: aria[:guest_name] %>
-        <%= error[:guest_name] %>
+        <%= form.text_field :guest_name, autocomplete: "off", maxlength: 100, class: pms_input_class(b, :guest_name), aria: field_aria(b, :guest_name) %>
+        <%= pms_field_error(b, :guest_name) %>
       </label>
       <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Số khách <span class="font-normal text-pms-text-2">tối đa <%= b.room.max_guests %></span>
-        <%= form.number_field :guests, min: 1, max: b.room.max_guests, inputmode: "numeric", class: field[:guests], aria: aria[:guests] %>
-        <%= error[:guests] %>
+        <%= form.number_field :guests, min: 1, max: b.room.max_guests, inputmode: "numeric", class: pms_input_class(b, :guests), aria: field_aria(b, :guests) %>
+        <%= pms_field_error(b, :guests) %>
       </label>
     </div>
   </section>
@@ -48,7 +45,7 @@
       <div class="grid grid-cols-2 gap-3">
         <% [ [ :start_date, "Nhận phòng", "start" ], [ :end_date, "Trả phòng", "end" ] ].each do |attr, name, target| %>
           <label class="flex flex-col gap-1.5 min-w-0 text-[13px] font-semibold"><%= name %>
-            <%= form.date_field attr, required: true, class: "pms-input #{"border-pms-danger shadow-[inset_0_0_0_1px_var(--color-pms-danger)]" if dates.present?}",
+            <%= form.date_field attr, required: true, class: class_names("pms-input", "pms-input-error": dates.present?),
                   aria: { invalid: (true if dates.present?), describedby: ("dates_error" if dates.present?) },
                   data: { availability_target: target, action: "availability#check" } %>
           </label>
@@ -66,9 +63,9 @@
         <div class="grid grid-cols-2 gap-3">
           <% [ [ :price, "Giá mỗi đêm (đ)", "Giá phòng" ], [ :weekend_price, "Thứ 6, thứ 7 (đ)", "Như thường" ] ].each do |attr, name, placeholder| %>
             <label class="flex flex-col gap-1.5 min-w-0 text-[13px] font-semibold"><%= name %>
-              <%= form.text_field attr, inputmode: "numeric", placeholder:, class: field[attr], aria: aria[attr],
+              <%= form.text_field attr, inputmode: "numeric", placeholder:, class: pms_input_class(b, attr), aria: field_aria(b, attr),
                     value: b.errors.include?(attr) ? b.public_send(:"#{attr}_before_type_cast") : b.public_send(attr)&.then { number_with_delimiter(it, delimiter: ".") } %>
-              <%= error[attr] %>
+              <%= pms_field_error(b, attr) %>
             </label>
           <% end %>
         </div>

@@ -1,12 +1,12 @@
 <% content_for :title, "Hôm nay · hueni" %>
 <% day = @tomorrow ? "Xem trước #{pms_day(Date.current.next_day)}" : pms_day(Date.current) %>
-<%# Until the PWA has Tìm (#235), Thông báo (#237) and Đặt phòng mới (#232), search and + Đặt phòng open /admin. %>
+<%# Until the PWA has Tìm (#235), search opens /admin. %>
 <% actions = capture do %>
   <% if current_place %>
     <%= link_to admin_search_path, class: "flex-none flex items-center justify-center size-11 rounded-md", "aria-label": "Tìm đặt phòng" do %>
       <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
     <% end %>
-    <%= link_to "+ Đặt phòng", new_admin_place_booking_path(current_place.slug), class: "pms-btn px-3" %>
+    <%= link_to "+ Đặt phòng", new_pms_booking_path, class: "pms-btn px-3" %>
   <% end %>
 <% end %>
 <% content_for :bar, render("pms/bar", title: "Hôm nay", sub: [ day, current_place&.name ].compact.join(" · "), actions:, border: !current_place) %>

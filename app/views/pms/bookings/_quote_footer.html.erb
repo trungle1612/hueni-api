@@ -1,0 +1,16 @@
+<%# Đặt phòng mới's footer: the total from the model (price_on, the room's prices while none is typed), what is left
+    after Đã cọc; staff see the total, not the nightly price. -%>
+<%# locals: (booking:) -%>
+<% nights = (booking.end_date - booking.start_date).to_i %>
+<% total = booking.room_total if booking.room %>
+<% prices = (booking.start_date...booking.end_date).map { booking.price_on(it) }.uniq if total && allowed_to?(:manage, @place) %>
+<div class="flex-1 min-w-0">
+  <% if total %>
+    <b class="block text-base"><%= pms_money(total) %></b>
+    <span class="block text-xs text-pms-text-2 truncate"><%= nights %> đêm<%= " × #{pms_money(prices.first)}" if prices&.one? %> · còn thu <%= pms_money([ total - booking.deposit.to_i, 0 ].max) %></span>
+  <% else %>
+    <b class="block text-base"><%= nights %> đêm</b>
+    <span class="block text-xs text-pms-text-2 truncate"><%= booking.room ? "Chưa có giá phòng" : "Chưa chọn phòng" %></span>
+  <% end %>
+</div>
+<button type="submit" form="new_booking" class="pms-btn pms-btn-primary min-h-12" <%= "disabled" unless booking.room %>>Lưu đặt phòng</button>

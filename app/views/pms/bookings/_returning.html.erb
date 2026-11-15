@@ -1,0 +1,12 @@
+<%# Khách cũ (turbo-frame #returning): Guest.returning for the phone typed. -%>
+<%# locals: (guest:) -%>
+<turbo-frame id="returning" data-pms-booking-target="returning">
+  <% if guest %>
+    <div class="flex items-center gap-2 mt-1.5 pl-2.5 pr-1 py-1 rounded-md border border-pms-info-line bg-pms-info-bg text-pms-info text-[13px]">
+      <span class="flex-1 min-w-0">Khách cũ: <%= guest.latest.guest_name || "chưa có tên" %> · đã ở <%= guest.visits.size %> lần<%= " · #{guest.flag}" if guest.flag %></span>
+      <% if guest.latest.guest_name %>
+        <button type="button" class="pms-btn px-3" data-action="pms-booking#useName" data-pms-booking-name-param="<%= guest.latest.guest_name %>">Dùng thông tin</button>
+      <% end %>
+    </div>
+  <% end %>
+</turbo-frame>
