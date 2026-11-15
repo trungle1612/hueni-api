@@ -1,0 +1,21 @@
+<%# Vai trò and Quyền thêm (PlaceMembership::PERMISSIONS, staff only; hidden while Chủ cơ sở is picked). -%>
+<%# locals: (form:, membership:) -%>
+<fieldset>
+  <legend class="mb-1.5 text-[13px] font-semibold">Vai trò</legend>
+  <div class="grid grid-cols-2 gap-2">
+    <% %w[staff owner].each do |role| %>
+      <label class="pms-btn w-full has-[:checked]:border-pms-primary has-[:checked]:bg-pms-primary-bg has-[:checked]:text-pms-primary cursor-pointer">
+        <%= form.radio_button :role, role, checked: membership.role == role, class: "sr-only" %><%= pms_role(role) %>
+      </label>
+    <% end %>
+  </div>
+</fieldset>
+<fieldset class="group-has-[input[value=owner]:checked]:hidden">
+  <legend class="mb-1.5 text-[13px] font-semibold">Quyền thêm</legend>
+  <div class="pms-panel divide-y divide-pms-border">
+    <%= form.collection_check_boxes :permissions, PlaceMembership::PERMISSIONS, :first, :last, checked: membership.permissions do |box| %>
+      <label class="flex items-center gap-3 min-h-11 px-3 cursor-pointer"><span class="flex-1"><%= box.text %></span><%= box.check_box(role: "switch", class: "size-5 accent-pms-primary") %></label>
+    <% end %>
+  </div>
+</fieldset>
+<p class="hidden group-has-[input[value=owner]:checked]:block text-[13px] text-pms-text-2">Chủ cơ sở có mọi quyền, kể cả nhân viên và nhật ký.</p>

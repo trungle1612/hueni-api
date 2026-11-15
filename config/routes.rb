@@ -33,6 +33,16 @@ Rails.application.routes.draw do
     get "cai-dat", to: "settings#show", as: :settings
     patch "cai-dat/chuyen-khoan", to: "settings#bank", as: :settings_bank
     resources :services, path: "cai-dat/dich-vu", only: %i[create update destroy]
+    resources :members, path: "nhan-vien", only: %i[index create update destroy] do
+      post :lock, on: :member, path: "khoa"
+      post :unlock, on: :member, path: "mo-khoa"
+      post :setup_link, on: :member, path: "link-moi"
+    end
+    get "nhat-ky", to: "activities#show", as: :activity
+    resources :refund_requests, path: "hoan-tien", only: [] do
+      post :approve, on: :member, path: "duyet"
+      post :reject, on: :member, path: "tu-choi"
+    end
     resources :bookings, path: "dat-phong", only: %i[new create show edit update], path_names: { new: "moi", edit: "sua" } do
       get :availability, on: :member, path: "lich-trong"
       get :saved, on: :member, path: "da-luu"

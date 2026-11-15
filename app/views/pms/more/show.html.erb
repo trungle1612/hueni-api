@@ -15,7 +15,8 @@
 <% groups = {
   "Vận hành hằng ngày" => [ [ "Tìm đặt phòng", "Tên, số điện thoại hoặc mã đặt phòng", pms_search_path ] ],
   "Thiết lập · chủ cơ sở" => ([ [ "Danh sách phòng", "#{current_place.rooms.count} phòng · thêm, sửa, giá", pms_rooms_path ],
-    [ "Cài đặt cơ sở", "Tài khoản chuyển khoản, dịch vụ", pms_settings_path ] ] if current_place && allowed_to?(:manage, current_place)),
+    [ "Cài đặt cơ sở", "Tài khoản chuyển khoản, dịch vụ", pms_settings_path ],
+    [ "Nhân viên và nhật ký", [ "#{current_place.place_memberships.count} tài khoản", RefundRequest.pending_at(current_place).count.then { "#{it} yêu cầu chờ duyệt" if it.positive? } ].compact.join(" · "), pms_members_path ] ] if current_place && allowed_to?(:manage, current_place)),
   "Trang quản lý" => [ [ "Mở trang quản lý", "Các mục chưa có trong ứng dụng", admin_root_path ] ]
 }.compact %>
 <% groups.each do |title, items| %>
@@ -37,7 +38,7 @@
     <div class="<%= row %> cursor-auto">
       <span class="flex-1 min-w-0">
         <span class="block font-semibold"><%= user.name %></span>
-        <span class="block text-[13px] text-pms-text-2 truncate"><%= [ ({ "owner" => "Chủ cơ sở", "staff" => "Lễ tân" }[user.role_at(current_place)] if current_place), user.phone_number ].compact.join(" · ").presence || "Chưa thuộc cơ sở nào" %></span>
+        <span class="block text-[13px] text-pms-text-2 truncate"><%= [ (pms_role(user.role_at(current_place)) if current_place), user.phone_number ].compact.join(" · ").presence || "Chưa thuộc cơ sở nào" %></span>
       </span>
     </div>
     <%= link_to pms_legal_path, class: row do %>

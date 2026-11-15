@@ -1,0 +1,32 @@
+<% content_for :title, "Nhật ký · hueni" %>
+<%= render "pms/members/bar", tab: :log %>
+
+<% if current_place %>
+  <nav class="flex gap-2 overflow-x-auto px-4 pt-3" aria-label="Lọc nhật ký">
+    <% [ [ nil, "Tất cả" ], [ "cancel", "Huỷ" ], [ "price", "Giá" ], [ "money", "Tiền" ] ].each do |key, name| %>
+      <%= link_to name, pms_activity_path(filter: key), "aria-current": ("page" if @filter == key),
+            class: "pms-btn flex-none px-3 no-underline #{@filter == key ? "border-pms-primary bg-pms-primary-bg text-pms-primary" : "font-medium"}" %>
+    <% end %>
+  </nav>
+  <section class="px-4 pt-3" aria-label="Nhật ký thao tác">
+    <% if @versions.any? %>
+      <div class="pms-panel divide-y divide-pms-border">
+        <% Activity.lines(@versions).each do |line| %>
+          <div id="activity_<%= line.id %>" class="flex flex-col px-3 py-2.5">
+            <span class="font-semibold"><%= line.action %><%= " · phòng #{line.room_name}" if line.room_name %></span>
+            <% if line.detail %><span class="text-[13px]"><%= line.detail %></span><% end %>
+            <span class="text-xs text-pms-text-2"><%= line.actor %> · <%= pms_when(line.at) %></span>
+          </div>
+        <% end %>
+      </div>
+      <% if @versions.size == Activity::PER_PAGE %>
+        <%= link_to "Xem cũ hơn", pms_activity_path(filter: @filter, before: @versions.last.id), class: "pms-btn w-full mt-2" %>
+      <% end %>
+    <% else %>
+      <p class="pms-panel p-3 text-pms-text-2">Chưa có thao tác nào.</p>
+    <% end %>
+    <p class="pt-2 pb-6 text-[13px] text-pms-text-2">Nhật ký không sửa, không xoá được.</p>
+  </section>
+<% else %>
+  <%= render "pms/no_place" %>
+<% end %>

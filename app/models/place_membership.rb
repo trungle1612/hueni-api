@@ -1,6 +1,7 @@
 class PlaceMembership < ApplicationRecord
   ROLE_LABELS = { "owner" => "Chủ", "staff" => "Nhân viên" }.freeze
   LAST_OWNER = "Homestay cần ít nhất một chủ.".freeze
+  PHONE_TAKEN = "Số điện thoại này đã được dùng. Nhờ quản trị viên thêm vào homestay.".freeze
 
   belongs_to :user
   belongs_to :place
@@ -22,13 +23,29 @@ class PlaceMembership < ApplicationRecord
   def locked? = locked_at.present?
   def allows?(permission) = owner? || permissions.include?(permission.to_s)
 
-  # Khoá tài khoản: out of this homestay, and logged out of the app and the web everywhere.
-  def lock!
+  # Thêm thành viên (owners in /admin, the PWA and the Mini App): a new account, which logs in through the one-time
+  # Zalo link, and its membership; both or neither. A phone already in use is refused without saying whose it is:
+  # linking an existing account stays an admin task. Errors are on the returned membership or its user.
+  def self.add(place, name: nil, phone_number: nil, role: nil, permissions: [])
+    user = User.new(name:, phone_number:, role: "user", password: User.unknown_password)
+    membership = place.place_memberships.build(user:, role:, permissions:)
+    if user.phone_number.present? && User.exists?(phone_number: user.phone_number)
+      user.errors.add(:base, PHONE_TAKEN)
+    else
+      transaction { (user.save && membership.save) or raise ActiveRecord::Rollback }
+    end
+    membership
+  end
+
+  # Khoá tài khoản: out of this homestay, and logged out of the app and the web everywhere. false for an owner.
+  def lock
+    return true if locked?
     transaction do
-      update!(locked_at: Time.current)
+      update(locked_at: Time.current) or raise ActiveRecord::Rollback
       user.api_tokens.delete_all
       user.sessions.destroy_all
-    end
+      true
+    end || false
   end
 
   validates :place_id, uniqueness: { scope: :user_id }

@@ -14,14 +14,9 @@ class MiniApp::V1::MembershipsController < MiniApp::V1::BaseController
   # { member: { name, phone_number, role, permissions } } → the member and the one-time link to send over Zalo.
   def create
     attrs = params.expect(member: [ :name, :phone_number, :role, permissions: [] ])
-    user = User.new(name: attrs[:name], phone_number: attrs[:phone_number], role: "user", password: User.unknown_password)
-    @membership = @place.place_memberships.build(user:, role: attrs[:role], **attrs.slice(:permissions).to_h.symbolize_keys)
-    if user.phone_number.present? && User.exists?(phone_number: user.phone_number)
-      user.errors.add(:phone_number, Admin::MembersController::PHONE_TAKEN)
-      return render_invalid(user)
-    end
-    saved = User.transaction { (user.save && @membership.save) or raise ActiveRecord::Rollback }
-    return render_invalid(user.errors.any? ? user : @membership) unless saved
+    @membership = PlaceMembership.add(@place, **attrs.to_h.symbolize_keys)
+    user = @membership.user
+    return render_invalid(user.errors.any? ? user : @membership) unless @membership.persisted?
     render json: { member: member_json(@membership), setup_link: setup_link_for(user) }, status: :created
   end
 
@@ -36,8 +31,7 @@ class MiniApp::V1::MembershipsController < MiniApp::V1::BaseController
 
   # Khoá tài khoản: out of this homestay and logged out everywhere. Mở khoá: back in (they log in again).
   def lock
-    return render_member if @membership.locked?
-    @membership.owner? ? refuse("Không khoá được chủ homestay.") : (@membership.lock! && render_member)
+    @membership.lock ? render_member : render_invalid(@membership)
   end
 
   def unlock = @membership.update(locked_at: nil) ? render_member : render_invalid(@membership)
@@ -45,7 +39,7 @@ class MiniApp::V1::MembershipsController < MiniApp::V1::BaseController
   # Tạo link liên kết Zalo (User#reset_login!), only for someone whose every homestay is yours, never yourself.
   def setup_link
     user = @membership.user
-    raise Forbidden unless user != Current.user && !user.admin? && user.place_memberships.includes(:place).all? { Current.user.allowed_to?(:manage, it.place) }
+    raise Forbidden unless user.login_link_by?(Current.user)
     user.reset_login!
     render json: { member: member_json(@membership.reload), setup_link: setup_link_for(user) }
   end
@@ -65,15 +59,10 @@ class MiniApp::V1::MembershipsController < MiniApp::V1::BaseController
       { id: membership.id, user_id: user.id, name: user.name, phone: user.phone_number, role: membership.role,
         permissions: membership.owner? ? PlaceMembership::PERMISSIONS.keys : membership.permissions,
         locked: membership.locked?, invited: user.zalo_id.nil? && !user.admin?,
-        last_active_at: [ *user.api_tokens.map(&:last_used_at), *user.sessions.map(&:updated_at) ].compact.max }
+        last_active_at: user.last_active_at }
     end
 
     def render_member = render(json: { member: member_json(@membership.reload) })
-
-    def refuse(message)
-      @membership.errors.add(:base, message)
-      render_invalid(@membership)
-    end
 
     def setup_link_for(user) = password_setup_url(token: user.generate_token_for(:password_setup))
 end

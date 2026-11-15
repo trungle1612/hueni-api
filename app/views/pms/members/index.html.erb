@@ -1,0 +1,97 @@
+<% content_for :title, "Nhân viên · hueni" %>
+<%= render "bar", tab: :staff %>
+
+<% if current_place %>
+  <% if @requests.any? %>
+    <section class="px-4 pt-4" aria-labelledby="h-req">
+      <h2 id="h-req" class="pms-sec-h">Chờ duyệt · <%= @requests.size %></h2>
+      <div class="flex flex-col gap-2">
+        <% @requests.each do |request| %>
+          <% booking = request.booking %>
+          <div id="<%= dom_id(request) %>" role="region" aria-label="Yêu cầu hoàn tiền <%= booking.code %>" class="pms-panel p-3 flex flex-col gap-2 border-pms-warn">
+            <b>Xin hoàn <%= pms_money(request.amount) %> · <%= Payment::METHODS[request.payment_method].downcase %></b>
+            <span class="text-[13px] text-pms-text-2">
+              <%= request.requested_by&.name || "Hệ thống" %> gửi lúc <%= pms_when(request.created_at) %> · <%= booking.code %> <%= booking.label %>, phòng <%= booking.room.name %>, đã thu <%= pms_money(booking.paid) %>.<%= " Lý do: #{request.note}" if request.note %>
+            </span>
+            <div class="grid grid-cols-2 gap-2">
+              <%= button_to "Từ chối", reject_pms_refund_request_path(request), class: "pms-btn w-full", form_class: "w-full" %>
+              <%= button_to "Duyệt hoàn tiền", approve_pms_refund_request_path(request), class: "pms-btn pms-btn-primary w-full", form_class: "w-full" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <section class="px-4 pt-4" aria-labelledby="h-staff">
+    <div class="flex items-center justify-between gap-2">
+      <h2 id="h-staff" class="pms-sec-h"><%= @memberships.size %> tài khoản</h2>
+      <button type="button" popovertarget="member_sheet_new" class="pms-btn px-3 mb-1.5">+ Mời nhân viên</button>
+    </div>
+    <div class="pms-panel divide-y divide-pms-border">
+      <% @memberships.each do |membership| %>
+        <% user = membership.user %>
+        <% me = user == Current.user %>
+        <% invited = user.zalo_id.nil? && !user.admin? %>
+        <% active = user.last_active_at %>
+        <button type="button" id="<%= dom_id(membership) %>" popovertarget="<%= dom_id(membership, :sheet) %>" aria-label="<%= user.name %>, <%= pms_role(membership.role) %>"
+                class="flex items-center gap-3 min-h-14 px-3 py-2 w-full text-left cursor-pointer">
+          <span aria-hidden="true" class="flex-none flex items-center justify-center size-9 rounded-full bg-pms-primary-bg text-pms-primary font-semibold"><%= invited ? "?" : user.name.split.last.to_s.first %></span>
+          <span class="flex-1 min-w-0">
+            <span class="block font-semibold truncate"><%= user.name %></span>
+            <span class="block text-[13px] text-pms-text-2 truncate"><%= pms_role(membership.role) %> · <%= me ? "bạn" : active ? "hoạt động #{pms_when(active)}" : "chưa dùng app" %></span>
+          </span>
+          <% if membership.locked? %><span class="pms-badge pms-badge-danger">Đã khoá</span>
+          <% elsif invited %><span class="pms-badge pms-badge-warn">Chờ nhận lời mời</span>
+          <% end %>
+        </button>
+      <% end %>
+    </div>
+    <p class="pt-2 text-[13px] text-pms-text-2">Thay đổi vai trò, quyền và khoá tài khoản được ghi vào Nhật ký.</p>
+  </section>
+
+  <% @memberships.each do |membership| %>
+    <%= render "sheet", membership: %>
+  <% end %>
+
+  <%# Mời nhân viên: a new account and the one-time Zalo link (PlaceMembership.add); reopens with the model's refusals. %>
+  <% invite, guest = @new_membership, @new_membership.user %>
+  <% errors = guest.errors.full_messages + invite.errors.full_messages %>
+  <div id="member_sheet_new" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="member_sheet_new_t"
+       <%= tag.attributes(data: { controller: ("open" if errors.any?) }) %>>
+    <%= form_with scope: :member, url: pms_members_path, namespace: "new", class: "group flex flex-col gap-3" do |form| %>
+      <h2 id="member_sheet_new_t" class="text-base font-semibold">Mời nhân viên</h2>
+      <% if errors.any? %>
+        <div role="alert" class="rounded-md border border-pms-danger bg-pms-danger-bg text-pms-danger px-3 py-2.5 text-[13px] font-semibold"><%= errors.to_sentence %></div>
+      <% end %>
+      <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Tên
+        <%= form.text_field :name, value: guest.name, required: true, maxlength: 100, autocomplete: "off", placeholder: "Ví dụ: Phạm Thu Hà", class: "pms-input font-normal" %>
+      </label>
+      <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Số điện thoại
+        <%= form.telephone_field :phone_number, value: guest.phone_number, required: true, inputmode: "tel", autocomplete: "off", placeholder: "09xx xxx xxx", class: "pms-input font-normal" %>
+      </label>
+      <%= render "roles", form:, membership: invite %>
+      <p class="text-[13px] text-pms-text-2">Bạn nhận một link để gửi qua Zalo. Nhân viên mở link trên điện thoại có Zalo và bấm Liên kết Zalo để đăng nhập. Link dùng một lần, hết hạn sau 7 ngày.</p>
+      <%= form.button "Thêm và lấy link", class: "pms-btn pms-btn-primary w-full" %>
+      <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="member_sheet_new" popovertargetaction="hide">Đóng</button>
+    <% end %>
+  </div>
+
+  <% if (link = flash[:setup_link]) %>
+    <div id="link_sheet" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="link_sheet_t" data-controller="open share">
+      <div class="flex flex-col gap-3">
+        <h2 id="link_sheet_t" class="text-base font-semibold">Gửi link cho <%= link["name"] %></h2>
+        <p class="text-[13px] text-pms-text-2"><%= link["name"] %> mở link trên điện thoại có Zalo, bấm Liên kết Zalo và đăng nhập ngay. Link dùng một lần, hết hạn ngày <%= 7.days.from_now.strftime("%d/%m") %> và chỉ hiện ở đây một lần. Chỉ gửi cho đúng người.</p>
+        <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Link liên kết
+          <input type="text" readonly value="<%= link["url"] %>" class="pms-input font-normal select-all" data-share-target="source">
+        </label>
+        <button type="button" class="pms-btn pms-btn-primary w-full" data-share-target="share" data-action="share#share">Gửi qua Zalo</button>
+        <button type="button" class="pms-btn w-full" data-share-target="copy" data-action="share#copy">Sao chép link</button>
+        <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="link_sheet" popovertargetaction="hide">Đóng</button>
+      </div>
+    </div>
+  <% end %>
+  <%= render "pms/toast" %>
+<% else %>
+  <%= render "pms/no_place" %>
+<% end %>

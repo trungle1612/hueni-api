@@ -36,6 +36,15 @@ class User < ApplicationRecord
 
   # Lost phone, new Zalo account or forgotten password: locks the old password, unlinks Zalo,
   # kills older links and logs out everywhere. Then send a new link.
+  # Tạo link liên kết Zalo by an owner (reset_login!): only for someone whose every homestay that owner owns,
+  # otherwise they could take over another owner's member. Never themselves (ends their session) or an admin.
+  def login_link_by?(owner)
+    self != owner && !admin? && place_memberships.includes(:place).all? { owner.allowed_to?(:manage, it.place) }
+  end
+
+  # Last use of the Mini App or the web, nil when never.
+  def last_active_at = [ *api_tokens.map(&:last_used_at), *sessions.map(&:updated_at) ].compact.max
+
   def reset_login!
     update!(password: User.unknown_password, zalo_id: nil)
     sessions.destroy_all

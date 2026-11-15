@@ -1,7 +1,5 @@
 # Owners manage who works at their homestay (admins do it from Người dùng). :id is a PlaceMembership.
 class Admin::MembersController < Admin::BaseController
-  PHONE_TAKEN = "Số điện thoại này đã được dùng. Nhờ quản trị viên thêm vào homestay.".freeze
-
   before_action :set_place
   before_action -> { authorize!(:manage, @place) }
   before_action :set_membership, only: %i[edit update destroy setup_link]
@@ -13,16 +11,9 @@ class Admin::MembersController < Admin::BaseController
   end
 
   def create
-    attrs = params.expect(member: %i[name phone_number role])
-    @user = User.new(name: attrs[:name], phone_number: attrs[:phone_number], role: "user", password: User.unknown_password)
-    @membership = @place.place_memberships.build(user: @user, role: attrs[:role])
-    # Doesn't say whose number it is; linking an existing account stays an admin task.
-    if @user.phone_number.present? && User.exists?(phone_number: @user.phone_number)
-      @user.errors.add(:base, PHONE_TAKEN)
-      return render :new, status: :unprocessable_entity
-    end
-    saved = User.transaction { (@user.save && @membership.save) or raise ActiveRecord::Rollback }
-    if saved
+    @membership = PlaceMembership.add(@place, **params.expect(member: %i[name phone_number role]).to_h.symbolize_keys)
+    @user = @membership.user
+    if @membership.persisted?
       redirect_to edit_admin_place_member_path(@place.slug, @membership), notice: "Đã thêm #{@user.name}.", flash: { setup_link: setup_link_for(@user) }
     else
       render :new, status: :unprocessable_entity
@@ -54,7 +45,7 @@ class Admin::MembersController < Admin::BaseController
   # Same as the admin reset (#23, User#reset_login!): a new Zalo link.
   def setup_link
     user = @membership.user
-    raise Forbidden unless can_send_link?(user)
+    raise Forbidden unless user.login_link_by?(Current.user)
     user.reset_login!
     redirect_to edit_admin_place_member_path(@place.slug, @membership),
       notice: "Đã huỷ liên kết Zalo cũ và đăng xuất #{user.name} khỏi mọi thiết bị.", flash: { setup_link: setup_link_for(user) }
@@ -69,12 +60,7 @@ class Admin::MembersController < Admin::BaseController
       @membership = @place.place_memberships.find(params[:id])
     end
 
-    # Only for people whose every homestay is one you own: otherwise you could take over
-    # another owner's member. Never yourself (ends your session) or an admin.
-    def can_send_link?(user)
-      user != Current.user && !user.admin? &&
-        user.place_memberships.includes(:place).all? { Current.user.allowed_to?(:manage, it.place) }
-    end
+    def can_send_link?(user) = user.login_link_by?(Current.user)
 
     def setup_link_for(user) = password_setup_url(token: user.generate_token_for(:password_setup))
 end
