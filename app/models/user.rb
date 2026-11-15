@@ -5,6 +5,7 @@ class User < ApplicationRecord
   has_many :sessions, dependent: :destroy
   has_many :api_tokens, dependent: :delete_all
   has_many :notification_reads, dependent: :delete_all
+  has_many :push_subscriptions, through: :sessions
   has_many :place_memberships, dependent: :destroy
   has_many :places, through: :place_memberships
 

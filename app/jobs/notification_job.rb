@@ -6,5 +6,8 @@ class NotificationJob < ApplicationJob
   # The homestay was deleted meanwhile: nobody left to tell.
   discard_on ActiveRecord::InvalidForeignKey
 
-  def perform(attributes) = Notification.create!(attributes)
+  def perform(attributes)
+    notification = Notification.create!(attributes)
+    PushNotificationJob.perform_later(notification) if WebPush.enabled?
+  end
 end

@@ -1,8 +1,10 @@
 require "test_helper"
 
-# Thông báo in the PWA (#237): the current homestay's inbox for owners and staff, read marks, settings.
+# Thông báo in the PWA (#237): the current homestay's inbox for owners and staff, read marks, settings, push devices.
 class Pms::NotificationsTest < ActionDispatch::IntegrationTest
   include ActiveJob::TestHelper
+
+  ENDPOINT = "https://fcm.googleapis.com/fcm/send/abc".freeze
 
   setup do
     travel_to Time.zone.local(2026, 11, 8, 14, 0)
@@ -58,7 +60,7 @@ class Pms::NotificationsTest < ActionDispatch::IntegrationTest
     assert_not @staff.notification_reads.exists?(key: "n#{@payment_note.id}")
 
     other = Notification.create!(place: places(:hiuhill), kind: "booking", title: "Đặt phòng mới", source: "Hệ thống", created_at: Time.current)
-    get pms_open_notification_path("n#{other.id}")
+    get pms_open_notification_path("n#{other.id}", co_so: places(:hiuhill).slug)
     assert_redirected_to pms_notifications_path
     assert_not @staff.notification_reads.exists?(key: "n#{other.id}")
 
@@ -70,15 +72,57 @@ class Pms::NotificationsTest < ActionDispatch::IntegrationTest
   end
 
 
-  test "Cài đặt thông báo: types off except channel" do
+  test "Cài đặt thông báo: types off except channel, Giờ yên lặng" do
     log_in @staff
-    patch pms_notification_settings_path, params: { on: [ "", "money", "channel" ] }
+    patch pms_notification_settings_path, params: { on: [ "", "money", "channel" ], quiet: "0" }
     assert_redirected_to pms_notifications_path("cai-dat": 1)
-    assert_equal Notification::OPTIONAL - %w[money], @staff.reload.notifications_off
+    assert_equal [ Notification::OPTIONAL - %w[money], false ], [ @staff.reload.notifications_off, @staff.quiet_hours ]
     follow_redirect!
     assert_select "#settings_sheet[data-controller=open] input#on_money[checked]"
     assert_select "#settings_sheet input#on_book:not([checked])"
     assert_select "#settings_sheet input#on_channel[checked][disabled]"
+    assert_select "#settings_sheet input#quiet:not([checked])"
     assert_equal [ "f#{@feed.id}-#{@feed.last_error_at.to_i}" ], keys # Đặt phòng mới turned off; lỗi kênh can't be
+  end
+
+  test "a push opens the homestay it came from" do
+    other = Place.create!(slug: "nha-moi", name: "Nhà Mới")
+    other.place_memberships.create!(user: users(:owner), role: "owner")
+    note = Notification.create!(place: other, kind: "booking", title: "Đặt phòng mới", source: "Hệ thống", created_at: Time.current)
+    log_in users(:owner)
+    get pms_open_notification_path(note.key, co_so: "nha-moi")
+    assert_redirected_to pms_notifications_path
+    assert users(:owner).notification_reads.exists?(key: note.key)
+    get pms_today_path
+    assert_select "header", text: /Nhà Mới/
+  end
+
+  test "push devices: saved under this login, only the browsers' push services, removed by their owner only" do
+    WebPush.key = OpenSSL::PKey::EC.generate("prime256v1")
+    keys = { p256dh: WebPush.encode(OpenSSL::PKey::EC.generate("prime256v1").public_key.to_bn.to_s(2)), auth: WebPush.encode(SecureRandom.random_bytes(16)) }
+    log_in @staff
+    get pms_notifications_path
+    assert_select "body[data-controller=push][data-push-key-value=?]", WebPush.public_key
+    assert_select "#settings_sheet [role=switch][data-push-target=toggle]"
+
+    post pms_push_subscription_path, params: { endpoint: ENDPOINT, keys: }, as: :json
+    assert_response :no_content
+    assert_equal [ @staff ], PushSubscription.all.map { it.session.user }
+    post pms_push_subscription_path, params: { endpoint: "https://169.254.169.254/latest", keys: }, as: :json
+    assert_response :unprocessable_content
+    post pms_push_subscription_path, params: { endpoint: ENDPOINT, keys: "x" }, as: :json
+    assert_response :unprocessable_content
+
+    log_in users(:owner)
+    delete pms_push_subscription_path, params: { endpoint: ENDPOINT }, as: :json
+    assert_response :not_found
+    assert_equal 1, PushSubscription.count
+
+    log_in @staff
+    delete pms_push_subscription_path, params: { endpoint: ENDPOINT }, as: :json
+    assert_response :no_content
+    assert_empty PushSubscription.all
+  ensure
+    WebPush.key = nil
   end
 end

@@ -1,8 +1,10 @@
 # Thông báo (#237, board Notifications.dc.html): the current homestay's Notification.for the signed-in member, staff
-# and owners alike (what each sees is decided there). Tapping one marks it read and opens what it is about.
+# and owners alike (what each sees is decided there). Tapping one marks it read and opens what it is about; a push
+# opens the same URL with ?co_so= so it lands on the homestay it came from.
 class Pms::NotificationsController < Pms::BaseController
   FILTERS = %w[chua-doc can-xu-ly].freeze
 
+  before_action :switch_place, only: :open
   before_action(except: :show) { redirect_to pms_today_path unless current_place }
 
   def show
@@ -34,13 +36,17 @@ class Pms::NotificationsController < Pms::BaseController
     redirect_to pms_notifications_path(loc: params[:loc].presence_in(FILTERS))
   end
 
-  # Cài đặt thông báo: the types left on (Trùng phòng và lỗi kênh always is), for this account.
+  # Cài đặt thông báo: the types left on (Trùng phòng và lỗi kênh always is) and Giờ yên lặng, for this account.
   def settings
-    Current.user.update!(notifications_off: Notification::OPTIONAL - Array(params[:on]))
+    Current.user.update!(notifications_off: Notification::OPTIONAL - Array(params[:on]), quiet_hours: params[:quiet] == "1")
     redirect_to pms_notifications_path(loc: params[:loc].presence_in(FILTERS), "cai-dat": 1)
   end
 
   private
+    def switch_place
+      session[:pms_place] = params[:co_so] if params[:co_so] && places.exists?(slug: params[:co_so])
+    end
+
     # Where a notification's link opens in the PWA; nil for a screen it does not have yet (Giao ca).
     def target(link)
       case link&.dig(:screen)
