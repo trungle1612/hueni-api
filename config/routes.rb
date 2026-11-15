@@ -30,6 +30,9 @@ Rails.application.routes.draw do
     get "bao-cao", to: "reports#show", as: :report
     get "tim", to: "searches#show", as: :search
     patch "co-so/:slug", to: "places#update", as: :place
+    get "cai-dat", to: "settings#show", as: :settings
+    patch "cai-dat/chuyen-khoan", to: "settings#bank", as: :settings_bank
+    resources :services, path: "cai-dat/dich-vu", only: %i[create update destroy]
     resources :bookings, path: "dat-phong", only: %i[new create show edit update], path_names: { new: "moi", edit: "sua" } do
       get :availability, on: :member, path: "lich-trong"
       get :saved, on: :member, path: "da-luu"
