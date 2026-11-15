@@ -39,6 +39,12 @@ Rails.application.routes.draw do
       post :setup_link, on: :member, path: "link-moi"
     end
     get "nhat-ky", to: "activities#show", as: :activity
+    get "kenh", to: "channels#show", as: :channels
+    post "kenh/dong-bo", to: "channels#sync", as: :channels_sync
+    patch "kenh/hoa-hong", to: "channels#commissions", as: :channels_commissions
+    resources :calendar_feeds, path: "kenh/lich", only: %i[create destroy] do
+      post :sync, on: :member, path: "dong-bo"
+    end
     resources :refund_requests, path: "hoan-tien", only: [] do
       post :approve, on: :member, path: "duyet"
       post :reject, on: :member, path: "tu-choi"

@@ -13,9 +13,8 @@ class Admin::PlacesController < Admin::BaseController
 
   # Đồng bộ tất cả (#125): queued, since each link may take up to CalendarFeed::TIMEOUT seconds.
   def sync_feeds
-    feeds = CalendarFeed.where(room: @place.rooms).reject(&:synced_recently?)
-    feeds.each { SyncCalendarFeedJob.perform_later(it.id, "manual") }
-    notice = feeds.any? ? "Đang đồng bộ #{feeds.size} kênh của #{@place.name}. Tải lại trang sau ít phút." : "Vừa đồng bộ, thử lại sau 1 phút."
+    count = @place.sync_feeds
+    notice = count.positive? ? "Đang đồng bộ #{count} kênh của #{@place.name}. Tải lại trang sau ít phút." : "Vừa đồng bộ, thử lại sau 1 phút."
     redirect_back_or_to admin_calendar_feeds_path, notice:
   end
 

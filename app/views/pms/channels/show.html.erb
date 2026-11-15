@@ -1,0 +1,142 @@
+<% content_for :title, "Kênh bán phòng · hueni" %>
+<% failing = @feeds&.values&.flatten&.count(&:last_error).to_i %>
+<% content_for :bar do %>
+  <header class="sticky top-0 z-10 flex items-center gap-1 min-h-14 pl-1 pr-3 bg-pms-surface border-b border-pms-border">
+    <%= link_to pms_more_path, class: "flex-none flex items-center justify-center size-11 rounded-md", "aria-label": "Quay lại" do %>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    <% end %>
+    <div class="flex-1 min-w-0 flex flex-col">
+      <h1 class="text-[17px] leading-tight font-semibold truncate">Kênh bán phòng</h1>
+      <% if current_place %><span class="text-xs text-pms-text-2 truncate"><%= [ ("#{failing} link lỗi" if failing.positive?), "tự đồng bộ mỗi giờ", current_place.name ].compact.join(" · ").upcase_first %></span><% end %>
+    </div>
+  </header>
+<% end %>
+
+<% if (place = current_place) %>
+  <% owner = allowed_to?(:manage, place) %>
+  <% channels = { "booking" => "B", "agoda" => "A", "airbnb" => "Ai", "other" => "iC" } %>
+  <section class="px-4 pt-4" aria-labelledby="h-channels">
+    <h2 id="h-channels" class="pms-sec-h">Kênh đã thiết lập</h2>
+    <div class="pms-panel divide-y divide-pms-border">
+      <% channels.each do |provider, abbr| %>
+        <% feeds = @feeds[provider].to_a %>
+        <% name = CalendarFeed::PROVIDER_LABELS.fetch(provider) %>
+        <% pct = place.commissions[provider] %>
+        <% badge, tone = feeds.empty? ? [ "Chưa kết nối", "out" ] : feeds.any?(&:last_error) ? [ "Lỗi", "danger" ] : [ "Đang chạy", "pos" ] %>
+        <% sub = if feeds.empty? then "Chưa nhập link lịch"
+                 else [ "#{feeds.size} phòng", "#{@bookings[provider].to_i} đặt phòng tháng này", ("hoa hồng #{commission(pct)}%" if pct) ].compact.join(" · ")
+                 end %>
+        <button type="button" id="channel_<%= provider %>" popovertarget="channel_<%= provider %>_sheet" aria-label="<%= name %>, <%= badge %>"
+                class="flex items-center gap-2.5 min-h-14 px-3 py-2 w-full text-left cursor-pointer">
+          <span class="flex-none flex items-center justify-center size-9 rounded-md bg-pms-muted text-xs font-bold text-pms-text-2" aria-hidden="true"><%= abbr %></span>
+          <span class="flex-1 min-w-0"><span class="block font-semibold truncate"><%= name %></span><span class="block text-[13px] text-pms-text-2"><%= sub %></span></span>
+          <span class="pms-badge pms-badge-<%= tone %>"><%= badge %></span>
+          <svg class="flex-none text-pms-text-2" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+      <% end %>
+    </div>
+    <p class="pt-2 text-[13px] text-pms-text-2">iCal chỉ đồng bộ phòng trống/đã đặt, không đồng bộ giá. Giá trên từng kênh vẫn sửa trong trang quản lý của kênh đó.</p>
+  </section>
+
+  <% if @runs.any? %>
+    <section class="px-4 pt-4" aria-labelledby="h-log">
+      <h2 id="h-log" class="pms-sec-h">Lần đồng bộ gần đây</h2>
+      <div id="sync_log" class="pms-panel divide-y divide-pms-border">
+        <% @runs.each do |run| %>
+          <% feed = run.calendar_feed %>
+          <% result = if !run.ok? then CalendarFeed::ERROR_MESSAGES.fetch(CalendarFeed.error_kind(run.error))
+                      elsif run.changes? then [ ("#{run.created_count} đặt phòng mới" if run.created_count.positive?), ("#{run.updated_count} đổi ngày" if run.updated_count.positive?), ("#{run.removed_count} huỷ" if run.removed_count.positive?) ].compact.join(" · ")
+                      else "không có thay đổi"
+                      end %>
+          <div class="flex flex-col justify-center min-h-12 px-3 py-2">
+            <span class="block <%= "text-pms-danger" unless run.ok? %>"><%= feed.provider_label %> phòng <%= feed.room.name %>: <%= result.downcase_first %></span>
+            <span class="block text-[13px] text-pms-text-2"><%= pms_when(run.started_at).upcase_first %></span>
+          </div>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <% channels.each_key do |provider| %>
+    <% feeds = @feeds[provider].to_a %>
+    <% name = CalendarFeed::PROVIDER_LABELS.fetch(provider) %>
+    <% sheet = "channel_#{provider}_sheet" %>
+    <% free = @rooms.reject { |room| feeds.any? { it.room_id == room.id } } %>
+    <div id="<%= sheet %>" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="<%= sheet %>_t">
+      <div class="flex flex-col gap-3">
+        <h2 id="<%= sheet %>_t" class="text-base font-semibold"><%= name %></h2>
+        <% if feeds.any? %>
+          <div class="pms-panel divide-y divide-pms-border">
+            <% feeds.sort_by { [ it.last_error ? 0 : 1, it.room.name ] }.each do |feed| %>
+              <% status = if feed.last_error then [ "Lỗi #{pms_when(feed.last_error_at)}", (feed.last_synced_at ? "thành công lần cuối #{pms_when(feed.last_synced_at)}" : "chưa đồng bộ được lần nào") ].join(" · ")
+                          elsif feed.last_synced_at then "Đã đồng bộ #{pms_when(feed.last_synced_at)}"
+                          else "Chưa đồng bộ lần nào"
+                          end %>
+              <div id="<%= dom_id(feed) %>" class="flex flex-col gap-2 px-3 py-2.5">
+                <div class="flex items-baseline gap-2.5">
+                  <span class="flex-none font-semibold">Phòng <%= feed.room.name %></span>
+                  <span class="flex-1 min-w-0 text-[13px] text-pms-text-2 truncate"><%= feed.url_host %></span>
+                </div>
+                <span class="text-[13px] <%= feed.last_error ? "text-pms-danger" : "text-pms-text-2" %>"><%= status %></span>
+                <% if feed.last_error %><div class="pms-notice border-pms-danger bg-pms-danger-bg text-pms-danger" role="alert"><%= feed.error_message %></div><% end %>
+                <%# A dead link can't be retried: the fix is a new link. %>
+                <% if feed.error_kind != "gone" || owner %>
+                  <div class="flex gap-2">
+                    <% unless feed.error_kind == "gone" %>
+                      <%= button_to feed.last_error ? "Thử lại" : "Đồng bộ ngay", sync_pms_calendar_feed_path(feed), class: "pms-btn flex-1", form_class: "flex-1 flex" %>
+                    <% end %>
+                    <% if owner %>
+                      <%= button_to "Ngắt kết nối", pms_calendar_feed_path(feed), method: :delete, class: "pms-btn pms-btn-danger flex-1", form_class: "flex-1 flex",
+                            form: { data: { turbo_confirm: "Ngắt #{name} phòng #{feed.room.name}? Đặt phòng #{name} của phòng này bị xoá khỏi lịch." } } %>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <% if owner && free.any? %>
+          <%= form_with url: pms_calendar_feeds_path, scope: :calendar_feed, class: "flex flex-col gap-3" do |form| %>
+            <%= form.hidden_field :provider, value: provider %>
+            <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Phòng
+              <%= select_tag :room_id, options_from_collection_for_select(free, :id, ->(room) { "Phòng #{room.name}" }), class: "pms-input font-normal" %>
+            </label>
+            <label class="flex flex-col gap-1.5 text-[13px] font-semibold"><span>Link lịch của kênh <span class="font-normal text-pms-text-2">(nhập vào hueni)</span></span>
+              <%= form.url_field :url, required: true, maxlength: 2000, placeholder: "https://…/ical/…ics", autocomplete: "off", inputmode: "url", class: "pms-input font-normal" %>
+            </label>
+            <p class="-mt-1.5 text-[13px] text-pms-text-2">Lấy trong trang quản lý của <%= name %>, mục xuất lịch (iCal). hueni đọc lịch ngay sau khi kết nối.</p>
+            <%= form.button "Kết nối", class: "pms-btn pms-btn-primary w-full" %>
+          <% end %>
+        <% end %>
+
+        <% if Place::COMMISSION_PROVIDERS.include?(provider) %>
+          <% if owner %>
+            <%= form_with url: pms_channels_commissions_path, method: :patch, scope: :place, class: "flex flex-col gap-3" do |form| %>
+              <label class="flex flex-col gap-1.5 text-[13px] font-semibold">Hoa hồng (%)
+                <%= text_field_tag "place[commissions][#{provider}]", commission(place.commissions[provider]), inputmode: "decimal", maxlength: 5, autocomplete: "off", placeholder: "15", class: "pms-input font-normal" %>
+              </label>
+              <p class="-mt-1.5 text-[13px] text-pms-text-2">Hoa hồng dùng để tính doanh thu thực nhận trong Báo cáo.</p>
+              <%= form.button "Lưu hoa hồng", class: "pms-btn w-full" %>
+            <% end %>
+          <% else %>
+            <p class="text-[13px] text-pms-text-2">Hoa hồng <%= commission(place.commissions[provider]) || 0 %>%. Chủ cơ sở thêm hoặc ngắt link lịch.</p>
+          <% end %>
+        <% elsif !owner %>
+          <p class="text-[13px] text-pms-text-2">Chủ cơ sở thêm hoặc ngắt link lịch.</p>
+        <% end %>
+        <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="<%= sheet %>" popovertargetaction="hide">Đóng</button>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @feeds.any? %>
+    <% content_for :footer do %>
+      <%= button_to "Đồng bộ ngay", pms_channels_sync_path, class: "pms-btn pms-btn-primary w-full min-h-12", form_class: "flex-1" %>
+    <% end %>
+  <% end %>
+  <div class="pb-6"></div>
+  <%= render "pms/toast" %>
+<% else %>
+  <%= render "pms/no_place" %>
+<% end %>

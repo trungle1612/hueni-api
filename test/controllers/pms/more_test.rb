@@ -18,7 +18,8 @@ class Pms::MoreTest < ActionDispatch::IntegrationTest
     assert_select "#places_sheet form[action=?] button", pms_place_path("hiuhill-homestay"), text: /Hiu Hill Homestay\s*Chọn/
     assert_select "main a[href=?]", pms_search_path, text: /Tìm đặt phòng/
     assert_select "main a[href=?]", pms_rooms_path, text: /Danh sách phòng\s*2 phòng/
-    assert_select "main a", text: /Khai báo lưu trú|Giao ca|Buồng phòng|Kênh bán/, count: 0
+    assert_select "main a[href=?]", pms_channels_path, text: /Kênh bán phòng \(OTA\)/
+    assert_select "main a", text: /Khai báo lưu trú|Giao ca|Buồng phòng/, count: 0
     assert_select "#account", text: /Chị Lan\s*Chủ cơ sở · 0912345678/
     assert_select "#account a[href=?]", pms_legal_path, text: /Điều khoản và quyền riêng tư/
     assert_select "#account form[action=?] button", session_path, text: "Đăng xuất"
