@@ -29,6 +29,21 @@ class Admin::AnnouncementsControllerTest < ActionDispatch::IntegrationTest
     assert_not Announcement.exists?(announcement.id)
   end
 
+  test "with Web Push on, the form says it is pushed once and the list shows when it was" do
+    WebPush.key = OpenSSL::PKey::EC.generate("prime256v1")
+    log_in users(:admin)
+    get admin_announcements_path
+    assert_select "p", text: /gửi một lần đến điện thoại/
+    announcement = Announcement.create!(PARAMS.merge(published_at: 1.hour.ago))
+    announcement.update!(pushed_at: Time.current)
+    get admin_announcements_path
+    assert_select "##{dom_id(announcement)}", text: /đã gửi đến điện thoại/
+    get edit_admin_announcement_path(announcement)
+    assert_select "p", text: /Đã gửi đến điện thoại lúc .*sửa không gửi lại/
+  ensure
+    WebPush.key = nil
+  end
+
   test "owners get 404 and no menu entry" do
     announcement = Announcement.create!(PARAMS)
     log_in users(:owner)

@@ -99,9 +99,29 @@ class PushNotificationTest < ActiveSupport::TestCase
     assert_requested :post, ENDPOINT, times: 2
   end
 
+  test "an announcement goes once, at its Hiện từ, to owners and staff with push on, unless news is off" do
+    subscribe(users(:owner))
+    subscribe(@staff, "https://web.push.apple.com/na")
+    @staff.update!(notifications_off: %w[news])
+    stub_request(:post, ENDPOINT).to_return(status: 201)
+    announcement = Announcement.create!(kind: "maintenance", title: "Bảo trì 02:00", summary: "Tạm ngưng 30 phút", published_at: 2.hours.from_now)
+    assert_enqueued_with(job: PushAnnouncementJob, args: [ announcement ], at: 2.hours.from_now)
+    announcement.update!(published_at: 3.hours.from_now)
+
+    travel 3.hours + 1.minute
+    perform_enqueued_jobs
+    assert_requested :post, ENDPOINT, times: 1
+    assert_not_requested :post, "https://web.push.apple.com/na"
+    assert_not_nil announcement.reload.pushed_at
+    assert_equal({ title: "Bảo trì 02:00", body: "Tạm ngưng 30 phút", tag: "a#{announcement.id}", silent: false,
+      url: "/thong-bao/a#{announcement.id}" }, announcement.push_payload(users(:owner)))
+    assert_no_enqueued_jobs { announcement.update!(title: "Bảo trì 02:30", published_at: 1.hour.from_now) }
+  end
+
   test "no key, no push" do
     WebPush.key = nil
     subscribe(users(:owner))
     assert_no_enqueued_jobs(only: PushNotificationJob) { perform_enqueued_jobs(only: NotificationJob) { notify("booking", by: "Airbnb") } }
+    assert_no_enqueued_jobs { Announcement.create!(kind: "feature", title: "Báo cáo", summary: "Mới", published_at: Time.current) }
   end
 end

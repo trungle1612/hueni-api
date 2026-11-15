@@ -17,7 +17,7 @@
               <span class="badge badge-soft badge-sm badge-info"><%= Announcement::KINDS.fetch(announcement.kind) %></span>
             </div>
             <div class="text-sm"><%= announcement.summary %></div>
-            <div class="text-xs opacity-60"><%= announcement.published_at.after?(Time.current) ? "Hiện từ" : "Đăng" %> <%= l(announcement.published_at, format: "%d/%m/%Y %H:%M") %></div>
+            <div class="text-xs opacity-60"><%= announcement.published_at.after?(Time.current) ? "Hiện từ" : "Đăng" %> <%= l(announcement.published_at, format: "%d/%m/%Y %H:%M") %><%= " · đã gửi đến điện thoại" if announcement.pushed_at %></div>
           </div>
           <%= link_to "Sửa", edit_admin_announcement_path(announcement), class: "btn btn-ghost btn-sm" %>
           <%= button_to "Xoá", admin_announcement_path(announcement), method: :delete, class: "btn btn-ghost btn-sm text-error",

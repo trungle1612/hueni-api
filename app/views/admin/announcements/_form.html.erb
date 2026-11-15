@@ -13,6 +13,12 @@
         <%= form.datetime_field :published_at, required: true, class: "input w-full" %>
       </div>
     </div>
+    <% if WebPush.enabled? %>
+      <p class="text-xs opacity-60">
+        <%= announcement.pushed_at ? "Đã gửi đến điện thoại lúc #{l(announcement.pushed_at, format: "%d/%m/%Y %H:%M")}; sửa không gửi lại." :
+              "Đến giờ Hiện từ, gửi một lần đến điện thoại của chủ nhà và nhân viên đã bật thông báo." %>
+      </p>
+    <% end %>
     <div>
       <%= form.label :title, "Tiêu đề", class: "label text-sm mb-1" %>
       <%= form.text_field :title, required: true, maxlength: 120, class: "input w-full" %>
