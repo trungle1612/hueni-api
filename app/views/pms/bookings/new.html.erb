@@ -1,0 +1,98 @@
+<% b = @booking %>
+<% content_for :title, "Đặt phòng mới · hueni" %>
+<% manage = allowed_to?(:manage, @place) %>
+<%# Header inside the page (not :bar) so Đóng can ask before throwing away what was typed. %>
+<div data-controller="pms-booking" data-pms-booking-rooms-url-value="<%= rooms_pms_bookings_path %>" data-pms-booking-guest-url-value="<%= guest_pms_bookings_path %>">
+  <header class="sticky top-0 z-10 flex items-center gap-1 min-h-14 pl-4 pr-2 bg-pms-surface border-b border-pms-border">
+    <%= link_to pms_today_path, class: "flex-none flex items-center justify-center size-11 -ml-3 rounded-md", "aria-label": "Đóng", data: { action: "pms-booking#close" } do %>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    <% end %>
+    <h1 class="flex-1 min-w-0 text-[17px] leading-tight font-semibold truncate">Đặt phòng mới</h1>
+  </header>
+
+  <%= form_with model: b, url: pms_bookings_path, id: "new_booking", html: { novalidate: true },
+        data: { pms_booking_target: "form", action: "change->pms-booking#refresh input->pms-booking#edited" } do |form| %>
+    <section class="px-4 pt-4" aria-labelledby="h-g">
+      <h2 id="h-g" class="pms-sec-h">Khách</h2>
+      <div class="pms-panel p-3 flex flex-col gap-3.5">
+        <div class="flex flex-col gap-1.5">
+          <%= form.label :guest_phone, "Số điện thoại", class: "text-[13px] font-semibold" %>
+          <%= form.telephone_field :guest_phone, autocomplete: "off", maxlength: 30, placeholder: "09xx xxx xxx", class: pms_input_class(b, :guest_phone),
+                aria: field_aria(b, :guest_phone), data: { action: "input->pms-booking#lookup" } %>
+          <%= pms_field_error(b, :guest_phone) %>
+          <%= render "returning", guest: (Guest.returning(@place, b.guest_phone) if b.guest_phone) %>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <%= form.label :guest_name, "Tên khách", class: "text-[13px] font-semibold" %>
+          <%= form.text_field :guest_name, autocomplete: "off", maxlength: 100, class: pms_input_class(b, :guest_name), aria: field_aria(b, :guest_name),
+                data: { pms_booking_target: "name" } %>
+          <%= pms_field_error(b, :guest_name) %>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <%= form.label :guests, "Số khách", class: "text-[13px] font-semibold" %>
+          <%= form.number_field :guests, min: 1, inputmode: "numeric", class: pms_input_class(b, :guests), aria: field_aria(b, :guests) %>
+          <%= pms_field_error(b, :guests) %>
+        </div>
+      </div>
+    </section>
+
+    <section class="px-4 pt-4" aria-labelledby="h-s">
+      <h2 id="h-s" class="pms-sec-h">Lưu trú</h2>
+      <div class="pms-panel p-3 flex flex-col gap-3.5">
+        <div class="grid grid-cols-2 gap-3">
+          <% [ [ :start_date, "Nhận phòng", "start" ], [ :end_date, "Trả phòng", "end" ] ].each do |attr, name, target| %>
+            <div class="flex flex-col gap-1.5 min-w-0">
+              <%= form.label attr, name, class: "text-[13px] font-semibold" %>
+              <%= form.date_field attr, required: true, class: pms_input_class(b, attr), aria: { describedby: ("dates_error" if b.errors.any?) },
+                    data: { pms_booking_target: target } %>
+            </div>
+          <% end %>
+        </div>
+        <%= render "quote", booking: b %>
+      </div>
+    </section>
+
+    <section class="px-4 pt-4 pb-6" aria-labelledby="h-p">
+      <h2 id="h-p" class="pms-sec-h">Thanh toán</h2>
+      <div class="pms-panel p-3 flex flex-col gap-3.5">
+        <div class="grid grid-cols-2 gap-3">
+          <%# Owners quote the price; blank = the room's prices when saved. Staff never see prices. %>
+          <% if manage %>
+            <div class="flex flex-col gap-1.5 min-w-0">
+              <%= form.label :price, "Giá mỗi đêm (đ)", class: "text-[13px] font-semibold" %>
+              <%= form.text_field :price, inputmode: "numeric", placeholder: "Giá phòng", class: pms_input_class(b, :price), aria: field_aria(b, :price),
+                    value: b.errors.include?(:price) ? b.price_before_type_cast : b.price&.then { number_with_delimiter(it, delimiter: ".") },
+                    data: { action: "input->pms-booking#refresh" } %>
+              <%= pms_field_error(b, :price) %>
+            </div>
+          <% end %>
+          <div class="flex flex-col gap-1.5 min-w-0 <%= "col-span-2" unless manage %>">
+            <%= form.label :deposit, class: "text-[13px] font-semibold" do %>Đã cọc (đ) <span class="font-normal text-pms-text-2">· nếu có</span><% end %>
+            <%= form.text_field :deposit, inputmode: "numeric", placeholder: "0", class: pms_input_class(b, :deposit), aria: field_aria(b, :deposit),
+                  value: b.errors.include?(:deposit) ? b.deposit_before_type_cast : b.deposit&.then { number_with_delimiter(it, delimiter: ".") },
+                  data: { action: "input->pms-booking#refresh" } %>
+            <%= form.select :deposit_method, Payment::METHODS.invert, {}, class: "pms-input", aria: { label: "Hình thức cọc" } %>
+          </div>
+        </div>
+        <div id="money_note" class="flex flex-col gap-1 -mt-1.5 empty:hidden"><%= render "money_note", booking: b %></div>
+        <div class="flex flex-col gap-1.5">
+          <%= form.label :note, class: "text-[13px] font-semibold" do %>Ghi chú <span class="font-normal text-pms-text-2">· nếu có</span><% end %>
+          <%= form.text_area :note, rows: 3, maxlength: 500, class: "pms-input h-auto py-2.5 resize-none" %>
+        </div>
+      </div>
+    </section>
+  <% end %>
+
+  <div id="discard" popover class="pms-sheet" role="dialog" aria-modal="true" aria-labelledby="discard_t" data-pms-booking-target="discard">
+    <div class="flex flex-col gap-3">
+      <h2 id="discard_t" class="text-base font-semibold">Bỏ đặt phòng đang nhập?</h2>
+      <p class="-mt-1.5 text-[13px] text-pms-text-2">Thông tin bạn đã nhập sẽ không được lưu.</p>
+      <%= link_to "Bỏ và thoát", pms_today_path, class: "pms-btn pms-btn-danger w-full" %>
+      <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="discard" popovertargetaction="hide">Tiếp tục nhập</button>
+    </div>
+  </div>
+</div>
+
+<% content_for :footer do %>
+  <div id="quote_footer" class="contents"><%= render "quote_footer", booking: b %></div>
+<% end %>

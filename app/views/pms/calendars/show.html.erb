@@ -73,8 +73,8 @@
               <% if day < today || room.maintenance_on?(day) || room_bookings.any? { it.start_date <= day && day < it.occupied_until } %>
                 <%= tag.div(**cell) %>
               <% else %>
-                <%# Until Đặt phòng mới (#232): the /admin form, prefilled. Keyboard users book with + Đặt phòng on Hôm nay. %>
-                <%= link_to "", new_admin_place_booking_path(current_place.slug, room_id: room.id, start_date: day.iso8601), **cell, tabindex: -1,
+                <%# Đặt phòng mới, prefilled. Keyboard users book with + Đặt phòng on Hôm nay. %>
+                <%= link_to "", new_pms_booking_path(room_id: room.id, start_date: day.iso8601), **cell, tabindex: -1,
                       "aria-label": "Phòng #{room.name}, #{day.strftime("%d/%m")}, trống. Đặt phòng" %>
               <% end %>
             <% end %>

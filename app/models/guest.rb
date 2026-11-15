@@ -22,6 +22,14 @@ class Guest < ApplicationRecord
     find_or_initialize_by(place_id: booking.room.place_id, key:)
   end
 
+  # Khách cũ on Đặt phòng mới (#232): the guest who stayed before with this phone (9+ digits), else nil.
+  def self.returning(place, phone)
+    key = Booking.search_digits(phone)
+    return if key.size < 9
+    guest = find_or_initialize_by(place:, key:)
+    guest if guest.visits.any?
+  end
+
   # Every direct booking of this homestay, grouped by guest key: { key => [bookings, newest first] }.
   def self.stays(place)
     Booking.manual.where(room: place.rooms).includes(:room, :charges, :payments).order(start_date: :desc, id: :desc)

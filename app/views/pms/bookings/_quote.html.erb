@@ -1,0 +1,30 @@
+<%# Đặt phòng mới's room picker (turbo-frame #quote): @rooms, busy ones (the model's date_problems) disabled. Reloaded
+    as the form changes; then (streams) it also updates the footer total and the money notes. -%>
+<%# locals: (booking:, streams: false) -%>
+<turbo-frame id="quote" data-pms-booking-target="quote">
+  <fieldset class="min-w-0">
+    <legend class="mb-1.5 text-[13px] font-semibold">Phòng <span class="font-normal text-pms-text-2">· <%= @free.size %> phòng trống <%= pms_range(booking.start_date, booking.end_date) %></span></legend>
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(64px,1fr))] gap-1.5">
+      <% @rooms.each do |room| %>
+        <% busy = !@free.include?(room) %>
+        <label class="relative flex items-center justify-center h-11 px-1 rounded-md border font-semibold truncate cursor-pointer bg-pms-surface border-pms-border-strong
+                      has-checked:border-2 has-checked:border-pms-primary has-checked:bg-pms-primary-bg has-checked:text-pms-primary has-focus-visible:outline-2 has-focus-visible:outline-pms-primary
+                      has-disabled:border-dashed has-disabled:border-[#c4c9c5] has-disabled:text-[#8b928d] has-disabled:bg-pms-bg has-disabled:font-normal has-disabled:line-through has-disabled:cursor-not-allowed"
+               title="<%= busy ? "Đã có khách" : "Trống" %>">
+          <%= radio_button_tag "booking[room_id]", room.id, room == booking.room, disabled: busy, class: "sr-only",
+                "aria-label": "Phòng #{room.name}, #{busy ? "đã có khách" : "trống"}" %><%= room.name %>
+        </label>
+      <% end %>
+    </div>
+    <% if @free.empty? %>
+      <p class="mt-2 text-[13px] text-pms-text-2">Không còn phòng trống trong các ngày này. Thử đổi ngày.</p>
+    <% end %>
+    <% if (problems = booking.errors.full_messages_for(:start_date) + booking.errors.full_messages_for(:end_date) + booking.errors[:base]).any? %>
+      <div id="dates_error" role="alert" class="mt-2 text-[13px] font-semibold text-pms-danger"><%= problems.to_sentence %></div>
+    <% end %>
+  </fieldset>
+  <% if streams %>
+    <turbo-stream action="update" target="quote_footer"><template><%= render "quote_footer", booking: %></template></turbo-stream>
+    <turbo-stream action="update" target="money_note"><template><%= render "money_note", booking: %></template></turbo-stream>
+  <% end %>
+</turbo-frame>

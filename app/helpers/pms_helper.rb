@@ -5,6 +5,14 @@ module PmsHelper
   # "600.000đ", as in the design.
   def pms_money(amount) = "#{number_with_delimiter(amount, delimiter: ".")}đ"
 
+  # A form field the model refused: red input, the message under it (aria via ApplicationHelper#field_aria).
+  def pms_input_class(model, attribute) = class_names("pms-input", "pms-input-error": model.errors.include?(attribute))
+
+  def pms_field_error(model, attribute)
+    return unless model.errors.include?(attribute)
+    tag.p model.errors.full_messages_for(attribute).to_sentence, id: "#{attribute}_error", class: "text-[13px] font-semibold text-pms-danger"
+  end
+
   # "T4 21/10", as in Chi tiết đặt phòng.
   def pms_short_day(date) = "#{%w[CN T2 T3 T4 T5 T6 T7][date.wday]} #{date.strftime("%d/%m")}"
 

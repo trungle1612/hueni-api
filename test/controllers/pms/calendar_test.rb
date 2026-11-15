@@ -22,7 +22,7 @@ class Pms::CalendarTest < ActionDispatch::IntegrationTest
     # The night of 2/10 is taken; 3/10 is free again.
     assert_select "a[aria-label^='Phòng Limdim, 02/10']", 0
     assert_select "a[aria-label='Phòng Limdim, 03/10, trống. Đặt phòng'][href=?]",
-      new_admin_place_booking_path("tomo-homestay", room_id: rooms(:limdim).id, start_date: "2026-10-03")
+      new_pms_booking_path(room_id: rooms(:limdim).id, start_date: "2026-10-03")
   end
 
   test "iCal conflicts are shown, not rejected; OTA đã huỷ is a badge" do
