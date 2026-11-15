@@ -22,6 +22,14 @@ class Report
   # 7 ngày: the week through today.
   def self.week(place) = new(place, Date.current - 6, Date.current)
 
+  # The period a request asks for: period "7d" = 7 ngày, else month "YYYY-MM", else this month (also when malformed).
+  def self.for(place, period: nil, month: nil)
+    return week(place) if period == "7d"
+    new(place, (Date.strptime(month, "%Y-%m") if month.is_a?(String)) || Date.current)
+  rescue Date::Error
+    new(place, Date.current)
+  end
+
   def month? = first.day == 1 && finish == first.end_of_month
   def month = first
   def current? = (first..finish).cover?(Date.current)
@@ -61,6 +69,16 @@ class Report
   def ahead = ahead_nights.size
   def ahead_revenue = ahead_nights.sum { night_revenue(*it) }.round
 
+  # Revenue by day for 7 ngày, else by week from the 1st, 8th, 15th and 22nd (the last runs to the end): [[from, to, revenue]].
+  def chart
+    starts = month? ? [ 1, 8, 15, 22 ].map { first.change(day: it) }.select { it <= last } : range.to_a
+    by_date = sold_nights.values.flat_map(&:to_a).group_by(&:first)
+    starts.each_with_index.map do |from, index|
+      to = month? ? (starts[index + 1]&.prev_day || last) : from
+      [ from, to, (from..to).sum { |date| by_date.fetch(date, []).sum { night_revenue(*it) } }.round ]
+    end
+  end
+
   def empty? = sold.zero? && booking_count.zero? && ota_cancelled.zero?
 
   # { "manual" => { nights:, bookings:, revenue:, commission:, net: }, "airbnb" => ... }: channels with any night or booking.
@@ -97,6 +115,8 @@ class Report
   end
 
   def cancellation_rate = ratio(outcomes["cancelled"] + ota_cancelled, booking_count + ota_cancelled)
+
+  def csv_filename = "bao-cao-#{place.slug}-#{first.iso8601}-#{last.iso8601}.csv"
 
   # Xuất CSV: one line per booking with a night in the period. UTF-8 with a BOM so Excel reads Vietnamese.
   def to_csv

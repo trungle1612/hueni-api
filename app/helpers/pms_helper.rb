@@ -93,6 +93,25 @@ module PmsHelper
     "grid-column: #{start + 2} / span #{cover}; margin-left: #{cont ? "1px" : "#{50.0 / cover}%"}; margin-right: #{half ? "#{50.0 / cover}%" : "1px"}"
   end
 
+  # Báo cáo's chart values in triệu đồng: 2.650.000 → "2,65", 28.470.000 → "28,5".
+  def pms_million(amount) = number_with_precision(amount / 1e6, precision: amount >= 10_000_000 ? 1 : 2, strip_insignificant_zeros: true, separator: ",")
+
+  # "15 – 21/10/2026", or "28/9 – 4/10/2026" across months.
+  def pms_report_range(report)
+    "#{report.first.strftime(report.first.month == report.last.month ? "%-d" : "%-d/%-m")} – #{report.last.strftime("%-d/%-m/%Y")}"
+  end
+
+  # Second line of a Công nợ chưa thu row: [text, late] as in the design; late = the guest left (or should have) before today.
+  def pms_debt_line(booking)
+    out = booking.checked_out_at ? booking.occupied_until : booking.end_date
+    late = (Date.current - out).to_i
+    on = ->(date) { date == Date.current ? "hôm nay" : date.strftime("%d/%m") }
+    return [ "Quá hạn #{late} ngày · trả phòng #{out.strftime("%d/%m")}", true ] if late.positive?
+    return [ "Chưa thu · đã trả phòng hôm nay", false ] if booking.checked_out_at
+    paid = (" · đã cọc #{pms_money(booking.paid)}" if booking.paid.positive?)
+    [ booking.checked_in_at ? "Thu khi trả phòng #{on[booking.end_date]}#{paid}" : "Thu khi nhận phòng #{on[booking.start_date]}#{paid}", false ]
+  end
+
   # Second line of a Hôm nay row: "2 đêm · 2 khách · Airbnb · chưa cọc".
   def pms_stay_meta(booking, departing: false)
     late = (Booking.arrival_date - booking.start_date).to_i

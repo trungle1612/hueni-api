@@ -108,9 +108,9 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
   # Báo cáo, owners and staff with the report right (#168): ?month=YYYY-MM (default this month) or ?period=7d. report.csv = Xuất CSV.
   def report
     authorize!(:report, @place)
-    report = params[:period] == "7d" ? Report.week(@place) : Report.new(@place, month_param || Date.current)
+    report = Report.for(@place, period: params[:period], month: params[:month])
     if request.format.csv?
-      send_data report.to_csv, type: "text/csv; charset=utf-8", filename: "bao-cao-#{@place.slug}-#{report.first.iso8601}-#{report.last.iso8601}.csv"
+      send_data report.to_csv, type: "text/csv; charset=utf-8", filename: report.csv_filename
     else
       render json: MiniApp::ReportSerializer.new(report, params: serializer_params)
     end
@@ -151,13 +151,6 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
 
     def set_place
       @place = Current.user.accessible_places.find(params[:id])
-    end
-
-    # A YYYY-MM query param, or nil when missing or malformed.
-    def month_param
-      Date.strptime(params[:month].to_s, "%Y-%m") if params[:month].is_a?(String)
-    rescue Date::Error
-      nil
     end
 
     def ordered_rooms = @place.rooms.order(Arel.sql("floor IS NULL, floor"), active: :desc, name: :asc)

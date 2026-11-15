@@ -1,0 +1,185 @@
+<% content_for :title, "Báo cáo · hueni" %>
+<% r = @report %>
+<% period = r && (r.month? ? { month: r.month.strftime("%Y-%m") } : { period: "7d" }) %>
+<% content_for :bar, render("pms/bar", title: "Báo cáo", border: !r,
+      sub: ("#{pms_report_range(r)} · #{current_place.name}" if r),
+      actions: (link_to("Xuất CSV", pms_report_path(**period, format: :csv), id: "csv", class: "pms-btn px-3") if r)) %>
+
+<% if r %>
+  <% last_month = Date.current.prev_month.beginning_of_month %>
+  <nav id="periods" class="sticky top-14 z-10 flex px-2 bg-pms-surface border-b border-pms-border" aria-label="Kỳ báo cáo">
+    <% [ [ "7 ngày", { period: "7d" }, !r.month? ],
+         [ "Tháng này", {}, r.month? && r.current? ],
+         [ "Tháng #{last_month.month}", { month: last_month.strftime("%Y-%m") }, r.month? && r.month == last_month ] ].each do |label, query, on| %>
+      <%= link_to label, pms_report_path(**query), "aria-current": ("page" if on),
+            class: "flex-none flex items-center min-h-11 px-2.5 border-b-2 no-underline #{on ? "border-pms-primary font-semibold" : "border-transparent text-pms-text-2 font-medium"}" %>
+    <% end %>
+  </nav>
+
+  <% if r.month? %>
+    <nav class="flex items-center justify-between gap-1 px-2 pt-2" aria-label="Chọn tháng">
+      <%= link_to "‹ Tháng #{r.month.prev_month.month}", pms_report_path(month: r.month.prev_month.strftime("%Y-%m")), class: "pms-btn pms-btn-ghost px-2" %>
+      <span id="month" class="font-semibold">Tháng <%= r.month.strftime("%m/%Y") %></span>
+      <%= link_to "Tháng #{r.month.next_month.month} ›", pms_report_path(month: r.month.next_month.strftime("%Y-%m")), class: "pms-btn pms-btn-ghost px-2" %>
+    </nav>
+  <% end %>
+
+  <% ahead = capture do %>
+    <% if r.ahead.positive? %>
+      <p id="ahead" class="px-4 pt-2 text-[13px] text-pms-text-2">
+        Đã đặt trước <b class="text-pms-text"><%= r.ahead %> đêm</b> từ <%= (r.last + 1).strftime("%-d/%-m") %> đến cuối tháng<%= " · khoảng #{pms_money(r.ahead_revenue)}" if r.ahead_revenue.positive? %>
+      </p>
+    <% end %>
+  <% end %>
+
+  <% if r.empty? %>
+    <div id="empty">
+      <%= render "pms/message", title: "Chưa có số liệu",
+            text: if r.future? then "Chưa có ai đặt phòng cho tháng #{r.month.month}."
+                  elsif !r.month? then "Chưa có đêm nào có khách trong 7 ngày qua."
+                  elsif r.current? then "Chưa có đêm nào có khách từ 1/#{r.month.month} đến hôm nay."
+                  else "Tháng #{r.month.month} không có đêm nào có khách và không có lượt đặt nào."
+                  end, action: nil %>
+    </div>
+    <%= ahead %>
+  <% else %>
+    <div class="px-4 pt-4">
+      <dl id="kpis" class="pms-panel grid grid-cols-2 [&>div:nth-child(2n)]:border-l [&>div:nth-child(n+3)]:border-t [&>div]:border-pms-border">
+        <% [ [ "revenue", r.future? ? "Đã đặt trước" : "Doanh thu", pms_money(r.revenue), "#{r.sold} đêm có khách" ],
+             [ "occupancy", "Công suất phòng", percent(r.occupancy), "#{r.sold}/#{r.available} đêm" ],
+             [ "adr", "Giá TB mỗi đêm", r.adr ? pms_money(r.adr.round) : "—", nil ],
+             [ "due", "Còn phải thu", pms_money(r.due), ("#{r.debts.size} đặt phòng" if r.debts.any?) ] ].each do |id, label, value, sub| %>
+          <div id="kpi-<%= id %>" class="flex flex-col gap-0.5 px-3 py-2.5">
+            <dt class="text-xs text-pms-text-2"><%= label %></dt>
+            <dd class="text-lg leading-tight font-semibold <%= "text-pms-warn" if id == "due" && r.due.positive? %>"><%= value %></dd>
+            <% if sub %><dd class="text-xs text-pms-text-2"><%= sub %></dd><% end %>
+          </div>
+        <% end %>
+      </dl>
+    </div>
+    <%= ahead unless r.future? %>
+
+    <% bars = r.chart %>
+    <% max = bars.map(&:last).max %>
+    <% step = max <= 5_000_000 ? 1 : max <= 20_000_000 ? 5 : 10 %>
+    <% scale = [ step, (max / 1e6 / step).ceil * step ].max %>
+    <% flat = bars.map(&:last).uniq.size == 1 %>
+    <% top = bars.index { it.last == max } unless flat %>
+    <% label = ->(from, to) { r.month? ? "#{from.day}–#{to.day}" : %w[CN T2 T3 T4 T5 T6 T7][from.wday] } %>
+    <% title = max.zero? ? "Chưa có doanh thu trong kỳ này" : flat ? "Doanh thu đều trong kỳ" : "#{label[*bars[top].first(2)]} cao nhất #{r.month? ? "tháng" : "tuần"}" %>
+    <section id="chart" class="px-4 pt-4" aria-labelledby="chart-h">
+      <h2 id="chart-h" class="pms-sec-h flex justify-between gap-2"><span><%= title %></span><span class="font-normal">triệu đồng</span></h2>
+      <div class="pms-panel px-3 pt-3 pb-2">
+        <fieldset class="relative ml-7 h-[146px]" aria-label="<%= title %>">
+          <% [ [ 16, number_with_precision(scale, strip_insignificant_zeros: true) ], [ 72, number_with_precision(scale / 2.0, precision: 1, strip_insignificant_zeros: true, separator: ",") ], [ 128, 0 ] ].each do |y, tick| %>
+            <div class="absolute inset-x-0 border-t <%= y == 128 ? "border-pms-border-strong" : "border-[#eceeec]" %>" style="top: <%= y %>px" aria-hidden="true">
+              <span class="absolute -left-7 -top-2 w-6 text-right text-[11px] text-pms-text-2"><%= tick %></span>
+            </div>
+          <% end %>
+          <div class="absolute inset-0 grid gap-2 px-1" style="grid-template-columns: repeat(<%= bars.size %>, minmax(0, 1fr))">
+            <% bars.each_with_index do |(from, to, revenue), index| %>
+              <label class="pms-bcol">
+                <input type="radio" name="bar" class="sr-only" <%= "checked" if index == top %> aria-label="<%= label[from, to] %>: <%= pms_million(revenue) %> triệu">
+                <span class="h-32 flex flex-col justify-end" aria-hidden="true">
+                  <span class="v"><%= pms_million(revenue) %></span>
+                  <span class="b" style="height: <%= (revenue / 1e6 / scale * 112).round %>px"></span>
+                </span>
+                <span class="l" aria-hidden="true"><%= label[from, to] %></span>
+              </label>
+            <% end %>
+          </div>
+        </fieldset>
+      </div>
+    </section>
+
+    <% if r.channels.any? { |_, numbers| numbers[:nights].positive? } %>
+      <section id="channels" class="px-4 pt-4" aria-labelledby="channels-h">
+        <h2 id="channels-h" class="pms-sec-h">Theo nguồn đặt</h2>
+        <div class="pms-panel">
+          <table class="w-full [&_th]:px-3 [&_td]:px-3 [&_th]:py-2 [&_td]:py-2 [&_td]:border-t [&_td]:border-pms-border">
+            <thead class="bg-[#fafbfa] text-xs text-pms-text-2"><tr><th class="text-left font-semibold">Nguồn</th><th class="text-right font-semibold">Doanh thu</th><th class="text-right font-semibold">Thực nhận</th></tr></thead>
+            <tbody>
+              <% r.channels.each do |channel, numbers| %>
+                <tr>
+                  <td>
+                    <%= Report::CHANNEL_LABELS.fetch(channel) %>
+                    <span class="block text-xs text-pms-text-2"><%= numbers[:nights] %> đêm · <%=
+                      if numbers[:commission] then "hoa hồng #{commission(numbers[:commission])}%"
+                      elsif Place::COMMISSION_PROVIDERS.include?(channel) then "chưa nhập % hoa hồng"
+                      else "không hoa hồng"
+                      end %></span>
+                  </td>
+                  <td class="text-right"><%= pms_money(numbers[:revenue]) %></td>
+                  <td class="text-right font-semibold"><%= pms_money(numbers[:net]) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <% end %>
+
+    <% if r.debts.any? %>
+      <section id="debts" class="px-4 pt-4" aria-labelledby="debts-h">
+        <h2 id="debts-h" class="pms-sec-h flex justify-between gap-2"><span>Công nợ chưa thu</span><span class="font-normal"><%= pms_money(r.due) %></span></h2>
+        <div class="pms-panel divide-y divide-pms-border">
+          <% r.debts.each do |booking| %>
+            <% line, late = pms_debt_line(booking) %>
+            <%= link_to pms_booking_path(booking), class: "flex items-center gap-3 min-h-14 px-3 py-2 no-underline" do %>
+              <span class="flex-1 min-w-0">
+                <span class="block truncate"><%= [ booking.label, booking.code ].compact.join(" · ") %></span>
+                <span class="block text-[13px] <%= late ? "text-pms-danger font-semibold" : "text-pms-text-2" %>"><%= line %></span>
+              </span>
+              <span class="font-semibold <%= "text-pms-danger" if late %>"><%= pms_money(booking.due) %></span>
+            <% end %>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+
+    <section id="rooms" class="px-4 pt-4" aria-labelledby="rooms-h">
+      <h2 id="rooms-h" class="pms-sec-h"><%= r.rooms.size > 5 ? "5 phòng doanh thu cao nhất" : "Theo phòng" %></h2>
+      <div class="pms-panel">
+        <table class="w-full [&_th]:px-3 [&_td]:px-3 [&_th]:py-2 [&_td]:py-2 [&_td]:border-t [&_td]:border-pms-border">
+          <thead class="bg-[#fafbfa] text-xs text-pms-text-2"><tr><th class="text-left font-semibold">Phòng</th><th class="text-right font-semibold">Số đêm</th><th class="text-right font-semibold">Doanh thu</th></tr></thead>
+          <tbody>
+            <% r.top_rooms.each do |row| %>
+              <tr>
+                <td class="font-semibold"><%= row.room.name %></td>
+                <td class="text-right"><%= row.sold %></td>
+                <td class="text-right">
+                  <% if row.revenue %><%= pms_money(row.revenue) %>
+                  <% elsif allowed_to?(:manage, current_place) %><%= link_to "Chưa có giá", edit_pms_room_path(row.room), class: "pms-badge pms-badge-warn no-underline" %>
+                  <% else %><span class="pms-badge pms-badge-warn">Chưa có giá</span><% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <% outcomes = [ [ "Đã xác nhận", r.outcomes["confirmed"] ], [ "Đã huỷ (gồm không đến)", r.outcomes["cancelled"] ], [ "Airbnb / Booking.com đã huỷ", r.ota_cancelled ] ].select { |_, count| count.positive? } %>
+    <% if outcomes.any? %>
+      <section id="bookings" class="px-4 pt-4" aria-labelledby="bookings-h">
+        <h2 id="bookings-h" class="pms-sec-h">Lượt khách đến</h2>
+        <dl class="pms-panel divide-y divide-pms-border">
+          <% [ *outcomes,
+               [ "Khách huỷ", r.cancellation_rate && percent(r.cancellation_rate) ],
+               [ "Khách ở trung bình", r.alos && "#{number_with_precision(r.alos, precision: 1, strip_insignificant_zeros: true, separator: ",")} đêm" ] ].each do |label, value| %>
+            <% next unless value %>
+            <div class="flex justify-between gap-3 px-3 py-2"><dt><%= label %></dt><dd class="font-semibold"><%= value %></dd></div>
+          <% end %>
+        </dl>
+      </section>
+    <% end %>
+
+    <p class="px-4 pt-3 text-xs text-pms-text-2">
+      Chạm vào cột để xem số liệu. Doanh thu tính theo đêm khách đã ở: tiền phòng + dịch vụ − giảm giá, gồm cả khoản còn phải thu.
+      <% if r.unpriced? %>Đêm chưa có giá không được tính.<% end %>
+      Thực nhận = doanh thu trừ hoa hồng kênh (cài ở Kênh bán phòng). Công suất = số đêm có khách ÷ (<%= r.rooms.size %> phòng × <%= r.days %> ngày).
+    </p>
+  <% end %>
+<% else %>
+  <%= render "pms/no_place" %>
+<% end %>
