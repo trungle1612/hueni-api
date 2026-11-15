@@ -25,6 +25,7 @@ Rails.application.routes.draw do
     get "hom-nay", to: "today#show", as: :today
     get "lich", to: "calendars#show", as: :calendar
     get "them", to: "more#show", as: :more
+    get "bao-cao", to: "reports#show", as: :report
     patch "co-so/:slug", to: "places#update", as: :place
     resources :bookings, path: "dat-phong", only: %i[new create show edit update], path_names: { new: "moi", edit: "sua" } do
       get :availability, on: :member, path: "lich-trong"

@@ -110,6 +110,15 @@
   .pms-badge-out, .pms-badge-maint { background: var(--color-pms-muted); color: var(--color-pms-text-2); }
   .pms-badge-pos { background: var(--color-pms-pos-bg); color: var(--color-pms-pos); }
   .pms-badge-danger { background: var(--color-pms-danger-bg); color: var(--color-pms-danger); }
+  /* Báo cáo chart (#234): a bar is a radio, so a tap shows its value without JS (iOS doesn't focus buttons). */
+  .pms-bcol { display: flex; flex-direction: column; min-width: 0; cursor: pointer; }
+  .pms-bcol .v { visibility: hidden; font-size: 11px; font-weight: 600; line-height: 14px; text-align: center; }
+  .pms-bcol .b { display: block; border-radius: 2px 2px 0 0; background: #8c948f; }
+  .pms-bcol .l { padding-top: 4px; font-size: 11px; color: var(--color-pms-text-2); text-align: center; white-space: nowrap; }
+  .pms-bcol:has(:checked) .v { visibility: visible; }
+  .pms-bcol:has(:checked) .b { background: var(--color-pms-primary); }
+  .pms-bcol:has(:checked) .l { color: var(--color-pms-text); font-weight: 600; }
+  .pms-bcol:has(:focus-visible) { outline: 2px solid var(--color-pms-primary); outline-offset: 2px; }
   .pms-app :focus-visible { outline: 2px solid var(--color-pms-primary); outline-offset: 2px; }
   .pms-app .turbo-progress-bar { background: var(--color-pms-primary); }
 }

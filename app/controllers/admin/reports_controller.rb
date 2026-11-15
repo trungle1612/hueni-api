@@ -11,21 +11,13 @@ class Admin::ReportsController < Admin::BaseController
     @place = Current.user.accessible_places.find_by!(slug: params[:place_slug])
     authorize!(:report, @place)
     @places = owned_places
-    @report = params[:period] == "7d" ? Report.week(@place) : Report.new(@place, month_param || Date.current)
+    @report = Report.for(@place, period: params[:period], month: params[:month])
     respond_to do |format|
       format.html
       format.csv do
         send_data @report.to_csv, type: "text/csv; charset=utf-8",
-          filename: "bao-cao-#{@place.slug}-#{@report.first.iso8601}-#{@report.last.iso8601}.csv"
+          filename: @report.csv_filename
       end
     end
   end
-
-  private
-    # A YYYY-MM query param, or nil when missing or malformed.
-    def month_param
-      Date.strptime(params[:month].to_s, "%Y-%m") if params[:month].is_a?(String)
-    rescue Date::Error
-      nil
-    end
 end
