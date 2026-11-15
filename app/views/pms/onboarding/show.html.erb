@@ -8,7 +8,7 @@
 <% today = @steps.last == "notif" ? "Vào Hôm nay" : "Tiếp tục" %>
 
 <div class="min-h-dvh flex flex-col px-6" data-controller="onboarding" data-onboarding-done-value="<%= pms_today_path %>"
-     data-action="push:changed@document->onboarding#pushed appinstalled@window->onboarding#installed">
+     data-action="push:changed@document->onboarding#pushed appinstalled@window->onboarding#installed beforeinstallprompt@window->onboarding#installable">
   <div class="flex items-center gap-3 pt-4">
     <div class="flex-1 grid grid-flow-col auto-cols-fr gap-1" role="progressbar" data-onboarding-target="progress">
       <% @steps.each do |step| %><i class="h-1 rounded-sm bg-pms-border" data-onboarding-target="bar" data-step="<%= step %>"></i><% end %>

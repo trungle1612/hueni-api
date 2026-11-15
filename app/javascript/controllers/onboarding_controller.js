@@ -32,6 +32,11 @@ export default class extends Controller {
     this.set("install", outcome == "accepted" ? "installed" : "manual")
   }
 
+  // Chrome may offer install after the page connected (first visit: once the service worker is ready); the layout keeps the event.
+  installable() {
+    this.set("install", "prompt")
+  }
+
   installed() {
     this.set("install", "installed")
   }
