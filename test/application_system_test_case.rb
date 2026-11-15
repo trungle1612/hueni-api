@@ -9,6 +9,12 @@ end)
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1000 ]
 
+  # Bắt đầu (#266) already seen in this browser, so a login lands where the test expects; delete the cookie to test it.
+  setup do
+    visit rails_health_check_path
+    page.driver.browser.manage.add_cookie(name: "pms_onboarded", value: "1")
+  end
+
   # Mocked Zalo login (#97); the server runs in this process, so the mock reaches it. Default: Chị Lan.
   def log_in_with_zalo(uid = "zalo-chi-lan")
     OmniAuth.config.mock_auth[:zalo2] = OmniAuth::AuthHash.new(provider: "zalo2", uid:)

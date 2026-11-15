@@ -20,9 +20,12 @@ class RegistrationTest < ApplicationSystemTestCase
     accept_confirm { click_button "Tạo tài khoản chủ Hiu Hill Homestay" }
     assert_text "Đã tạo tài khoản cho Hoa Nguyễn"
 
-    Capybara.reset_sessions!
+    Capybara.reset_sessions! # a new browser: Bắt đầu first (#266)
     log_in_with_zalo "zalo-hoa"
+    assert_selector "h1", text: "Đặt hueni ra màn hình chính"
+    click_link "Bỏ qua"
     assert_text "Hiu Hill Homestay"
+    assert_selector "#setup", text: "Phòng và giá"
   end
 
   test "the admin filters the homestay list to correct a misspelled name" do

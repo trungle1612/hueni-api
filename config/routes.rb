@@ -23,6 +23,7 @@ Rails.application.routes.draw do
   # PMS PWA for owners and staff (#227, ADR-002): the current homestay lives in the session, not the URL.
   scope module: :pms, as: :pms do
     get "hom-nay", to: "today#show", as: :today
+    get "bat-dau", to: "onboarding#show", as: :onboarding
     get "lich", to: "calendars#show", as: :calendar
     get "them", to: "more#show", as: :more
     delete "tai-khoan", to: "more#destroy", as: :account
