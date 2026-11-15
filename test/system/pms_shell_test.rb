@@ -13,7 +13,8 @@ class PmsShellTest < ApplicationSystemTestCase
     assert_selector "header", text: "Hiu Hill Homestay" # first by name
 
     click_link "Thêm"
-    within("section", text: "Cơ sở") { click_button "tomo homestay" }
+    find("button[popovertarget=places_sheet]").click
+    within("#places_sheet") { click_button "tomo homestay" }
     assert_current_path pms_today_path
     assert_selector "header", text: "tomo homestay"
 

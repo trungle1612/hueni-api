@@ -1,0 +1,60 @@
+<% legal = Pms::LegalController::LEGAL %>
+<% text = legal.fetch(@doc) %>
+<% user = Current.user %>
+<% content_for :title, "#{text["label"]} · hueni" %>
+<% content_for :bar do %>
+  <header class="sticky top-0 z-10 bg-pms-surface border-b border-pms-border">
+    <div class="flex items-center gap-1 min-h-14 pl-1 pr-3">
+      <%= link_to pms_more_path, class: "flex-none flex items-center justify-center size-11 rounded-md", "aria-label": "Quay lại" do %>
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      <% end %>
+      <div class="flex-1 min-w-0 flex flex-col">
+        <h1 class="text-[17px] leading-tight font-semibold truncate">Điều khoản và quyền riêng tư</h1>
+        <span class="text-xs text-pms-text-2">hueni</span>
+      </div>
+    </div>
+    <nav class="flex px-2" aria-label="Văn bản">
+      <% %w[terms privacy].each do |doc| %>
+        <%= link_to legal.dig(doc, "label"), pms_legal_path(doc: (doc unless doc == "terms")), "aria-current": ("page" if doc == @doc),
+              class: "flex-none flex items-center min-h-11 px-2.5 border-b-2 no-underline #{doc == @doc ? "border-pms-primary font-semibold" : "border-transparent text-pms-text-2 font-medium"}" %>
+      <% end %>
+    </nav>
+  </header>
+<% end %>
+
+<p class="px-4 pt-3 text-xs text-pms-text-2">Phiên bản <%= legal["version"] %><%= " · ứng dụng #{ENV["KAMAL_VERSION"].first(7)}" if ENV["KAMAL_VERSION"] %></p>
+
+<div class="px-4 pt-3">
+  <div id="summary" class="rounded-lg border border-pms-info-line bg-pms-info-bg px-3 py-2.5 text-pms-info">
+    <b>Tóm tắt</b>
+    <ul class="mt-1 pl-4 list-disc flex flex-col gap-1"><% text["summary"].each do |line| %><li><%= line %></li><% end %></ul>
+  </div>
+</div>
+
+<section class="px-4 pt-4" aria-label="Nội dung">
+  <h2 class="pms-sec-h"><%= text["sections"].size %> mục</h2>
+  <div class="pms-panel divide-y divide-pms-border">
+    <% text["sections"].each_with_index do |section, index| %>
+      <details class="group">
+        <summary class="flex items-center gap-3 min-h-12 px-3 py-2 font-semibold cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          <span class="flex-none w-5 text-pms-text-2 font-medium"><%= index + 1 %></span>
+          <span class="flex-1"><%= section["title"] %></span>
+          <svg aria-hidden="true" class="flex-none text-pms-text-2 group-open:rotate-180" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </summary>
+        <div class="flex flex-col gap-2 pb-3 pl-11 pr-3"><% section["paras"].each do |para| %><p><%= para %></p><% end %></div>
+      </details>
+    <% end %>
+  </div>
+</section>
+
+<p id="consent" class="px-4 pt-4 text-[13px] text-pms-text-2">
+  <% if user.terms_accepted_at %>
+    Bạn đã đồng ý phiên bản <%= user.terms_version %> lúc <%= user.terms_accepted_at.strftime("%H:%M ngày %d/%m/%Y") %>.
+  <% else %>
+    Chưa có ghi nhận bạn đồng ý điều khoản trong ứng dụng.
+  <% end %>
+</p>
+
+<% content_for :footer do %>
+  <%= link_to "Gọi hỗ trợ #{legal["support_phone"]}", "tel:#{legal["support_phone"]}", class: "pms-btn flex-1" %>
+<% end %>

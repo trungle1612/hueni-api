@@ -56,14 +56,15 @@ class User < ApplicationRecord
   scope :not_deleted, -> { where(deleted_at: nil) }
   def deleted? = deleted_at.present?
 
+  # Homestays this user is the only owner of: Xoá tài khoản clears their bookings and money (Place#clear_for_deleted_owner!).
+  def sole_owned_places = places.merge(PlaceMembership.owner).reject { it.place_memberships.owner.where.not(user_id: id).exists? }
+
   # Xoá tài khoản (#192, Zalo DPA): personal fields, the Zalo link, logins and memberships go; the row stays,
   # anonymised, so payments, shifts and Hoạt động still resolve. At a homestay where they are the last owner
   # the guest data goes too and the staff leave with them (Place#clear_for_deleted_owner!); the homestay and its rooms stay.
   def delete_account!
     transaction do
-      places.merge(PlaceMembership.owner).each do |place|
-        place.clear_for_deleted_owner! unless place.place_memberships.owner.where.not(user_id: id).exists?
-      end
+      sole_owned_places.each(&:clear_for_deleted_owner!)
       place_memberships.reload.each(&:destroy!)
       RegistrationRequest.where(user_id: id).delete_all
       RegistrationRequest.where(zalo_id:).delete_all if zalo_id
