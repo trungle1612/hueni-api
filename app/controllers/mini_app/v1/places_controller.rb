@@ -77,17 +77,13 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
     from = date_param(:from) || Date.current
     to = (date_param(:to) || from + CALENDAR_DAYS).clamp(from.next_day, from + MAX_CALENDAR_DAYS)
     rooms = @place.rooms.where(active: true).order(:name).to_a
-    bookings = Booking.blocking.where(room: rooms).merge(Booking.overlapping(from, to).or(Booking.in_house))
-      .includes(:calendar_feed, :room, :payments).order(:start_date, :id).to_a
-    conflicts = bookings.select(&:ical?).flat_map do |ical|
-      bookings.select { it.manual? && it.room_id == ical.room_id && it.overlaps?(ical) }.map { { ota_id: ical.id, manual_id: it.id } }
-    end
+    calendar = RoomCalendar.new(rooms, from, to)
     render json: {
       from:, to:,
       rooms: MiniApp::RoomSerializer.new(rooms, params: serializer_params),
-      bookings: MiniApp::BookingSerializer.new(bookings, params: serializer_params),
-      conflicts:,
-      maintenance_conflicts: bookings.select(&:in_maintenance?).map(&:id)
+      bookings: MiniApp::BookingSerializer.new(calendar.bookings, params: serializer_params),
+      conflicts: calendar.conflicts.map { |ical, manual| { ota_id: ical.id, manual_id: manual.id } },
+      maintenance_conflicts: calendar.maintenance_conflicts.map(&:id)
     }
   end
 

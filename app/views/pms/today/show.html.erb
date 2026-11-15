@@ -52,8 +52,7 @@
     <section class="px-4 pt-4 <%= "pb-6" if i == 1 %>" aria-labelledby="<%= id %>">
       <h2 id="<%= id %>" class="pms-sec-h flex items-baseline justify-between gap-2">
         <span><%= label %> · <%= @tomorrow ? waiting.size : "#{waiting.size} chờ / #{waiting.size + done.size}" %></span>
-        <%# Until Lịch phòng (#230): the /admin calendar. %>
-        <% if i.zero? %><%= link_to "Lịch", admin_place_calendar_path(current_place.slug), class: "text-pms-primary font-semibold no-underline" %><% end %>
+        <% if i.zero? %><%= link_to "Lịch", pms_calendar_path, class: "text-pms-primary font-semibold no-underline" %><% end %>
       </h2>
       <div class="pms-panel divide-y divide-pms-border">
         <%= render partial: "stay", collection: waiting, as: :booking, locals: { kind: step, done: false } %>

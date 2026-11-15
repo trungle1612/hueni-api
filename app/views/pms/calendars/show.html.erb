@@ -1,0 +1,126 @@
+<% content_for :title, "Lịch phòng · hueni" %>
+<% unless current_place %>
+  <% content_for :bar, render("pms/bar", title: "Lịch phòng") %>
+  <%= render "pms/no_place" %>
+<% else %>
+<% days, today = @days, Date.current %>
+<% week = "#{days.begin.strftime("%d/%m")} – #{(days.end - 1).strftime("%d/%m")}" %>
+<% icon_btn = "flex-none flex items-center justify-center size-11 rounded-md text-pms-text no-underline" %>
+<% actions = capture do %>
+  <% unless days.begin == today %>
+    <%= link_to "Hôm nay", pms_calendar_path, class: "flex-none flex items-center min-h-11 px-2 text-pms-primary font-semibold no-underline" %>
+  <% end %>
+  <%# Until the PWA has Tìm (#235): /admin. %>
+  <%= link_to admin_search_path, class: icon_btn, "aria-label": "Tìm đặt phòng" do %>
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+  <% end %>
+  <%= link_to pms_calendar_path(from: (days.begin - days.count).iso8601), class: icon_btn, "aria-label": "Tuần trước" do %>
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+  <% end %>
+  <%= link_to pms_calendar_path(from: days.end.iso8601), class: icon_btn, "aria-label": "Tuần sau" do %>
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+  <% end %>
+<% end %>
+<% content_for :bar, render("pms/bar", title: "Lịch phòng", sub: "#{week}/#{(days.end - 1).year} · #{@rooms.size} phòng", actions:) %>
+
+<% calendar = @calendar %>
+<% conflict_ids = calendar.conflict_ids %>
+<% by_room = calendar.by_room %>
+<%# Bars inside the week: an in-house guest due out today keeps a half cell on today. %>
+<% shown = @rooms.to_h { |room| [ room.id, by_room.fetch(room.id, []).reject { booking_bar_end(it) < days.begin || it.start_date >= days.end } ] } %>
+
+<% if conflict_ids.any? %>
+  <div id="conflicts" class="px-4 py-3 flex flex-col gap-1.5">
+    <% calendar.conflicts.each do |ical, manual| %>
+      <%= link_to pms_booking_href(manual), class: "pms-notice" do %>
+        <span class="flex-1 min-w-0">Trùng lịch · <%= ical.room.name %>: <%= ical.label %> <%= pms_range(ical.start_date, ical.end_date) %> trùng với “<%= manual.label %>”. Sửa hoặc huỷ đặt phòng thủ công.</span><b>Xem</b>
+      <% end %>
+    <% end %>
+    <% calendar.maintenance_conflicts.each do |booking| %>
+      <%= link_to pms_booking_href(booking), class: "pms-notice" do %>
+        <span class="flex-1 min-w-0"><%= booking.room.name %> bảo trì đến <%= booking.room.maintenance_until.strftime("%d/%m") %> nhưng có “<%= booking.label %>” <%= pms_range(booking.start_date, booking.end_date) %>. Đổi phòng, đổi ngày hoặc huỷ đặt phòng.</span><b>Xem</b>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>
+
+<% if @rooms.any? %>
+  <% cols = "grid grid-cols-[48px_repeat(7,minmax(0,1fr))]" %>
+  <%# 48px + 7 × 44px tap targets: below that width the grid scrolls sideways, never the page. %>
+  <div class="overflow-x-auto">
+    <div class="min-w-[356px]">
+      <div class="<%= cols %> bg-pms-surface border-b border-pms-border" aria-hidden="true">
+        <div></div>
+        <% days.each do |day| %>
+          <div data-day="<%= day.iso8601 %>" class="flex flex-col items-center py-1.5 text-[11px] leading-[1.3] text-pms-text-2 <%= "bg-pms-primary-bg" if day == today %>">
+            <%= %w[CN T2 T3 T4 T5 T6 T7][day.wday] %>
+            <b class="text-[13px] <%= day == today ? "text-pms-primary font-semibold" : day < today ? "font-medium" : "text-pms-text font-semibold" %>"><%= day.day %></b>
+          </div>
+        <% end %>
+      </div>
+
+      <div role="group" aria-label="Lịch đặt phòng tuần <%= days.begin.strftime("%d/%m") %> đến <%= (days.end - 1).strftime("%d/%m") %>" class="bg-pms-surface border-b border-pms-border">
+        <% @rooms.each_with_index do |room, ri| %>
+          <% room_bookings = by_room.fetch(room.id, []) %>
+          <% lanes = timeline_lanes(shown[room.id]) %>
+          <div id="<%= dom_id(room, :calendar) %>" class="<%= cols %> <%= "border-t border-pms-border" if ri.positive? %>" style="grid-template-rows: repeat(<%= [ lanes.map(&:last).max.to_i + 1, 1 ].max %>, 52px)">
+            <div class="row-span-full flex items-center min-w-0 pl-3 pr-1 border-r border-pms-border text-[13px] font-semibold leading-tight [overflow-wrap:anywhere]" title="<%= room.name %>">
+              <span class="line-clamp-2"><%= room.name %></span>
+            </div>
+
+            <% days.each_with_index do |day, i| %>
+              <% cell = { class: "row-span-full #{"border-l border-pms-border/60" if i.positive?} #{day == today ? "bg-pms-primary-bg/50" : ("bg-pms-bg/60" if day < today)}", style: "grid-column: #{i + 2}" } %>
+              <% if day < today || room.maintenance_on?(day) || room_bookings.any? { it.start_date <= day && day < it.occupied_until } %>
+                <%= tag.div(**cell) %>
+              <% else %>
+                <%# Until Đặt phòng mới (#232): the /admin form, prefilled. Keyboard users book with + Đặt phòng on Hôm nay. %>
+                <%= link_to "", new_admin_place_booking_path(current_place.slug, room_id: room.id, start_date: day.iso8601), **cell, tabindex: -1,
+                      "aria-label": "Phòng #{room.name}, #{day.strftime("%d/%m")}, trống. Đặt phòng" %>
+              <% end %>
+            <% end %>
+
+            <% if room.maintenance? && room.maintenance_until >= days.begin && today < days.end %>
+              <% sheet = dom_id(room, :maintenance) %>
+              <% sub = "#{room.maintenance_reason.presence || "Bảo trì"} · đến #{room.maintenance_until.strftime("%d/%m")}" %>
+              <button type="button" popovertarget="<%= sheet %>" class="pms-bar pms-bar-maint" aria-label="Bảo trì phòng <%= room.name %>, <%= sub %>"
+                      style="<%= pms_bar_style(days, [ today, days.begin ].max, room.maintenance_until.next_day, cont: true) %>; grid-row: 1">Bảo trì</button>
+              <%= render "sheet", id: sheet, tone: :maint, status: "Bảo trì", title: "Bảo trì phòng #{room.name}", sub: %>
+            <% end %>
+
+            <% lanes.each do |booking, lane| %>
+              <% tone, status = pms_bar_state(booking) %>
+              <% conflict = conflict_ids.include?(booking.id) %>
+              <% words = booking.label.split %>
+              <% sub = [ "Phòng #{room.name}", pms_range(booking.start_date, booking.end_date), "#{(booking.end_date - booking.start_date).to_i} đêm",
+                         (booking.calendar_feed&.provider_label if booking.ical?) ].compact.join(" · ") %>
+              <% badges = [ ("OTA đã huỷ" if booking.removed_from_feed_at), ("Trùng lịch" if conflict) ].compact %>
+              <% sheet = dom_id(booking, :peek) %>
+              <button type="button" id="<%= dom_id(booking) %>" popovertarget="<%= sheet %>" class="pms-bar pms-bar-<%= tone %> <%= "pms-bar-conflict" if conflict %>"
+                      style="<%= pms_bar_style(days, booking.start_date, booking_bar_end(booking)) %>; grid-row: <%= lane + 1 %>"
+                      aria-label="<%= [ booking.label, sub, status, *badges ].join(", ") %>"><%= "! " if tone == :warn %><%= "⚠ " if booking.removed_from_feed_at %><%= words.size > 2 ? words.last(2).join(" ") : booking.label %></button>
+              <%= render "sheet", id: sheet, tone:, status:, title: booking.label, sub:, badges:, booking: %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <% if shown.values.all?(&:empty?) %>
+    <p class="mx-4 mt-3 text-[13px] text-pms-text-2">Chưa có đặt phòng nào trong tuần này.</p>
+  <% end %>
+  <div class="flex flex-wrap gap-x-3.5 gap-y-1.5 px-4 pt-3 text-xs text-pms-text-2">
+    <% [ [ "Đang ở", "bg-pms-primary" ], [ "Đã cọc", "bg-pms-info-bg border border-pms-info-line" ], [ "! Chưa cọc", "bg-pms-warn-bg border border-pms-warn-line" ],
+         [ "Trả sáng nay", "border border-dashed border-pms-text-2" ], [ "Bảo trì", "bg-pms-muted" ], [ "Trùng lịch", "border-2 border-pms-danger" ] ].each do |label, swatch| %>
+      <span class="flex items-center gap-1.5"><i class="size-3 rounded-sm <%= swatch %>"></i><%= label %></span>
+    <% end %>
+    <span class="basis-full">Thanh bắt đầu giữa ô (nhận phòng buổi chiều) và kết thúc giữa ô (trả phòng buổi sáng), nên một phòng có thể trả và nhận khách trong cùng ngày. Chạm phần ô trống để đặt phòng; dùng bàn phím thì đặt qua “+ Đặt phòng” ở màn Hôm nay.</span>
+  </div>
+<% else %>
+  <div class="m-4 pms-panel px-4 py-8 text-center">
+    <p class="font-semibold">Chưa có phòng nào đang mở</p>
+    <%# Until Phòng (#233): /admin. %>
+    <%= link_to "Quản lý phòng", admin_place_path(current_place.slug), class: "pms-btn mt-3" %>
+  </div>
+<% end %>
+<% end %>

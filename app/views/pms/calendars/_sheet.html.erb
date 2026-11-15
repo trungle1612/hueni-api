@@ -1,0 +1,14 @@
+<%# locals: (id:, tone:, status:, title:, sub:, badges: [], booking: nil) -%>
+<%# The bottom sheet a Lịch phòng bar opens (native popover). Only manual bookings open a page until Chi tiết (#231). -%>
+<div id="<%= id %>" popover class="pms-sheet" role="dialog" aria-modal="true" aria-labelledby="<%= id %>_t">
+  <div class="flex flex-col gap-3">
+    <div class="flex flex-wrap gap-1.5">
+      <span class="pms-badge pms-badge-<%= tone %>"><%= status %></span>
+      <% badges.each do |badge| %><span class="pms-badge pms-badge-danger"><%= badge %></span><% end %>
+    </div>
+    <h2 id="<%= id %>_t" class="text-base font-semibold"><%= title %></h2>
+    <p class="-mt-1.5 text-[13px] text-pms-text-2"><%= sub %></p>
+    <% if booking&.manual? %><%= link_to "Mở đặt phòng", pms_booking_href(booking), class: "pms-btn pms-btn-primary w-full" %><% end %>
+    <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="<%= id %>" popovertargetaction="hide">Đóng</button>
+  </div>
+</div>

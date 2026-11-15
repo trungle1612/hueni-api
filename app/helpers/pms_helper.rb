@@ -5,9 +5,37 @@ module PmsHelper
   # "600.000đ", as in the design.
   def pms_money(amount) = "#{number_with_delimiter(amount, delimiter: ".")}đ"
 
-  # Until the PWA has Chi tiết đặt phòng (#231) and Lịch phòng (#230), rows open the /admin pages.
+  # Until the PWA has Chi tiết đặt phòng (#231), manual bookings open the /admin form, iCal ones the week on Lịch phòng.
   def pms_booking_href(booking)
-    booking.manual? ? edit_admin_booking_path(booking) : admin_place_calendar_path(booking.room.place.slug, from: booking.start_date.iso8601)
+    booking.manual? ? edit_admin_booking_path(booking) : pms_calendar_path(from: booking.start_date.iso8601)
+  end
+
+  # "22 – 25/10", or "30/10 – 03/11" across months.
+  def pms_range(from, to)
+    "#{from.strftime(from.month == to.month ? "%d" : "%d/%m")} – #{to.strftime("%d/%m")}"
+  end
+
+  # Lịch phòng bar: [tone, status] as in the design. Tones: in / ok / warn / out (dashed) / maint.
+  def pms_bar_state(booking)
+    if booking.overdue? then [ :out, "Quá hạn trả phòng" ]
+    elsif booking.departing_today? then [ :out, "Trả hôm nay" ]
+    elsif booking.checked_in_at && !booking.checked_out_at then [ :in, "Đang ở" ]
+    elsif booking.checked_out_at then [ :ok, "Đã trả phòng" ]
+    elsif booking.awaiting_deposit? then [ :warn, "Chưa cọc" ]
+    elsif booking.ical? || booking.due&.zero? then [ :ok, "Đã thanh toán" ]
+    else [ :ok, "Đã cọc" ]
+    end
+  end
+
+  # Grid placement of a Lịch phòng bar from `from` to the morning of `to` within days (a 7-day range): a stay starts
+  # mid-cell (afternoon check-in) and ends mid-cell (morning check-out); cont = it began before the week or fills the day.
+  def pms_bar_style(days, from, to, cont: false)
+    start = [ (from - days.begin).to_i, 0 ].max
+    finish = (to - days.begin).to_i
+    cont ||= from < days.begin
+    half = finish < days.count
+    cover = half ? finish - start + 1 : days.count - start
+    "grid-column: #{start + 2} / span #{cover}; margin-left: #{cont ? "1px" : "#{50.0 / cover}%"}; margin-right: #{half ? "#{50.0 / cover}%" : "1px"}"
   end
 
   # Second line of a Hôm nay row: "2 đêm · 2 khách · Airbnb · chưa cọc".
