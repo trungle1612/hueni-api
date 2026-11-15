@@ -92,10 +92,11 @@ class Notification < ApplicationRecord
   # What the phone shows: the inbox's own words (no more guest data), tapped → opens it like a tap in Thông báo.
   # Giờ yên lặng: no sound or vibration from 22:00 to 06:00, except Trùng phòng và lỗi kênh.
   def push_payload(user)
-    quiet = user.quiet_hours && !Time.current.hour.in?(QUIET_UNTIL...QUIET_FROM) && type != "channel"
-    { title: "#{title} · #{place.name}", body:, tag: key, silent: quiet,
+    { title: "#{title} · #{place.name}", body:, tag: key, silent: Notification.quiet?(user, type),
       url: Rails.application.routes.url_helpers.pms_open_notification_path(key, co_so: place.slug) }
   end
+
+  def self.quiet?(user, type) = user.quiet_hours && !Time.current.hour.in?(QUIET_UNTIL...QUIET_FROM) && type != "channel"
 
   def self.prune = where(created_at: ...(DAYS + 1).days.ago).delete_all
 
