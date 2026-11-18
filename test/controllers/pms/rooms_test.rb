@@ -152,8 +152,10 @@ class Pms::RoomsTest < ActionDispatch::IntegrationTest
     assert_redirected_to pms_rooms_path
     get edit_pms_room_path(room)
     first, second = room.photos.reload
-    assert_select "img[src=?]", first.url
-    assert_select "img[src=?]", second.url
+    assert_select "button[popovertarget=room_gallery][data-gallery-index-param='1'] img[src=?]", second.url
+    assert_select "#room_gallery[popover] [data-gallery-target=slide]", text: /1 \/ 2/ do
+      assert_select "img[src=?]", first.url
+    end
     assert_select "input[type=file][name='room[photo_files][]'][form=room_form][multiple][accept='image/*']"
 
     delete pms_room_photo_path(room, first)
