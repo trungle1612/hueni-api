@@ -38,6 +38,9 @@ module HueniApi
     config.action_view.field_error_proc = ->(html_tag, _instance) { html_tag }
     config.i18n.available_locales = %i[vi en]
     config.i18n.default_locale = :vi
+    # Ảnh phòng (#187): files under photos_root are served at photos_url (in production by hueni.me's nginx).
+    config.x.photos_root = Rails.root.join("public/images")
+    config.x.photos_url = "http://localhost:3000/images" # absolute: image_tag would look a path up as an asset
     # config.eager_load_paths << Rails.root.join("extras")
   end
 end

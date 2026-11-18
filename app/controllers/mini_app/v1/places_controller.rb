@@ -76,7 +76,7 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
   def calendar
     from = date_param(:from) || Date.current
     to = (date_param(:to) || from + CALENDAR_DAYS).clamp(from.next_day, from + MAX_CALENDAR_DAYS)
-    rooms = @place.rooms.where(active: true).order(:name).to_a
+    rooms = @place.rooms.where(active: true).includes(:photos).order(:name).to_a
     calendar = RoomCalendar.new(rooms, from, to)
     render json: {
       from:, to:,
@@ -151,7 +151,7 @@ class MiniApp::V1::PlacesController < MiniApp::V1::BaseController
       @place = Current.user.accessible_places.find(params[:id])
     end
 
-    def ordered_rooms = @place.rooms.order(Arel.sql("floor IS NULL, floor"), active: :desc, name: :asc)
+    def ordered_rooms = @place.rooms.includes(:photos).order(Arel.sql("floor IS NULL, floor"), active: :desc, name: :asc)
 
     # Today and RoomDay load the bookings; the serializer also reads their feed and payments.
     def preload(bookings)

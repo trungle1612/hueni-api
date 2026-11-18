@@ -69,6 +69,7 @@ Rails.application.routes.draw do
     end
     resources :rooms, path: "phong", except: :show, path_names: { new: "moi", edit: "sua" } do
       patch :status, on: :member, path: "tinh-trang"
+      resources :photos, path: "anh", only: :destroy, controller: "room_photos"
     end
     scope "dat-phong/:id", controller: :stays, as: :stay do
       post "nhan-phong", action: :check_in, as: :check_in
@@ -218,6 +219,7 @@ Rails.application.routes.draw do
         post :finish
         post :undo
       end
+      resources :photos, only: %i[create destroy], controller: "room_photos"
     end
     resources :services, only: %i[update destroy]
     resources :seasons, only: %i[update destroy]
@@ -235,6 +237,7 @@ Rails.application.routes.draw do
     get "places/:slug/booking_site", to: "booking_site#show", as: :booking_site
     post "places/:slug/bookings", to: "booking_site#create", as: :booking_site_bookings
     get "bookings/:token", to: "booking_site#status", as: :booking_site_status
+    get "places/:slug/photos", to: "photos#show", as: :place_photos
     match "*path", to: "base#preflight", via: :options
   end
 end

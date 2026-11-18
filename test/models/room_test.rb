@@ -20,23 +20,6 @@ class RoomTest < ActiveSupport::TestCase
     assert_not room.tap { it.price = 1.5 }.valid?
   end
 
-  test "photo_urls defaults to empty array" do
-    assert_equal [], Room.new.photo_urls
-  end
-
-  test "photo_urls round-trips an array of http(s) urls" do
-    urls = [ "https://hueni.me/images/homestay/tomo-homestay/limdim-1.webp", "http://example.com/a.jpg" ]
-    rooms(:garden).update!(photo_urls: urls)
-    assert_equal urls, rooms(:garden).reload.photo_urls
-  end
-
-  test "photo_urls rejects non-array and non-http entries" do
-    room = rooms(:garden)
-    assert_not room.tap { it.photo_urls = "https://example.com/a.jpg" }.valid?
-    assert_not room.tap { it.photo_urls = [ "javascript:alert(1)" ] }.valid?
-    assert_not room.tap { it.photo_urls = [ 42 ] }.valid?
-  end
-
   test "name is unique within a place" do
     assert_not Room.new(place: places(:tomo), name: "Limdim", max_guests: 2).valid?
     assert Room.new(place: places(:hiuhill), name: "Limdim", max_guests: 2).valid?

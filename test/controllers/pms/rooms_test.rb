@@ -139,4 +139,49 @@ class Pms::RoomsTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     assert other.reload.dirty?
   end
+
+  test "Ảnh phòng: owner adds on Thêm and Sửa phòng, sees thumbnails, deletes one; the 11th refused" do
+    photo = fixture_file_upload("room.jpg", "image/jpeg")
+    log_in users(:owner)
+    post pms_rooms_path, params: { room: { name: "103", max_guests: 2, photo_files: [ "", photo ] } }
+    assert_redirected_to pms_rooms_path
+    assert_equal 1, places(:tomo).rooms.find_by!(name: "103").photos.count
+
+    room = rooms(:garden)
+    patch pms_room_path(room), params: { room: { name: "Garden", photo_files: [ photo, photo ] } }
+    assert_redirected_to pms_rooms_path
+    get edit_pms_room_path(room)
+    first, second = room.photos.reload
+    assert_select "img[src=?]", first.url
+    assert_select "img[src=?]", second.url
+    assert_select "input[type=file][name='room[photo_files][]'][form=room_form][multiple][accept='image/*']"
+
+    delete pms_room_photo_path(room, first)
+    assert_redirected_to edit_pms_room_path(room)
+    assert_not RoomPhoto.exists?(first.id)
+    assert_not first.path.exist?
+
+    RoomPhoto.insert_all(9.times.map { { room_id: room.id, key: "k#{it}", position: it + 10 } })
+    patch pms_room_path(room), params: { room: { name: "Garden", photo_files: [ photo ] } }
+    assert_response :unprocessable_entity
+    assert_select "#photos_error", text: "Ảnh phòng tối đa 10 ảnh mỗi phòng"
+    get edit_pms_room_path(room)
+    assert_select "input[type=file]", 0
+  end
+
+  test "Ảnh phòng: staff 403, another owner's room 404" do
+    photo = rooms(:garden).photos.create!(file: fixture_file_upload("room.jpg", "image/jpeg"))
+    other = Room.create!(place: places(:hiuhill), name: "Đồi", max_guests: 2, photo_files: [ fixture_file_upload("room.jpg", "image/jpeg") ])
+    log_in users(:owner)
+    delete pms_room_photo_path(other, other.photos.first)
+    assert_response :not_found
+    delete pms_room_photo_path(rooms(:garden), other.photos.first)
+    assert_response :not_found
+
+    sign_out
+    staff!
+    delete pms_room_photo_path(rooms(:garden), photo)
+    assert_response :forbidden
+    assert_equal 2, RoomPhoto.count
+  end
 end

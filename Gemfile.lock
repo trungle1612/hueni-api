@@ -130,6 +130,13 @@ GEM
       logger
     faraday-net_http (3.5.0)
       net-http (~> 0.5)
+    ffi (1.17.4-aarch64-linux-gnu)
+    ffi (1.17.4-aarch64-linux-musl)
+    ffi (1.17.4-arm-linux-gnu)
+    ffi (1.17.4-arm-linux-musl)
+    ffi (1.17.4-arm64-darwin)
+    ffi (1.17.4-x86_64-linux-gnu)
+    ffi (1.17.4-x86_64-linux-musl)
     fugit (1.14.0)
       et-orbi (~> 1.4)
       raabro (~> 1.4)
@@ -145,6 +152,9 @@ GEM
       ice_cube (~> 0.16)
       logger
     ice_cube (0.17.0)
+    image_processing (1.14.0)
+      mini_magick (>= 4.9.5, < 6)
+      ruby-vips (>= 2.0.17, < 3)
     importmap-rails (2.2.3)
       actionpack (>= 6.0.0)
       activesupport (>= 6.0.0)
@@ -183,6 +193,8 @@ GEM
       net-smtp
     marcel (1.2.1)
     matrix (0.4.3)
+    mini_magick (5.4.0)
+      logger
     mini_mime (1.1.5)
     minitest (6.1.0)
       drb (~> 2.0)
@@ -360,6 +372,9 @@ GEM
       rubocop-performance (>= 1.24)
       rubocop-rails (>= 2.30)
     ruby-progressbar (1.13.0)
+    ruby-vips (2.3.0)
+      ffi (~> 1.12)
+      logger
     rubyzip (3.7.0)
     securerandom (0.4.1)
     selenium-webdriver (4.52.0)
@@ -467,6 +482,7 @@ DEPENDENCIES
   capybara
   debug
   icalendar (~> 2.13)
+  image_processing (~> 1.14)
   importmap-rails
   kamal
   omniauth-rails_csrf_protection (~> 2.0)
