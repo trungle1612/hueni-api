@@ -1,3 +1,5 @@
+require "image_processing/vips" # libvips only where photos are handled; booting (importmap audit) works without it
+
 # Ảnh phòng (#187): public files hueni.me's nginx serves from /images/places/{slug}/rooms/{room-id}/{key}.webp.
 # Only the resized WebP is written, metadata (EXIF, GPS) stripped. key is random per upload and never reused:
 # nginx sends Cache-Control immutable. Saved through Room#photo_files=, which reports errors on the room as Ảnh phòng ….
