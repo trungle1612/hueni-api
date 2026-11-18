@@ -30,3 +30,14 @@ addEventListener("pageshow", ({ persisted }) => {
     button.disabled = false
   })
 })
+
+// A tap outside an open sheet only closes it. The browser makes a popover's backdrop click-through, so the same tap
+// would also open the bar or room under the scrim. The sheet is still open on pointerdown, already closed on click.
+// Its own button still goes through: the browser keeps the sheet open for it, and the click toggles it shut.
+let openSheet = null
+addEventListener("pointerdown", () => openSheet = document.querySelector(".pms-sheet:popover-open"), true)
+addEventListener("click", event => {
+  const own = event.target.closest("[popovertarget]")?.popoverTargetElement == openSheet
+  if (openSheet && !own && !event.target.closest(".pms-sheet")) { event.preventDefault(); event.stopPropagation() }
+  openSheet = null
+}, true)

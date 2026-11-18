@@ -18,6 +18,19 @@ class PmsCalendarTest < ApplicationSystemTestCase
     end
     assert_no_selector "#peek_booking_#{booking.id}", visible: true
 
+    # A tap outside an open sheet only closes it, it doesn't also follow what's under the scrim.
+    click_button "! Anh Minh"
+    assert_selector "#peek_booking_#{booking.id}", visible: true
+    find("a[aria-label='Tuần sau']").click
+    assert_no_selector "#peek_booking_#{booking.id}", visible: true
+    assert_no_text "09/10 – 15/10/2026"
+
+    # Tapping the same bar again closes its sheet.
+    click_button "! Anh Minh"
+    assert_selector "#peek_booking_#{booking.id}", visible: true
+    click_button "! Anh Minh"
+    assert_no_selector "#peek_booking_#{booking.id}", visible: true
+
     find("a[aria-label='Tuần sau']").click
     assert_text "09/10 – 15/10/2026"
     find("a[aria-label='Phòng Garden, 10/10, trống. Đặt phòng']").click
