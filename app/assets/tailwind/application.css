@@ -91,6 +91,8 @@
     box-shadow: 0 -4px 16px rgba(0, 0, 0, .12); font: 14px/1.45 var(--font-pms);
   }
   .pms-sheet::backdrop { background: rgba(26, 31, 28, .45); }
+  /* Ảnh phòng viewer (#187): a full-screen popover; the photos scroll-snap sideways. */
+  .pms-gallery { inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; border: 0; padding: 0; background: #000; }
   /* On/off switch (Thông báo): a checkbox, or a button with role=switch + aria-checked. */
   .pms-switch {
     appearance: none; flex: none; position: relative; width: 44px; height: 26px; margin: 9px 0; padding: 0; border-radius: 13px; cursor: pointer;

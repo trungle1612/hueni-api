@@ -5,6 +5,8 @@ class Room < ApplicationRecord
   has_many :bookings
   has_many :calendar_feeds, dependent: :destroy
   has_many :cleaning_tasks, dependent: :destroy
+  # Ảnh phòng (#187), upload order. New ones are checked by photos_are_valid, so errors land on the room.
+  has_many :photos, -> { order(:position) }, class_name: "RoomPhoto", inverse_of: :room, dependent: :destroy, validate: false
   # Becoming dirty is part of check-out, so only "dọn xong" (→ clean) and Bảo trì are logged.
   has_paper_trail on: %i[create update destroy], only: [ :name, :max_guests, :price, :weekend_price, :active, :maintenance_reason, :maintenance_until, :floor, :room_type, :amenities, :note, :damage_note,
     { housekeeping: ->(room) { !room.dirty? } } ],
@@ -24,7 +26,8 @@ class Room < ApplicationRecord
   validates :max_guests, numericality: { only_integer: true, greater_than: 0 }
   # weekend_price: Friday and Saturday nights; blank = the weekday price.
   vnd_price :price, :weekend_price
-  validate :photo_urls_are_http_urls
+  validates :photos, length: { maximum: RoomPhoto::MAX, message: "tối đa %{count} ảnh mỗi phòng" }
+  validate :photos_are_valid
 
   # Loại phòng (#138): a fixed list; keys in the DB (check constraint), labels on screen.
   ROOM_TYPES = { "single" => "Phòng đơn", "double" => "Phòng đôi", "family" => "Phòng gia đình", "dorm" => "Dorm", "studio" => "Studio", "villa" => "Villa" }.freeze
@@ -75,6 +78,11 @@ class Room < ApplicationRecord
     super(AMENITIES.keys & Array(value))
   end
 
+  # Ảnh phòng from the room form (several) or the Mini App (one), saved with the room.
+  def photo_files=(files)
+    Array(files).compact_blank.each { photos.build(file: it) }
+  end
+
   def amenity_labels = AMENITIES.values_at(*amenities)
 
   def room_type_label = ROOM_TYPES[room_type]
@@ -99,8 +107,7 @@ class Room < ApplicationRecord
   end
 
   private
-    def photo_urls_are_http_urls
-      valid = photo_urls.is_a?(Array) && photo_urls.all? { it.is_a?(String) && it.match?(%r{\Ahttps?://\S+\z}) }
-      errors.add(:photo_urls, :invalid) unless valid
+    def photos_are_valid
+      photos.select(&:new_record?).reject(&:valid?).flat_map { it.errors[:base] }.uniq.each { errors.add(:photos, it) }
     end
 end

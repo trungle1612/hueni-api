@@ -53,8 +53,10 @@ aliases:
   dbc: app exec --interactive --reuse "bin/rails dbconsole"
 
 # SQLite lives on the host (created in #8), backed up by the litestream accessory below.
+# Ảnh phòng (#187): public files, served by hueni.me's nginx `location /images/` (owner deploy = uid 1000 = rails).
 volumes:
   - "/var/lib/hueni-api/storage:/rails/storage"
+  - "/var/www/images/places:/rails/public-images/places"
 
 # `kamal deploy` does not touch accessories. First time: bin/kamal accessory boot litestream;
 # after changing config/litestream.yml or its secrets: bin/kamal accessory reboot litestream.

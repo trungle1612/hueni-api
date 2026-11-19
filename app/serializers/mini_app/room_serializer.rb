@@ -10,5 +10,7 @@ class MiniApp::RoomSerializer
   attribute(:amenities) { it.amenities.map { Room::AMENITIES[it] } }
   # until = the last blocked day, inclusive (Room#maintenance_on?).
   attribute(:maintenance, if: proc { |room| room.maintenance? }) { { reason: it.maintenance_reason, until: it.maintenance_until } }
+  # Ảnh phòng (#187), public URLs on hueni.me.
+  attribute(:photos) { it.photos.map { |photo| { id: photo.id, url: photo.url } } }
   attributes :price, :weekend_price, :note, if: proc { params[:manage] }
 end

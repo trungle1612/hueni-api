@@ -75,6 +75,6 @@ class Pms::RoomsController < Pms::BaseController
     end
 
     def room_params
-      params.expect(room: [ :name, :floor, :room_type, :max_guests, :price, :weekend_price, :active, :note, amenities: [] ])
+      params.expect(room: [ :name, :floor, :room_type, :max_guests, :price, :weekend_price, :active, :note, amenities: [], photo_files: [] ])
     end
 end

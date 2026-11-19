@@ -67,7 +67,7 @@ CI (`.github/workflows/ci.yml`) runs brakeman, bundler-audit, importmap audit, r
 
 - `places` table with FKs instead of string `place_id` + `config/places.yml`.
 - Bookings have `status` (confirmed/cancelled; Giữ chỗ removed in #127) and optional `guest_name`, `guest_phone`, `note`, quoted `price` / `weekend_price`, `deposit`.
-- Rooms have `price` (VND/night, admin-only) and `photo_urls` (JSON array of http(s) URLs).
+- Rooms have `price` (VND/night, admin-only). Ảnh phòng (#187) are `room_photos` (≤ 10 per room, `RoomPhoto`): libvips writes only a 1600px WebP, metadata stripped, to `config.x.photos_root` (production: Kamal volume `/var/www/images/places` → `/rails/public-images/places`, served by hueni.me's nginx `/images/`, not backed up), URL `https://hueni.me/images/places/{slug}/rooms/{room-id}/{key}.webp` with a random key per upload (nginx caches immutable: never reuse a path). Added via `Room#photo_files=` (PWA room form, `POST /api/v1/rooms/:id/photos`), owners only; public `GET /v1/places/:slug/photos`. Not Active Storage.
 - Admin calendar (#21) is a per-place timeline (rooms × days); iCal bookings overlapping manual ones are shown as conflicts.
 
 ## Security invariants

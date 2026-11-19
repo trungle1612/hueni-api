@@ -12,7 +12,7 @@
   </header>
 <% end %>
 
-<%= form_with model: room, url: room.persisted? ? pms_room_path(room) : pms_rooms_path, id: "room_form", html: { novalidate: true } do |form| %>
+<%= form_with model: room, url: room.persisted? ? pms_room_path(room) : pms_rooms_path, id: "room_form", multipart: true, html: { novalidate: true } do |form| %>
   <% if room.errors[:base].any? %>
     <div class="px-4 pt-4"><div role="alert" class="rounded-md border border-pms-danger bg-pms-danger-bg text-pms-danger px-3 py-2.5 text-[13px] font-semibold"><%= room.errors[:base].to_sentence %></div></div>
   <% end %>
@@ -69,7 +69,7 @@
     </div>
   </section>
 
-  <section class="px-4 pt-4 <%= "pb-6" unless room.persisted? %>" aria-labelledby="h-o">
+  <section class="px-4 pt-4" aria-labelledby="h-o">
     <h2 id="h-o" class="pms-sec-h">Vận hành</h2>
     <div class="pms-panel p-3 flex flex-col gap-3.5">
       <label class="flex items-center gap-3 min-h-11 cursor-pointer">
@@ -87,6 +87,61 @@
     </div>
   </section>
 <% end %>
+
+<%# Ảnh phòng (#187): outside the form so each photo can have its own delete button; the file input joins room_form via form=. -%>
+<section class="px-4 pt-4 <%= "pb-6" unless room.persisted? %>" aria-labelledby="h-ph">
+  <h2 id="h-ph" class="pms-sec-h">Ảnh phòng <span class="font-normal">· hiện trên hueni.me, tối đa <%= RoomPhoto::MAX %> ảnh</span></h2>
+  <div class="pms-panel p-3 flex flex-col gap-3">
+    <% photos = room.photos.select(&:persisted?) %>
+    <% if photos.any? %>
+      <%# Tap a thumbnail: full-screen viewer (native popover), swipe between photos. %>
+      <div data-controller="gallery">
+        <ul class="grid grid-cols-3 gap-2">
+          <% photos.each_with_index do |photo, index| %>
+            <li class="relative aspect-square">
+              <button type="button" popovertarget="room_gallery" data-action="gallery#show" data-gallery-index-param="<%= index %>" class="block size-full" aria-label="Xem ảnh <%= index + 1 %>">
+                <%= image_tag photo.url, alt: "", loading: "lazy", class: "size-full object-cover rounded-md bg-pms-border" %>
+              </button>
+              <%= button_to pms_room_photo_path(room, photo), method: :delete, class: "absolute top-1 right-1 flex items-center justify-center size-8 rounded-full bg-black/60 text-white",
+                    "aria-label": "Xoá ảnh #{index + 1}", form: { data: { turbo_confirm: "Xoá ảnh này? Không hoàn tác được." } } do %>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+        <div id="room_gallery" popover class="pms-gallery" role="dialog" aria-label="Ảnh phòng <%= room.name_was %>" data-action="toggle->gallery#opened keydown.right->gallery#next keydown.left->gallery#prev">
+          <ul class="flex size-full overflow-x-auto snap-x snap-mandatory overscroll-contain" data-gallery-target="track">
+            <% photos.each_with_index do |photo, index| %>
+              <li class="flex-none size-full snap-center flex flex-col items-center justify-center gap-3 px-2" data-gallery-target="slide">
+                <%= image_tag photo.url, alt: "Ảnh #{index + 1}", loading: "lazy", class: "max-w-full max-h-[80dvh] object-contain" %>
+                <span class="text-sm text-white/80"><%= index + 1 %> / <%= photos.size %></span>
+              </li>
+            <% end %>
+          </ul>
+          <% if photos.size > 1 %>
+            <% [ [ "prev", "Ảnh trước", "left-2", "M15 6l-6 6 6 6" ], [ "next", "Ảnh sau", "right-2", "M9 6l6 6-6 6" ] ].each do |action, label, side, path| %>
+              <button type="button" data-action="gallery#<%= action %>" class="absolute top-1/2 -translate-y-1/2 <%= side %> flex items-center justify-center size-11 rounded-full bg-white/15 text-white" aria-label="<%= label %>">
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="<%= path %>"/></svg>
+              </button>
+            <% end %>
+          <% end %>
+          <button type="button" popovertarget="room_gallery" popovertargetaction="hide" class="absolute top-[calc(8px+env(safe-area-inset-top))] right-2 flex items-center justify-center size-11 rounded-full bg-white/15 text-white" aria-label="Đóng">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+      </div>
+    <% end %>
+    <% if photos.size < RoomPhoto::MAX %>
+      <div class="flex flex-col gap-1.5">
+        <%= label_tag :room_photo_files, "Thêm ảnh", class: "text-[13px] font-semibold" %>
+        <%= file_field_tag "room[photo_files][]", id: :room_photo_files, multiple: true, accept: "image/*", form: "room_form", data: { controller: "photo-shrink", action: "photo-shrink#shrink" },
+              class: "text-[15px] file:mr-3 file:min-h-11 file:px-3 file:rounded-md file:border file:border-pms-border file:bg-pms-surface file:font-semibold", aria: field_aria(room, :photos, hint: "photos_help") %>
+        <p id="photos_help" class="text-[13px] text-pms-text-2">Ảnh được lưu khi bấm <%= room.persisted? ? "Lưu thay đổi" : "Thêm phòng" %>. JPEG, PNG, WebP hoặc HEIC, mỗi ảnh tối đa <%= RoomPhoto::MAX_BYTES / 1.megabyte %> MB; ảnh lớn được thu nhỏ trên máy trước khi gửi.</p>
+      </div>
+    <% end %>
+    <%= pms_field_error(room, :photos) %>
+  </div>
+</section>
 
 <% if room.persisted? %>
   <%# Xoá phòng: the model refuses a room that ever had a booking (Phòng đã có đặt phòng nên không xoá được). %>

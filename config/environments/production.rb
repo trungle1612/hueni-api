@@ -81,4 +81,8 @@ Rails.application.configure do
 
   # Skip DNS rebinding protection for the default health check endpoint.
   config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+
+  # Ảnh phòng (#187): the Kamal volume /var/www/images/places on the host, served by hueni.me's nginx location /images/.
+  config.x.photos_root = Rails.root.join("public-images")
+  config.x.photos_url = "https://hueni.me/images"
 end

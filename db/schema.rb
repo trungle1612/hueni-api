@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_15_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_134860) do
   create_table "announcements", force: :cascade do |t|
     t.string "kind", default: "feature", null: false
     t.string "title", null: false
@@ -313,12 +313,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_15_100000) do
     t.check_constraint "status IN ('pending', 'approved', 'rejected')", name: "registration_requests_status_values"
   end
 
+  create_table "room_photos", force: :cascade do |t|
+    t.integer "room_id", null: false
+    t.string "key", null: false
+    t.integer "position", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_room_photos_on_key", unique: true
+    t.index ["room_id"], name: "index_room_photos_on_room_id"
+  end
+
   create_table "rooms", force: :cascade do |t|
     t.integer "place_id", null: false
     t.string "name", null: false
     t.integer "max_guests", null: false
     t.integer "price"
-    t.json "photo_urls", default: [], null: false
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -478,6 +487,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_15_100000) do
   add_foreign_key "registration_requests", "places"
   add_foreign_key "registration_requests", "users"
   add_foreign_key "registration_requests", "users", column: "decided_by_id"
+  add_foreign_key "room_photos", "rooms"
   add_foreign_key "rooms", "places"
   add_foreign_key "seasons", "places"
   add_foreign_key "services", "places"

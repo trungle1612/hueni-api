@@ -17,9 +17,9 @@ LABEL org.opencontainers.image.source=https://github.com/trungle1612/hueni-api
 # Rails app lives here
 WORKDIR /rails
 
-# Install base packages
+# Install base packages (libvips + the HEVC plugin: Ảnh phòng from iPhones are HEIC, #187)
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl libjemalloc2 sqlite3 && \
+    apt-get install --no-install-recommends -y curl libjemalloc2 libvips libheif-plugin-libde265 sqlite3 && \
     ln -s /usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2 /usr/local/lib/libjemalloc.so && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 

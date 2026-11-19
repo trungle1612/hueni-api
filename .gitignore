@@ -29,6 +29,8 @@
 !/tmp/storage/.keep
 
 /public/assets
+# Ảnh phòng in development (#187).
+/public/images
 
 # Ignore key files for decrypting credentials and more.
 /config/*.key

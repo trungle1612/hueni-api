@@ -76,3 +76,6 @@ gem "omniauth-rails_csrf_protection", "~> 2.0"
 gem "alba", "~> 4.0"
 
 gem "rollbar", "~> 3.8"
+
+# Ảnh phòng (#187): resize to WebP and strip EXIF with libvips (in the Docker image).
+gem "image_processing", "~> 1.14", require: false
