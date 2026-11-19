@@ -56,4 +56,20 @@ class PmsRoomsTest < ApplicationSystemTestCase
     assert_selector ".pms-toast", text: "Đã lưu phòng Garden."
     assert_equal "Gần cầu thang", rooms(:garden).reload.note
   end
+
+  test "Ảnh phòng: the browser shrinks a chosen photo to 1600px before it is sent" do
+    log_in_with_zalo
+    visit edit_pms_room_path(rooms(:garden))
+    attach_file "Thêm ảnh", file_fixture("room.jpg") # 2400 × 1200
+    assert_no_selector "button[form=room_form][aria-busy]"
+    size = evaluate_async_script(<<~JS)
+      const file = document.getElementById("room_photo_files").files[0]
+      createImageBitmap(file).then(b => arguments[0]([ file.type, file.name, b.width, b.height ]))
+    JS
+    assert_equal [ "image/jpeg", "room.jpg", 1600, 800 ], size
+
+    click_button "Lưu thay đổi"
+    assert_selector ".pms-toast", text: "Đã lưu phòng Garden"
+    assert_equal 1, rooms(:garden).photos.count
+  end
 end

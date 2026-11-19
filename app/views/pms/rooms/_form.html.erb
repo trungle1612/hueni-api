@@ -134,9 +134,9 @@
     <% if photos.size < RoomPhoto::MAX %>
       <div class="flex flex-col gap-1.5">
         <%= label_tag :room_photo_files, "Thêm ảnh", class: "text-[13px] font-semibold" %>
-        <%= file_field_tag "room[photo_files][]", id: :room_photo_files, multiple: true, accept: "image/*", form: "room_form",
+        <%= file_field_tag "room[photo_files][]", id: :room_photo_files, multiple: true, accept: "image/*", form: "room_form", data: { controller: "photo-shrink", action: "photo-shrink#shrink" },
               class: "text-[15px] file:mr-3 file:min-h-11 file:px-3 file:rounded-md file:border file:border-pms-border file:bg-pms-surface file:font-semibold", aria: field_aria(room, :photos, hint: "photos_help") %>
-        <p id="photos_help" class="text-[13px] text-pms-text-2">Ảnh được lưu khi bấm <%= room.persisted? ? "Lưu thay đổi" : "Thêm phòng" %>. JPEG, PNG, WebP hoặc HEIC, mỗi ảnh tối đa <%= RoomPhoto::MAX_BYTES / 1.megabyte %> MB.</p>
+        <p id="photos_help" class="text-[13px] text-pms-text-2">Ảnh được lưu khi bấm <%= room.persisted? ? "Lưu thay đổi" : "Thêm phòng" %>. JPEG, PNG, WebP hoặc HEIC, mỗi ảnh tối đa <%= RoomPhoto::MAX_BYTES / 1.megabyte %> MB; ảnh lớn được thu nhỏ trên máy trước khi gửi.</p>
       </div>
     <% end %>
     <%= pms_field_error(room, :photos) %>
