@@ -32,7 +32,7 @@ class RoomPhotoTest < ActiveSupport::TestCase
 
     big = photo.tap { it.define_singleton_method(:size) { RoomPhoto::MAX_BYTES + 1 } }
     assert_not @room.reload.update(photo_files: [ big ])
-    assert_equal [ "Ảnh phòng quá lớn, mỗi ảnh tối đa 20 MB" ], @room.errors.full_messages
+    assert_equal [ "Ảnh phòng quá lớn, mỗi ảnh tối đa 5 MB" ], @room.errors.full_messages
     assert_not @room.reload.update(photo_files: [ "a string" ])
     assert_equal 0, @room.photos.count
   end

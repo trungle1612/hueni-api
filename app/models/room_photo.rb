@@ -5,7 +5,7 @@ require "image_processing/vips" # libvips only where photos are handled; booting
 # nginx sends Cache-Control immutable. Saved through Room#photo_files=, which reports errors on the room as Ảnh phòng ….
 class RoomPhoto < ApplicationRecord
   MAX = 10
-  MAX_BYTES = 20.megabytes
+  MAX_BYTES = 5.megabytes
   LONG_EDGE = 1600
   # libvips detects the format from the content, not the name or the browser's content type.
   LOADERS = %w[jpegload pngload webpload heifload].freeze
