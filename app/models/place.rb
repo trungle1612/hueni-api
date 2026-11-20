@@ -17,6 +17,7 @@ class Place < ApplicationRecord
   has_many :place_memberships, dependent: :destroy
   has_many :invites, dependent: :delete_all
   has_many :notifications, dependent: :delete_all
+  has_many :booking_requests, dependent: :delete_all
   has_many :users, through: :place_memberships
 
   after_commit { Vacancy.bust }
@@ -58,6 +59,7 @@ class Place < ApplicationRecord
       RefundRequest.where(booking: bookings).delete_all
       Payment.where(booking: bookings).delete_all
       BookingCharge.where(booking: bookings).delete_all
+      booking_requests.delete_all
       bookings.delete_all
       groups.delete_all
       guests.delete_all
@@ -78,14 +80,45 @@ class Place < ApplicationRecord
   validates :site_cutoff_hour, inclusion: { in: SITE_CUTOFF_HOURS }
   validate -> { errors.add(:site_hidden_room_types, "không hợp lệ") unless site_hidden_room_types.is_a?(Array) && (site_hidden_room_types - Room::ROOM_TYPES.keys).empty? }
   validate -> { errors.add(:site_open, "cần ít nhất một loại phòng hiển thị") if site_room_types.empty? }, if: :site_open
-  validate -> { errors.add(:site_open, "cần tài khoản chuyển khoản để nhận cọc") unless bank? }, if: -> { site_open && site_deposit_percent.positive? }
+  validate -> { errors.add(:site_open, SITE_CHECKLIST["bank"]) unless bank? }, if: -> { site_open && site_deposit_percent.positive? }
+
+  # Hiển thị trên hue-ni (#282): Tôi duyệt từng yêu cầu (approve: BookingRequest, answered within site_reply_minutes) or
+  # Tự nhận khi còn phòng (auto: book_online books at once); Báo khách số điện thoại sau khi nhận.
+  SITE_MODES = %w[approve auto].freeze
+  SITE_REPLY_MINUTES = [ 15, 30, 120 ].freeze
+  validates :site_mode, inclusion: { in: SITE_MODES }
+  validates :site_reply_minutes, inclusion: { in: SITE_REPLY_MINUTES }
+  # Giờ nhận, trả phòng and Quy định, shown to guests.
+  normalizes :check_in_time, :check_out_time, :house_rules, with: ->(value) { value.strip.presence }
+  validates :check_in_time, :check_out_time, format: { with: /\A([01]\d|2[0-3]):[0-5]\d\z/, message: "phải theo dạng 14:00" }, allow_nil: true
+  validates :house_rules, length: { maximum: 2000 }
+
+  # Thông tin cần có before the page can be turned on, by checklist item: the error when it's missing.
+  SITE_CHECKLIST = {
+    "photos" => "cần ảnh cho mỗi loại phòng hiển thị",
+    "map" => "cần vị trí trên bản đồ",
+    "rules" => "cần giờ nhận, trả phòng và quy định",
+    "bank" => "cần tài khoản chuyển khoản để nhận cọc"
+  }.freeze
+  validate if: -> { site_open && will_save_change_to_site_open? } do
+    site_missing.each { errors.add(:site_open, SITE_CHECKLIST[it]) unless errors.added?(:site_open, SITE_CHECKLIST[it]) }
+  end
+
+  # The checklist items not done yet. Ảnh: every shown room type has a switched-on room with a photo. Bản đồ: hueni's pin.
+  def site_missing
+    shown = site_room_types
+    with_photos = rooms.where(active: true, room_type: shown).joins(:photos).distinct.pluck(:room_type)
+    { "photos" => shown.empty? || (shown - with_photos).any?, "map" => lat.nil? || lng.nil?,
+      "rules" => check_in_time.nil? || check_out_time.nil? || house_rules.nil?, "bank" => !bank? }.filter_map { |item, missing| item if missing }
+  end
 
   SITE_MAX_NIGHTS = 30
   SITE_FULL = "Hết phòng loại này trong những ngày đã chọn"
 
-  # A guest's request from the booking page: the first free switched-on room of that type (by name) for those dates,
-  # held for site_hold_minutes when a deposit is asked. Returns the booking, saved or with errors. Errors never come
-  # from the room checks: those name the booking in the way, another guest's.
+  # A guest's request from the booking page. Auto mode: the first free switched-on room of that type (by name) for those
+  # dates, held for site_hold_minutes when a deposit is asked. Approve mode: a BookingRequest for the type, if a room is
+  # free. Returns the booking or request, saved or with errors. Errors never come from the room checks: those name the
+  # booking in the way, another guest's.
   def book_online(room_type: nil, **fields)
     attrs = fields.slice(:start_date, :end_date, :guests, :guest_name, :guest_phone, :note).merge(online: true)
     booking = Booking.new(attrs).tap(&:validate)
@@ -103,13 +136,22 @@ class Place < ApplicationRecord
     end
     return booking if booking.errors.any?
 
-    fitting = rooms.where(active: true, room_type:).where(max_guests: booking.guests..).order(:name)
+    fitting = rooms.where(active: true, room_type:).where(max_guests: booking.guests..).order(:name).to_a
     return booking.tap { it.errors.add(:guests, "nhiều hơn sức chứa của loại phòng này") } if fitting.none?
-    booking = fitting.map { Booking.new(room: it, **attrs) }.find(&:valid?)
-    return Booking.new(attrs).tap { it.errors.add(:base, SITE_FULL) } unless booking
+    booking = site_free_rooms(fitting, from, to).first&.then { Booking.new(room: it, **attrs) }
+    return Booking.new(attrs).tap { it.errors.add(:base, SITE_FULL) } unless booking&.valid?
+    if site_mode == "approve"
+      return booking_requests.create!(room_type:, reply_by: site_reply_minutes.minutes.from_now, **attrs.except(:online))
+    end
     booking.hold_expires_at = site_hold_minutes.minutes.from_now if site_deposit_percent.positive?
     booking.save || booking.tap { it.errors.clear; it.errors.add(:base, SITE_FULL) }
     booking
+  end
+
+  # Rooms of one type free on hue-ni for from...to: free on the calendar, less one per pending request holding the type.
+  def site_free_rooms(typed, from, to)
+    free = typed.select { Booking.new(room: it, start_date: from, end_date: to).date_problems.empty? }
+    free.drop(booking_requests.holding(typed.first.room_type, from, to).count)
   end
 
   # Room types offered online: those of switched-on rooms, minus the hidden ones. Rooms without a type are not offered.

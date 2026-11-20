@@ -19,6 +19,12 @@ production:
   expire_holds:
     command: "Booking.expire_holds"
     schedule: every minute
+  expire_booking_requests:
+    command: "BookingRequest.expire"
+    schedule: every minute
+  prune_booking_requests:
+    command: "BookingRequest.prune"
+    schedule: every day at 3:40am
   end_maintenance:
     command: "Room.end_maintenance"
     schedule: every day at 0:05 Asia/Ho_Chi_Minh

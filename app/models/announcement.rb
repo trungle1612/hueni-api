@@ -39,6 +39,8 @@ class Announcement < ApplicationRecord
       url: Rails.application.routes.url_helpers.pms_open_notification_path("a#{id}") }
   end
 
+  def push_options = {}
+
   # True once, when shown: a job queued for an earlier Hiện từ finds it sent already or not shown yet.
   def claim_push = Announcement.shown.where(id:, pushed_at: nil).update_all(pushed_at: Time.current) == 1
 

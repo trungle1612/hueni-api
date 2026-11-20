@@ -9,7 +9,7 @@ class PushNotificationJob < ApplicationJob
     notification.recipients.each do |user|
       payload = notification.push_payload(user).to_json
       user.push_subscriptions.each do |subscription|
-        subscription.deliver(payload)
+        subscription.deliver(payload, **notification.push_options)
       rescue StandardError => error
         Rails.error.report(error, handled: true)
       end

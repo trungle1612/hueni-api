@@ -30,7 +30,8 @@ class Notification < ApplicationRecord
     "shift" => [ "money", "money", "warn", "Chốt ca lệch", "shift" ],
     "clean" => [ "room", "room", "", "Dọn xong", "housekeeping" ],
     "damage" => [ "room", "room", "warn", "Báo hỏng / thiếu đồ", "housekeeping" ],
-    "refund_request" => [ "approve", "team", "warn", "Yêu cầu hoàn tiền chờ bạn duyệt", "approvals" ]
+    "refund_request" => [ "approve", "team", "warn", "Yêu cầu hoàn tiền chờ bạn duyệt", "approvals" ],
+    "booking_request" => [ "book", "book", "warn", "Yêu cầu đặt phòng từ hue-ni", "requests" ]
   }.freeze
   OWNER_ONLY = %w[payment shift refund_request].freeze
 
@@ -51,6 +52,12 @@ class Notification < ApplicationRecord
     by ||= "Khách đặt online" if booking.online && !Current.user
     record(kind, place: booking.room.place, room: booking.room, booking: (booking unless booking.destroyed?), by:,
       details: details.presence || [ [ booking.guest_name.presence, dates(booking) ].compact.join(" ") ])
+  end
+
+  # Hiển thị trên hue-ni (#282): a guest's request to answer before its deadline.
+  def self.booking_request(request)
+    record("booking_request", place: request.place, by: "Khách đặt online",
+      details: [ request.guest_name, Room::ROOM_TYPES[request.room_type], dates(request) ])
   end
 
   def self.payment(payment)
@@ -94,6 +101,11 @@ class Notification < ApplicationRecord
   def push_payload(user)
     { title: "#{title} · #{place.name}", body:, tag: key, silent: Notification.quiet?(user, type),
       url: Rails.application.routes.url_helpers.pms_open_notification_path(key, co_so: place.slug) }
+  end
+
+  # A request must be answered within the reply deadline: delivered at once, dropped if the phone is offline past it.
+  def push_options
+    kind == "booking_request" ? { urgency: "high", ttl: place.site_reply_minutes.minutes.to_i } : {}
   end
 
   def self.quiet?(user, type) = user.quiet_hours && !Time.current.hour.in?(QUIET_UNTIL...QUIET_FROM) && type != "channel"

@@ -7,7 +7,8 @@ class BookingSiteTest < ActiveSupport::TestCase
     rooms(:garden).update!(room_type: "double", price: 400_000)
     rooms(:limdim).update!(room_type: "double", price: 500_000)
     @place = places(:tomo)
-    @place.update!(bank_name: "Vietcombank", bank_account: "0123456789", bank_holder: "NGUYEN THI LAN", site_open: true)
+    site_ready(@place)
+    @place.update!(site_mode: "auto", site_open: true)
   end
 
   def request(**attrs) = @place.book_online(room_type: "double", start_date: "2026-10-01", end_date: "2026-10-02", guests: 2, guest_name: "Chị Hoa", guest_phone: "0905 111 333", **attrs)
