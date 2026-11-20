@@ -77,5 +77,8 @@ gem "alba", "~> 4.0"
 
 gem "rollbar", "~> 3.8"
 
+# APM + logs in context (#280). Off unless NEW_RELIC_LICENSE_KEY is set (config/newrelic.yml).
+gem "newrelic_rpm", "~> 9.0"
+
 # Ảnh phòng (#187): resize to WebP and strip EXIF with libvips (in the Docker image).
 gem "image_processing", "~> 1.14", require: false
