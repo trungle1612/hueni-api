@@ -1,0 +1,43 @@
+# New Relic Ruby agent (#280): APM + Rails logs in context. No secrets here: this repo is public.
+# The agent runs only when NEW_RELIC_LICENSE_KEY is set (production, via Kamal secrets);
+# rollback = unset it and redeploy.
+common: &default_settings
+  license_key: <%= ENV["NEW_RELIC_LICENSE_KEY"] %>
+  agent_enabled: <%= ENV["NEW_RELIC_LICENSE_KEY"].present? %>
+  monitor_mode: <%= ENV["NEW_RELIC_LICENSE_KEY"].present? %>
+  app_name: hueni-api
+  log_level: info
+
+  # Privacy: no request parameters as attributes, SQL obfuscated, no JS injected into HTML.
+  attributes:
+    include: []
+  transaction_tracer:
+    record_sql: obfuscated
+  slow_sql:
+    record_sql: obfuscated
+  browser_monitoring:
+    auto_instrument: false
+
+  # Forward Rails logs (already filtered by filter_parameters) at RAILS_LOG_LEVEL, linked to traces.
+  application_logging:
+    enabled: true
+    forwarding:
+      enabled: true
+    local_decorating:
+      enabled: false
+
+  # Errors stay in Rollbar (#215) too; both on until decided.
+  error_collector:
+    enabled: true
+
+  # Same git SHA as Rollbar's code_version.
+  labels: <%= "code_version:#{ENV["KAMAL_VERSION"]}" if ENV["KAMAL_VERSION"].present? %>
+
+development:
+  <<: *default_settings
+
+test:
+  <<: *default_settings
+
+production:
+  <<: *default_settings
