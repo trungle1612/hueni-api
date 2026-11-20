@@ -6,4 +6,4 @@ Allow: /assets/
 Allow: /icon.png
 Disallow: /
 
-Sitemap: https://api.hueni.me/sitemap.xml
+Sitemap: https://pms.hueni.me/sitemap.xml
