@@ -1,1 +1,9 @@
-# See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
+# See https://www.robotstxt.org/robotstxt.html. Only the public pages are indexed (#271); the app needs a login.
+User-agent: *
+Allow: /gioi-thieu
+Allow: /dieu-khoan
+Allow: /assets/
+Allow: /icon.png
+Disallow: /
+
+Sitemap: https://api.hueni.me/sitemap.xml

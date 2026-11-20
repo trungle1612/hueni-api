@@ -9,6 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="zalo-platform-site-verification" content="J-M3AQoMDmHxgBbTcu0e0XoghWFmt7LVDpSs" />
+    <%= yield :head %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <link rel="manifest" href="/manifest.json">
@@ -27,12 +28,13 @@
   <%# Web Push (#237): keeps this phone's subscription with the signed-in login; the switch is in Thông báo. %>
   <%= tag.body class: "bg-pms-bg text-pms-text font-pms text-sm leading-[1.45] tabular-nums",
         data: ({ controller: "push", push_key_value: WebPush.public_key, push_url_value: pms_push_subscription_path } if authenticated? && WebPush.enabled?) do %>
-    <div class="mx-auto w-full max-w-xl min-h-dvh flex flex-col">
+    <%# A public page (Giới thiệu, #271) sets :wide to use the whole screen on a computer. %>
+    <div class="mx-auto w-full <%= "max-w-xl" unless content_for?(:wide) %> min-h-dvh flex flex-col">
       <%= yield :bar %>
       <% flash.to_hash.slice("notice", "alert").each do |type, message| %>
         <div role="<%= type == "alert" ? "alert" : "status" %>" class="mx-4 mt-4 rounded-md border px-3 py-2.5 text-[13px] font-medium <%= type == "alert" ? "border-pms-danger bg-pms-danger-bg text-pms-danger" : "border-pms-pos bg-pms-pos-bg text-pms-pos" %>"><%= message %></div>
       <% end %>
-      <main class="flex-1 pb-6"><%= yield %></main>
+      <main class="flex-1 <%= "pb-6" unless content_for?(:wide) %>"><%= yield %></main>
       <%# A screen with its own action bar (Chi tiết, Sửa đặt phòng) shows it instead of the tabs. %>
       <% if content_for?(:footer) %>
         <div class="sticky bottom-0 z-10 flex items-center gap-3 px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] bg-pms-surface border-t border-pms-border"><%= yield :footer %></div>

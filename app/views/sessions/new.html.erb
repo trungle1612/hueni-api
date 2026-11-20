@@ -16,7 +16,9 @@
     <% end %>
   </div>
 
-  <p class="mt-8 text-[13px] text-pms-text-2">Nhân viên lần đầu dùng? Nhờ chủ homestay thêm số điện thoại của bạn. Đổi Zalo hoặc mất điện thoại? Nhờ quản trị viên hoặc chủ homestay gửi link liên kết mới.</p>
+  <p class="mt-8 text-[13px] text-pms-text-2"><%= link_to "hueni là gì? Xem giới thiệu", pms_intro_path, class: "font-semibold text-pms-primary" %></p>
+
+  <p class="mt-4 text-[13px] text-pms-text-2">Nhân viên lần đầu dùng? Nhờ chủ homestay thêm số điện thoại của bạn. Đổi Zalo hoặc mất điện thoại? Nhờ quản trị viên hoặc chủ homestay gửi link liên kết mới.</p>
 
   <%# Password login is for admins only (SessionsController#create). %>
   <details class="mt-6" <%= "open" if params[:admin] %>>

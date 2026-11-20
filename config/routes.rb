@@ -28,6 +28,7 @@ Rails.application.routes.draw do
     get "them", to: "more#show", as: :more
     delete "tai-khoan", to: "more#destroy", as: :account
     get "dieu-khoan", to: "legal#show", as: :legal
+    get "gioi-thieu", to: "intro#show", as: :intro
     get "bao-cao", to: "reports#show", as: :report
     get "tim", to: "searches#show", as: :search
     patch "co-so/:slug", to: "places#update", as: :place

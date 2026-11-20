@@ -1,0 +1,286 @@
+<% title = "Phần mềm quản lý homestay Huế trên điện thoại · hueni" %>
+<% description = "Lịch phòng, tiền cọc, nhận trả phòng và đặt phòng từ Booking.com, Agoda, Airbnb trong một app trên điện thoại. Dành cho homestay ở Huế. Đăng ký bằng Zalo." %>
+<% url = "https://api.hueni.me/gioi-thieu" %>
+<% image = "https://api.hueni.me/gioi-thieu.png" %>
+<% user = Current.user %>
+<% support = Pms::LegalController::LEGAL["support_phone"] %>
+<% content_for :title, title %>
+<% content_for :wide, "1" %>
+<% content_for :no_nav, "1" %>
+<% content_for :head do %>
+  <meta name="description" content="<%= description %>">
+  <link rel="canonical" href="<%= url %>">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="hueni">
+  <meta property="og:locale" content="vi_VN">
+  <meta property="og:title" content="<%= title %>">
+  <meta property="og:description" content="<%= description %>">
+  <meta property="og:url" content="<%= url %>">
+  <meta property="og:image" content="<%= image %>">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="hueni: quản lý homestay trên điện thoại">
+  <meta name="twitter:card" content="summary_large_image">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@1,500&display=swap" rel="stylesheet">
+<% end %>
+<% wrap = "mx-auto w-full max-w-[1160px] px-5 lg:px-8" %>
+<% eyebrow = "text-[13px] font-bold tracking-wide uppercase" %>
+<% h2 = "mt-3 text-[28px] lg:text-[38px] leading-[1.18] font-extrabold tracking-tight max-w-[22ch]" %>
+<% lead = "mt-4 text-base lg:text-lg text-pms-text-2 max-w-[58ch]" %>
+<% big = "min-h-[54px] px-6 text-base" %>
+<% serif = "font-['Noto_Serif',Georgia,serif] italic font-medium" %>
+<% check = "flex gap-2.5 before:content-[''] before:flex-none before:size-4 before:mt-1 before:rounded-full before:bg-pms-pos-bg before:shadow-[inset_0_0_0_4px_var(--color-pms-pos-bg),inset_0_0_0_8px_var(--color-pms-pos)]" %>
+<% card = "rounded-[10px] border border-pms-border bg-pms-surface p-4 text-[13px]" %>
+<% signup = capture do %>
+  <% if user %>
+    <%= link_to "Vào app", pms_today_path, class: "pms-btn pms-btn-primary #{big}" %>
+  <% else %>
+    <%= render "sessions/zalo_button", label: "Đăng ký bằng Zalo", register: true, button_class: "pms-btn pms-btn-primary w-full #{big}" %>
+  <% end %>
+<% end %>
+
+<div class="text-base leading-relaxed bg-pms-surface">
+<header class="sticky top-0 z-10 bg-white/95 border-b border-pms-border">
+  <div class="<%= wrap %> flex items-center gap-6 h-14 lg:h-16">
+    <%= link_to pms_intro_path, class: "flex items-center gap-2.5 no-underline font-bold text-[17px]" do %>
+      <img src="/icon.png" alt="" width="28" height="28" class="rounded-md">hueni
+    <% end %>
+    <nav class="hidden lg:flex gap-6 flex-1 ml-4" aria-label="Mục trên trang">
+      <% [ [ "Vì sao", "#truoc-sau" ], [ "Tính năng", "#tinh-nang" ], [ "Hỏi đáp", "#hoi-dap" ] ].each do |label, href| %>
+        <a href="<%= href %>" class="no-underline text-[15px] font-medium text-pms-text-2 hover:text-pms-text"><%= label %></a>
+      <% end %>
+    </nav>
+    <% if user %>
+      <%= link_to "Vào app", pms_today_path, class: "pms-btn pms-btn-primary ml-auto" %>
+    <% else %>
+      <%= link_to "Đăng nhập", new_session_path, class: "pms-btn pms-btn-ghost ml-auto lg:ml-0" %>
+      <a href="#dang-ky" class="pms-btn pms-btn-primary">Dùng thử</a>
+    <% end %>
+  </div>
+</header>
+
+<div id="noi-dung">
+  <section class="bg-[#1d1a1c] text-white pt-11 lg:pt-20 overflow-hidden" aria-labelledby="h1">
+    <div class="<%= wrap %> grid lg:grid-cols-[1.1fr_.9fr] gap-0 lg:gap-12 items-end">
+      <div>
+        <span class="<%= eyebrow %> text-[#ddb8ca]">Phần mềm quản lý homestay ở Huế</span>
+        <h1 id="h1" class="mt-4 text-4xl lg:text-[54px] leading-[1.1] font-extrabold tracking-tight">Thôi ghi sổ.<br>Thôi mở ba app<br><em class="<%= serif %> text-[#ddb8ca]">để xem còn phòng.</em></h1>
+        <p class="mt-6 text-[17px] lg:text-[19px] leading-normal text-[#cfc8cc] max-w-[50ch]">hueni gom lịch phòng, tiền cọc, nhận trả phòng và đặt phòng từ Booking.com, Agoda, Airbnb về một app trên điện thoại.</p>
+        <div class="flex flex-wrap gap-3 mt-9 [&>*]:flex-1 lg:[&>*]:flex-none">
+          <%= signup %>
+          <a href="#tinh-nang" class="pms-btn <%= big %> bg-transparent text-white border-white/50 hover:border-white">Xem app làm được gì</a>
+        </div>
+        <p class="mt-4 mb-8 lg:mt-5 lg:mb-20 text-sm text-[#a9a1a6]"><b class="text-white font-semibold">Đăng nhập bằng Zalo.</b> Không cài từ kho ứng dụng, không thu tiền hộ khách.</p>
+      </div>
+      <div class="relative h-[400px] lg:h-[480px] overflow-hidden lg:overflow-visible" aria-hidden="true">
+        <div class="absolute left-0 top-0 lg:left-auto lg:right-16 lg:top-auto lg:-bottom-16 w-[260px] lg:w-[290px] rounded-[30px] p-2.5 bg-[#0d0c0d] border border-[#3a3538]">
+          <div class="rounded-[21px] overflow-hidden bg-pms-bg text-xs leading-snug text-pms-text">
+            <div class="flex items-center gap-2 px-3.5 pt-3.5 pb-2.5 bg-pms-surface border-b border-pms-border"><b class="flex-1 text-[15px]">Hôm nay</b><span class="rounded border border-pms-border-strong px-2 py-0.5 text-[11px] font-semibold">+ Đặt phòng</span></div>
+            <div class="grid grid-cols-3 m-2.5 bg-pms-surface border border-pms-border rounded-md divide-x divide-pms-border">
+              <% [ [ "3", "Nhận phòng" ], [ "2", "Trả phòng" ], [ "5/8", "Đang ở" ] ].each do |n, label| %><div class="p-2"><b class="block text-base"><%= n %></b><span class="text-[10px] text-pms-text-2"><%= label %></span></div><% end %>
+            </div>
+            <div class="mx-2.5 mb-2 px-2 py-1.5 rounded border border-pms-warn-line bg-pms-warn-bg text-pms-warn text-[11px] font-medium">Phòng 104 chưa dọn, khách đến 14:00</div>
+            <p class="mx-2.5 mb-1 text-[11px] font-semibold text-pms-text-2">Nhận phòng</p>
+            <div class="mx-2.5 mb-2 bg-pms-surface border border-pms-border rounded-md divide-y divide-pms-border">
+              <% [ [ "102", "Chị Lan", "2 đêm · còn thu 600.000đ", "Nhận" ], [ "103", "Anna Schmidt", "3 đêm · Booking.com", "Nhận" ], [ "104", "Anh Minh", "1 đêm · đã cọc", "Nhận" ] ].each do |room, name, meta, action| %>
+                <div class="flex items-center gap-2 p-2"><b class="w-7"><%= room %></b><span class="flex-1 min-w-0"><b class="block"><%= name %></b><small class="text-[10px] text-pms-text-2"><%= meta %></small></span><i class="not-italic rounded border border-pms-border-strong px-2 py-0.5 text-[11px] font-semibold"><%= action %></i></div>
+              <% end %>
+            </div>
+            <p class="mx-2.5 mb-1 text-[11px] font-semibold text-pms-text-2">Trả phòng</p>
+            <div class="mx-2.5 bg-pms-surface border border-pms-border rounded-md divide-y divide-pms-border">
+              <div class="flex items-center gap-2 p-2"><b class="w-7">101</b><span class="flex-1"><b class="block">Anh Tuấn</b><small class="text-[10px] text-pms-text-2">Đã thu đủ</small></span><i class="not-italic rounded bg-pms-pos-bg text-pms-pos px-2 py-0.5 text-[11px] font-semibold">Đã trả</i></div>
+              <div class="flex items-center gap-2 p-2"><b class="w-7">105</b><span class="flex-1"><b class="block">Chị Hà</b><small class="text-[10px] text-pms-text-2">Airbnb</small></span><i class="not-italic rounded border border-pms-border-strong px-2 py-0.5 text-[11px] font-semibold">Trả</i></div>
+            </div>
+            <div class="h-16"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="bg-pms-bg border-b border-pms-border">
+    <div class="<%= wrap %> flex flex-wrap items-center gap-x-8 gap-y-3 py-4 lg:min-h-[72px] text-sm text-pms-text-2">
+      <b class="text-pms-text font-semibold">Một lịch cho mọi kênh:</b>
+      <% [ "Booking.com", "Agoda", "Airbnb", "Khách gọi, nhắn Zalo" ].each do |channel| %><span class="font-bold text-[15px] text-[#3d4440]"><%= channel %></span><% end %>
+    </div>
+  </div>
+
+  <section class="py-16 lg:py-24" id="truoc-sau" aria-labelledby="ba-t">
+    <div class="<%= wrap %>">
+      <span class="<%= eyebrow %> text-pms-primary">Một ngày ở homestay</span>
+      <h2 id="ba-t" class="<%= h2 %>">Những việc nhỏ ăn hết buổi tối của bạn</h2>
+      <p class="<%= lead %>">Không phải phần mềm khách sạn thu nhỏ. Mỗi màn hình làm đúng một việc bạn vẫn làm mỗi ngày, chỉ nhanh hơn.</p>
+      <table class="mt-12 w-full border border-pms-border rounded-[10px] border-separate border-spacing-0 overflow-hidden">
+        <caption class="sr-only">Trước và sau khi dùng hueni</caption>
+        <thead class="hidden lg:table-header-group bg-pms-bg text-[13px] font-bold tracking-wide uppercase text-pms-text-2 text-left">
+          <tr><th class="px-6 py-4 w-[120px]">Lúc</th><th class="px-6 py-4">Trước đây</th><th class="px-6 py-4 text-pms-primary">Với hueni</th></tr>
+        </thead>
+        <tbody>
+          <% [
+            [ "Sáng", "Lật sổ, mở Booking, mở Agoda để biết hôm nay ai đến", "Mở app: ai đến, ai đi, phòng nào cần dọn, ai còn nợ tiền" ],
+            [ "Khách đặt", "Nhận khách qua Zalo, quên mất phòng đã bán trên Agoda", "Đặt phòng từ các kênh tự về một lịch, trùng phòng là app báo ngay" ],
+            [ "Khách đến", "Cộng nhẩm tiền cọc với tiền còn thiếu", "App tính sẵn còn phải thu, thu tiền mặt hay chuyển khoản là ghi luôn" ],
+            [ "Buổi tối", "Giật mình nhớ ra chưa khai báo lưu trú", "Thông báo nhắc lúc 21:00, khách nào chưa khai báo hiện rõ" ]
+          ].each do |time, old, new| %>
+            <tr class="block lg:table-row border-t border-pms-border first:border-t-0 lg:[&>*]:border-t lg:[&>*]:border-pms-border">
+              <th scope="row" class="block lg:table-cell px-4 lg:px-6 pt-3 lg:py-4 text-left font-bold text-pms-primary text-[15px]"><%= time %></th>
+              <td class="block lg:table-cell px-4 lg:px-6 py-3 lg:py-4 text-pms-text-2"><span class="lg:hidden font-semibold">Trước: </span><s class="decoration-[#b9b2b6]"><%= old %></s></td>
+              <td class="block lg:table-cell px-4 lg:px-6 py-3 lg:py-4 font-semibold bg-[#fbf7fa] border-l-[3px] border-l-pms-primary"><span class="lg:hidden text-pms-primary">Với hueni: </span><%= new %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="bg-pms-bg border-y border-pms-border" id="tinh-nang" aria-labelledby="ft-t">
+    <div class="<%= wrap %>">
+      <div class="pt-16 lg:pt-24"><span class="<%= eyebrow %> text-pms-primary">Tính năng</span><h2 id="ft-t" class="<%= h2 %>">Những việc mỗi ngày, làm thật kỹ</h2></div>
+      <% rows = [
+        [ "01 · Lịch phòng", "Nhìn một lần biết còn phòng nào, cho mọi kênh", "Đặt phòng từ Booking.com, Agoda, Airbnb và khách gọi điện nằm chung một lịch.",
+          [ "Lịch từ các kênh tự đồng bộ mỗi giờ, hoặc bấm Đồng bộ ngay", "Trùng lịch giữa các kênh hiện rõ để bạn xử lý", "Chạm vào ô trống để đặt phòng ngay" ], "calendar" ],
+        [ "02 · Thu tiền", "Biết chính xác ai đã cọc, ai còn nợ", "Tiền phòng, dịch vụ, giảm giá và tiền cọc nằm trong một đặt phòng. Khách chuyển khoản thẳng vào tài khoản của bạn.",
+          [ "Thu tiền mặt, chuyển khoản hay thẻ, ghi rõ ai thu", "Nhận phòng là app nhắc số tiền còn phải thu", "Hoàn tiền khi khách huỷ, nhân viên gửi chủ duyệt" ], "money" ],
+        [ "03 · Báo cáo", "Cuối tháng biết ngay mình thu được bao nhiêu", "Doanh thu, số đêm đã bán, giá trung bình và tiền còn phải thu, theo 7 ngày hay theo tháng.",
+          [ "Thực nhận theo từng kênh, đã trừ hoa hồng", "Công nợ chưa thu của khách đặt trực tiếp", "Xuất CSV để mở bằng Excel" ], "report" ]
+      ] %>
+      <% rows.each_with_index do |(kicker, title, text, points, mock), index| %>
+        <div class="grid lg:grid-cols-2 gap-7 lg:gap-16 items-center py-10 lg:py-12 <%= "border-t border-pms-border" if index > 0 %>">
+          <div class="<%= "lg:order-2" if index.odd? %>">
+            <span class="text-[13px] font-bold text-pms-primary"><%= kicker %></span>
+            <h3 class="mt-2 text-[22px] lg:text-[28px] leading-tight font-bold tracking-tight"><%= title %></h3>
+            <p class="mt-3 text-[17px] text-pms-text-2"><%= text %></p>
+            <ul class="mt-4 flex flex-col gap-2 text-[15px]"><% points.each do |point| %><li class="<%= check %>"><%= point %></li><% end %></ul>
+          </div>
+          <div class="<%= card %>" aria-hidden="true">
+            <% case mock %>
+            <% when "calendar" %>
+              <h4 class="mb-2.5 flex justify-between text-sm font-bold">Lịch 16 – 22/11 <span class="font-medium text-pms-text-2 text-xs">8 phòng</span></h4>
+              <div class="grid grid-cols-[40px_repeat(7,minmax(0,1fr))] gap-px bg-pms-border border border-pms-border rounded-md overflow-hidden text-[11px] text-pms-text-2 [&>span]:bg-pms-surface [&>span]:min-h-[34px] [&>span]:flex [&>span]:items-center [&>span]:justify-center">
+                <span></span><% %w[T2 T3 T4 T5 T6 T7 CN].each do |day| %><span class="!bg-pms-bg font-semibold text-pms-text"><%= day %></span><% end %>
+                <% [ [ "101", [ "b:Tuấn", "b", "", "o:Anna", "o", "o", "" ] ], [ "102", [ "", "b:Lan", "b", "", "b:Mai", "b", "b" ] ],
+                     [ "103", [ "o:Kim", "o", "", "", "b:Huy", "", "" ] ], [ "104", [ "", "", "x:Trùng", "b:Yến", "", "o:Bảo", "o" ] ], [ "105", [ "b:Quân", "", "", "", "", "b:Thư", "b" ] ] ].each do |room, days| %>
+                  <span class="!bg-pms-bg font-semibold text-pms-text"><%= room %></span>
+                  <% days.each do |day| %>
+                    <% kind, name = day.split(":") %>
+                    <span class="<%= { "b" => "!bg-pms-primary-bg text-pms-primary font-semibold", "o" => "!bg-pms-info-bg text-pms-info font-semibold", "x" => "!bg-pms-danger text-white font-bold" }[kind] %>"><%= name %></span>
+                  <% end %>
+                <% end %>
+              </div>
+              <div class="flex flex-wrap gap-3.5 mt-2.5 text-[11px] text-pms-text-2">
+                <span><i class="inline-block size-2.5 rounded-sm mr-1 bg-pms-primary-bg"></i>Khách trực tiếp</span><span><i class="inline-block size-2.5 rounded-sm mr-1 bg-pms-info-bg"></i>Booking.com, Agoda, Airbnb</span><span><i class="inline-block size-2.5 rounded-sm mr-1 bg-pms-danger"></i>Trùng lịch</span>
+              </div>
+            <% when "money" %>
+              <h4 class="mb-2.5 flex justify-between text-sm font-bold">DP-0142 · Phòng 102 <span class="font-medium text-pms-text-2 text-xs">Chị Lan</span></h4>
+              <dl class="divide-y divide-pms-border [&>div]:flex [&>div]:justify-between [&>div]:py-1.5 [&_dt]:text-pms-text-2 [&_dd]:font-semibold">
+                <div><dt>Tiền phòng 2 đêm</dt><dd>900.000đ</dd></div>
+                <div><dt>Dịch vụ: thuê xe máy</dt><dd>150.000đ</dd></div>
+                <div><dt>Giảm giá khách quen</dt><dd class="text-pms-pos">−150.000đ</dd></div>
+                <div><dt>Đã thu: cọc chuyển khoản</dt><dd>−300.000đ</dd></div>
+                <div><dt class="!text-pms-text font-bold">Còn phải thu</dt><dd class="text-pms-warn">600.000đ</dd></div>
+              </dl>
+            <% when "report" %>
+              <h4 class="mb-2.5 flex justify-between text-sm font-bold">Báo cáo tháng 10 <span class="font-medium text-pms-text-2 text-xs">8 phòng</span></h4>
+              <dl class="grid grid-cols-2 gap-px bg-pms-border border border-pms-border rounded-md overflow-hidden [&>div]:bg-pms-surface [&>div]:p-3 [&_dt]:text-pms-text-2 [&_dd]:text-lg [&_dd]:font-bold">
+                <div><dt>Doanh thu</dt><dd>42.600.000đ</dd></div>
+                <div><dt>Đêm đã bán</dt><dd>118 / 248</dd></div>
+                <div><dt>Giá TB mỗi đêm</dt><dd>361.000đ</dd></div>
+                <div><dt>Còn phải thu</dt><dd class="text-pms-warn">1.200.000đ</dd></div>
+              </dl>
+              <p class="mt-2.5 text-[11px] text-pms-text-2">Số liệu minh hoạ.</p>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 pb-16 lg:pb-24">
+        <% [
+          [ "Hôm nay", "Ai đến, ai đi, phòng nào cần dọn. Nhận phòng, trả phòng một chạm, bấm nhầm thì Hoàn tác." ],
+          [ "Phòng", "Tình trạng từng phòng: có khách, cần dọn, sẵn sàng hay bảo trì. Nhân viên báo Dọn xong ngay trên app." ],
+          [ "Kênh bán phòng", "Kết nối lịch Booking.com, Agoda, Airbnb bằng link iCal. Kênh nào lỗi, app báo." ],
+          [ "Nhân viên", "Mời nhân viên bằng số điện thoại. Nhân viên không thấy giá phòng, mọi thay đổi ghi vào nhật ký." ]
+        ].each do |name, text| %>
+          <div class="<%= card %> !text-[15px]"><h3 class="font-bold text-base"><%= name %></h3><p class="mt-1.5 text-pms-text-2"><%= text %></p></div>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-pms-primary text-white py-16" aria-label="hueni bằng con số">
+    <div class="<%= wrap %> grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-7 lg:gap-8">
+      <% [ [ "1 lịch", "cho Booking.com, Agoda, Airbnb và khách lẻ" ], [ "Mỗi giờ", "lịch các kênh tự đồng bộ về app" ], [ "21:00", "nhắc khai báo lưu trú cho khách chưa khai báo" ], [ "0đ", "tiền khách đi qua hueni. Bạn nhận thẳng" ] ].each do |number, text| %>
+        <div><b class="block text-[34px] lg:text-[44px] leading-[1.1] font-extrabold tracking-tight"><%= number %></b><span class="block mt-2 text-[15px] text-[#f3dbe5] max-w-[24ch]"><%= text %></span></div>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="py-16 lg:py-24 bg-[#fdf6ec] border-b border-[#ead9c2] text-[#2b1613]" aria-labelledby="hn-t">
+    <div class="<%= wrap %>">
+      <span class="<%= eyebrow %> text-[#7d0010]">Cùng nhà với hueni.me</span>
+      <h2 id="hn-t" class="<%= h2 %> font-['Noto_Serif',Georgia,serif] !font-semibold">Khách đang tìm chỗ ở Huế. Cho họ thấy bạn còn phòng.</h2>
+      <p class="<%= lead %> !text-[#6b4f45]">hueni.me là cẩm nang du lịch Huế: di tích, quán ăn, cà phê và homestay. Lịch của bạn đúng thì phòng trống hiện đúng ở mục Phòng trống, để khách liên hệ thẳng với bạn.</p>
+    </div>
+  </section>
+
+  <section class="py-16 lg:py-24 bg-pms-bg" id="hoi-dap" aria-labelledby="faq-t">
+    <div class="<%= wrap %> grid lg:grid-cols-[.8fr_1.2fr] gap-9 lg:gap-16 items-start">
+      <div>
+        <span class="<%= eyebrow %> text-pms-primary">Hỏi đáp</span>
+        <h2 id="faq-t" class="<%= h2 %>">Bạn có thể đang thắc mắc</h2>
+        <p class="<%= lead %>">Không thấy câu hỏi của bạn? Gọi hoặc nhắn Zalo <a href="tel:<%= support %>" class="font-semibold text-pms-primary"><%= support %></a>.</p>
+      </div>
+      <div class="pms-panel !rounded-[10px] divide-y divide-pms-border">
+        <% [
+          [ "Có phải cài app từ App Store, CH Play không?", "Không. hueni chạy trên trình duyệt điện thoại. Mở trang, chọn Thêm vào màn hình chính (Safari trên iPhone, Chrome trên Android) là dùng như app thường, có thông báo. Máy tính cũng dùng được." ],
+          [ "hueni có giữ tiền của khách không?", "Không. Khách trả tiền mặt hoặc chuyển thẳng vào tài khoản ngân hàng của bạn. App chỉ ghi lại khoản đã thu để bạn đối soát." ],
+          [ "Đang dùng Booking.com, Agoda thì sao?", "Cứ dùng tiếp. Bạn dán link lịch iCal của từng phòng, đặt phòng trên kênh tự về lịch mỗi giờ. Giá và phòng trên từng kênh bạn vẫn sửa trong trang quản lý của kênh đó." ],
+          [ "Tôi không rành công nghệ, có dùng được không?", "Màn hình chính chỉ có việc trong ngày: ai đến, ai đi, ai còn nợ. Cần giúp nhập phòng lần đầu, gọi hoặc nhắn Zalo cho chúng tôi." ],
+          [ "Đăng ký như thế nào?", "Bấm Đăng ký bằng Zalo, điền tên homestay. Chúng tôi gọi số điện thoại của homestay để xác nhận rồi mở tài khoản, sau đó bạn thêm phòng và mời nhân viên." ],
+          [ "Dữ liệu khách có an toàn không?", "Chỉ thành viên của homestay xem được đặt phòng của homestay đó. Nhân viên không thấy giá phòng, mọi thay đổi được ghi nhật ký. Bạn xoá tài khoản bất cứ lúc nào." ]
+        ].each_with_index do |(question, answer), index| %>
+          <details class="group" <%= "open" if index.zero? %>>
+            <summary class="flex items-center gap-4 min-h-[60px] px-5 py-3 font-semibold cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              <span class="flex-1"><%= question %></span>
+              <svg aria-hidden="true" class="flex-none text-pms-text-2 group-open:rotate-180" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <p class="px-5 pb-4 text-[15px] text-pms-text-2"><%= answer %></p>
+          </details>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-[#1d1a1c] text-white py-16 lg:py-24" id="dang-ky" aria-labelledby="su-t">
+    <div class="<%= wrap %> grid lg:grid-cols-2 gap-9 lg:gap-16 items-start">
+      <div>
+        <span class="<%= eyebrow %> text-[#ddb8ca]">Dùng thử</span>
+        <h2 id="su-t" class="<%= h2 %>">Bắt đầu với homestay của bạn</h2>
+        <p class="<%= lead %> !text-[#cfc8cc]">Đăng ký bằng Zalo, không cần mật khẩu. Chúng tôi gọi xác nhận trong ngày làm việc.</p>
+      </div>
+      <div class="rounded-xl bg-pms-surface text-pms-text p-5 lg:p-7 flex flex-col gap-4">
+        <ol class="flex flex-col gap-3">
+          <% [ "Đăng ký bằng Zalo, điền tên homestay", "hueni gọi số điện thoại của homestay để xác nhận", "Thêm phòng, dán link lịch các kênh, mời nhân viên" ].each_with_index do |step, index| %>
+            <li class="flex items-center gap-3"><span class="flex-none flex items-center justify-center size-7 rounded-full bg-pms-primary-bg text-pms-primary text-sm font-bold"><%= index + 1 %></span><%= step %></li>
+          <% end %>
+        </ol>
+        <%= signup %>
+        <% unless user %>
+          <p class="text-[13px] text-pms-text-2">Đã có tài khoản? <%= link_to "Đăng nhập", new_session_path, class: "font-semibold text-pms-primary" %>. Nhân viên: nhờ chủ homestay thêm số điện thoại của bạn.</p>
+        <% end %>
+        <p class="text-[13px] text-pms-text-2">Khi đăng ký, bạn đồng ý với <%= link_to "Điều khoản sử dụng", pms_legal_path, class: "text-pms-primary" %> và <%= link_to "Chính sách bảo mật", pms_legal_path(doc: "privacy"), class: "text-pms-primary" %>.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer class="pt-8 pb-10 bg-[#141213] text-[#a9a1a6] text-sm">
+  <div class="<%= wrap %> flex flex-wrap items-center gap-x-8 gap-y-4">
+    <span><b class="text-white">hueni</b> · cùng nhà với <a href="https://hueni.me" class="hover:text-white">hueni.me</a></span>
+    <nav class="flex flex-wrap gap-5 lg:ml-auto [&>a]:no-underline [&>a:hover]:text-white" aria-label="Liên kết cuối trang">
+      <%= link_to "Điều khoản", pms_legal_path %>
+      <%= link_to "Quyền riêng tư", pms_legal_path(doc: "privacy") %>
+      <%= user ? link_to("Vào app", pms_today_path) : link_to("Đăng nhập", new_session_path) %>
+      <a href="tel:<%= support %>">Hỗ trợ <%= support %></a>
+    </nav>
+  </div>
+</footer>
+</div>
