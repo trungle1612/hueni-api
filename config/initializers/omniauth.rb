@@ -1,5 +1,5 @@
 # Zalo login (#97): owners and staff log in only this way, admins also with phone + password.
-# Zalo app (developers.zalo.me) callback URL: https://api.hueni.me/auth/zalo2/callback
+# Zalo app (developers.zalo.me) callback URL: https://pms.hueni.me/auth/zalo2/callback (keep the api.hueni.me one while that alias lives, #272)
 # Keys: env (Kamal secrets in production) or encrypted credentials `zalo: { app_id:, app_secret: }`,
 # so development uses the real Zalo app too.
 zalo_app_id = ENV["ZALO_APP_ID"].presence || Rails.application.credentials.dig(:zalo, :app_id)
