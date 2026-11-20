@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://api.hueni.me/gioi-thieu</loc></url>
-  <url><loc>https://api.hueni.me/dieu-khoan</loc></url>
-  <url><loc>https://api.hueni.me/dieu-khoan?doc=privacy</loc></url>
+  <url><loc>https://pms.hueni.me/gioi-thieu</loc></url>
+  <url><loc>https://pms.hueni.me/dieu-khoan</loc></url>
+  <url><loc>https://pms.hueni.me/dieu-khoan?doc=privacy</loc></url>
 </urlset>
