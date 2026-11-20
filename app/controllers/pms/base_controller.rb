@@ -11,7 +11,7 @@ class Pms::BaseController < ApplicationController
   helper_method :current_place, :places
 
   # ?co_so=<slug> opens a screen on that homestay: pushes (#237) and the old /admin homestay URLs (#247).
-  before_action { session[:pms_place] = params[:co_so] if params[:co_so].is_a?(String) && places.exists?(slug: params[:co_so]) }
+  before_action { session[:pms_place] = params[:co_so] if Current.user && params[:co_so].is_a?(String) && places.exists?(slug: params[:co_so]) }
 
   private
     def places = Current.user.accessible_places.order(:name)

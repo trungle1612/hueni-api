@@ -1,4 +1,4 @@
-<%# locals: (label: "Đăng nhập bằng Zalo", link: nil, register: false) -%>
+<%# locals: (label: "Đăng nhập bằng Zalo", link: nil, register: false, button_class: nil) -%>
 <%# OmniAuth only accepts POST (CSRF token via omniauth-rails_csrf_protection). ?link= tells ZaloSessionsController to link, not log in. %>
 <% fake = Rails.env.development? && OmniAuth.config.test_mode %>
 <% if OmniAuth.config.test_mode || Rails.configuration.x.zalo_configured %>
@@ -17,7 +17,7 @@
       <% end %>
     <% end %>
     <% if register %>
-      <button class="pms-btn w-full" data-turbo-submits-with="Đang mở Zalo…"><%= label %></button>
+      <button class="<%= button_class || "pms-btn w-full" %>" data-turbo-submits-with="Đang mở Zalo…"><%= label %></button>
     <% else %>
       <button class="pms-btn pms-btn-zalo w-full" data-turbo-submits-with="Đang mở Zalo…"><%= label %></button>
     <% end %>
