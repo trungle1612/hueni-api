@@ -3,7 +3,7 @@ require "test_helper"
 class NotifyRegistrationJobTest < ActiveJob::TestCase
   setup do
     @registration = RegistrationRequest.create!(zalo_id: "zalo-hoa", name: "Hoa Nguyễn", phone_number: "0905123456", place_name: "Hoa Sen Homestay")
-    @url = "https://api.hueni.me/admin/registration_requests/#{@registration.id}"
+    @url = "https://pms.hueni.me/admin/registration_requests/#{@registration.id}"
   end
 
   def with_telegram(token: "TOKEN", chat_id: "-100123")

@@ -11,10 +11,13 @@ servers:
 ssh:
   user: <%= ENV.fetch("DEPLOY_USER", "deploy") %>
 
-# nginx on the VPS owns 80/443 (hueni.me) and terminates TLS for api.hueni.me,
-# then proxies to kamal-proxy on 127.0.0.1:8080. Kamal must never publish 80/443.
+# nginx on the VPS owns 80/443 (hueni.me) and terminates TLS for pms.hueni.me and its alias
+# api.hueni.me (#272: shipped clients still call it), then proxies to kamal-proxy on
+# 127.0.0.1:8080. Kamal must never publish 80/443.
 proxy:
-  host: api.hueni.me
+  hosts:
+    - pms.hueni.me
+    - api.hueni.me
   app_port: 80
   ssl: false
   forward_headers: true # keep nginx's X-Forwarded-For / -Proto (real client IP for rate limits, https for force_ssl)
