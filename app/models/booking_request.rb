@@ -1,6 +1,7 @@
 # Hiển thị trên hue-ni (#282), approve mode (Tôi duyệt từng yêu cầu): a guest's request from hueni.me, answered by the
 # homestay (owner or staff) before reply_by, else expired. Accepting creates the Booking. While pending it holds one room
-# of its type on hue-ni only (Place#site_free_rooms): the PMS calendar, vacancy and the OTA sync don't see it.
+# of its type on hue-ni only (Place#site_free_rooms), or the room the guest picked (#290): the PMS calendar, vacancy and
+# the OTA sync don't see it. Nhận may still put the guest in another room of the type.
 class BookingRequest < ApplicationRecord
   STATUSES = %w[pending accepted declined expired].freeze
   DECLINE_REASONS = {
@@ -13,6 +14,7 @@ class BookingRequest < ApplicationRecord
 
   belongs_to :place
   belongs_to :booking, optional: true
+  belongs_to :room, optional: true
 
   enum :status, STATUSES.index_by(&:itself), validate: true
   normalizes :guest_name, :guest_phone, :note, with: ->(value) { value.strip.presence }
@@ -20,7 +22,7 @@ class BookingRequest < ApplicationRecord
   validate :suggested_dates_make_sense
 
   scope :open, -> { pending.where(reply_by: Time.current..) }
-  # Pending requests of a type with a night in from...to: each holds one room on hue-ni.
+  # Pending requests of a type with a night in from...to: each holds its room, or any one room of the type, on hue-ni.
   scope :holding, ->(room_type, from, to) { open.where(room_type:, start_date: ...to, end_date: from.next_day..) }
 
   after_create_commit { Notification.booking_request(self) }
@@ -38,8 +40,8 @@ class BookingRequest < ApplicationRecord
   # the ones free on the calendar for its dates now (what Nhận can book).
   def rooms = place.rooms.where(active: true, room_type:).where(max_guests: guests..).order(:name)
   def free_rooms = rooms.select { free?(it, start_date, end_date) }
-  # Tạm tính: the cheapest stay among those rooms, as hue-ni's Giá từ.
-  def estimate = rooms.filter_map { Booking.new(room: it, start_date:, end_date:).room_total }.min
+  # Tạm tính: the picked room's stay, else the cheapest among those rooms, as hue-ni's Giá từ.
+  def estimate = (room ? [ room ] : rooms).filter_map { Booking.new(room: it, start_date:, end_date:).room_total }.min
 
   # Hết phòng: the first night with no room free, and the OTA of a booking taking a room that night, if any.
   # nil when every night has a room free but no one room is free for the whole stay.

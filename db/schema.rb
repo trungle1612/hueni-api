@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_20_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_21_100000) do
   create_table "announcements", force: :cascade do |t|
     t.string "kind", default: "feature", null: false
     t.string "title", null: false
@@ -72,8 +72,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_100000) do
     t.date "suggested_end_date"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "room_id"
     t.index ["booking_id"], name: "index_booking_requests_on_booking_id"
     t.index ["place_id"], name: "index_booking_requests_on_place_id"
+    t.index ["room_id"], name: "index_booking_requests_on_room_id"
     t.index ["status", "reply_by"], name: "index_booking_requests_on_status_and_reply_by"
     t.check_constraint "decline_reason IS NULL OR decline_reason IN ('full', 'dates', 'rules')", name: "booking_requests_decline_reason"
     t.check_constraint "status IN ('pending', 'accepted', 'declined', 'expired')", name: "booking_requests_status"
@@ -497,6 +499,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_100000) do
   add_foreign_key "booking_charges", "users"
   add_foreign_key "booking_requests", "bookings"
   add_foreign_key "booking_requests", "places"
+  add_foreign_key "booking_requests", "rooms", on_delete: :nullify
   add_foreign_key "bookings", "calendar_feeds"
   add_foreign_key "bookings", "groups"
   add_foreign_key "bookings", "rooms"

@@ -58,7 +58,7 @@ class Notification < ApplicationRecord
   # Hiển thị trên hue-ni (#282): a guest's request to answer before its deadline.
   def self.booking_request(request)
     record("booking_request", place: request.place, booking_request: request, by: "Khách đặt online",
-      details: [ request.guest_name, Room::ROOM_TYPES[request.room_type], dates(request) ])
+      details: [ request.guest_name, Room::ROOM_TYPES[request.room_type], ("Phòng #{request.room.name}" if request.room), dates(request) ])
   end
 
   def self.payment(payment)

@@ -39,6 +39,16 @@ class Pms::BookingRequestsTest < ActionDispatch::IntegrationTest
     assert_select "a#requests[href=?]", pms_booking_requests_path
   end
 
+  test "a picked room (#290) shows on the card and is preselected in Nhận" do
+    request = ask(room_id: rooms(:limdim).id, start_date: "2026-10-05", end_date: "2026-10-06")
+    log_in users(:owner)
+    get pms_booking_requests_path
+    assert_select "##{dom_id(request)}", text: /Khách chọn\s*Phòng Limdim/
+    assert_select "##{dom_id(request, :accept)}", text: /Khách chọn phòng Limdim\s/
+    assert_select "##{dom_id(request, :accept)} input[name=room_id][value='#{rooms(:limdim).id}'][checked]"
+    assert_select "##{dom_id(request, :accept)} input[name=room_id][value='#{rooms(:garden).id}']:not([checked])"
+  end
+
   test "Nhận books the room, held for the deposit, and links the booking under Đã nhận" do
     request = ask
     log_in users(:owner)

@@ -45,6 +45,44 @@ class BookingRequestTest < ActiveSupport::TestCase
     assert ask(guest_name: "Anh Tú").persisted?, "an expired request holds nothing"
   end
 
+  test "a picked room (#290) is held exactly; typed requests take the other rooms, never twice" do
+    limdim, garden = rooms(:limdim).id, rooms(:garden).id
+    stay = { start_date: "2026-10-05", end_date: "2026-10-06" }
+    picked = ask(room_id: limdim, **stay)
+    assert_equal [ rooms(:limdim), "double" ], [ picked.room, picked.room_type ]
+    assert_equal [ Place::SITE_ROOM_FULL ], ask(room_id: limdim, guest_name: "Anh Tú", **stay).errors[:base]
+    assert ask(guest_name: "Anh Tú", **stay).persisted?, "a typed request takes the room left"
+    assert_equal [ Place::SITE_FULL ], ask(guest_name: "Chị Mai", **stay).errors[:base]
+    assert_equal [ Place::SITE_ROOM_FULL ], ask(room_id: garden, guest_name: "Chị Mai", **stay).errors[:base]
+
+    stay = { start_date: "2026-10-07", end_date: "2026-10-08" }
+    assert ask(**stay).persisted?
+    assert ask(room_id: garden, guest_name: "Anh Tú", **stay).persisted?, "the typed hold leaves the picked room alone"
+    assert_equal [ Place::SITE_ROOM_FULL ], ask(room_id: limdim, guest_name: "Chị Mai", **stay).errors[:base]
+    assert_empty @place.site_free_rooms(@place.rooms.order(:name).to_a, Date.new(2026, 10, 7), Date.new(2026, 10, 8))
+    perform_enqueued_jobs
+    assert_match "Phòng đôi · Phòng Garden · ", Notification.where(kind: "booking_request").last.body
+  end
+
+  test "a picked room must be this homestay's, on, of a shown type, big enough and free; auto mode books it" do
+    other = places(:hiuhill).rooms.create!(name: "Sen", room_type: "double", max_guests: 2)
+    assert_equal [ "Phòng này không nhận đặt online" ], ask(room_id: other.id).errors[:base]
+    assert_equal [ "Phòng này không nhận đặt online" ], ask(room_id: "abc").errors[:base]
+    rooms(:garden).update!(active: false)
+    assert_equal [ "Phòng này không nhận đặt online" ], ask(room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06").errors[:base]
+    rooms(:garden).update!(active: true, room_type: "family")
+    @place.update!(site_hidden_room_types: [ "family" ])
+    assert_equal [ "Phòng này không nhận đặt online" ], ask(room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06").errors[:base]
+    @place.update!(site_hidden_room_types: [])
+    assert_equal [ "nhiều hơn sức chứa của phòng này" ], ask(room_id: rooms(:garden).id, guests: 3, start_date: "2026-10-05", end_date: "2026-10-06").errors[:guests]
+    assert_equal [ Place::SITE_ROOM_FULL ], ask(room_id: rooms(:limdim).id).errors[:base], "Anh Minh is in limdim"
+    assert_equal 0, BookingRequest.count
+
+    @place.update!(site_mode: "auto", site_deposit_percent: 30)
+    booking = ask(room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06")
+    assert_equal [ true, rooms(:garden), true ], [ booking.persisted?, booking.room, booking.held? ]
+  end
+
   test "Nhận books the room, held for the deposit picked; a room taken meanwhile is refused with the reason" do
     request = ask
     assert request.accept(room: rooms(:garden), deposit_percent: "50")

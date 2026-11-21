@@ -20,7 +20,10 @@ class V1::BookingSiteControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ { "key" => "double", "label" => "Phòng đôi", "max_guests" => 2, "left" => 1, "total" => 800_000 } ], body["room_types"]
     assert_equal [ true, 30, 30, 20 ], body.values_at("open", "deposit_percent", "hold_minutes", "cutoff_hour")
     assert_equal [ "auto", 30, "14:00", "12:00", "Không hút thuốc trong phòng." ], body.values_at("mode", "reply_minutes", "check_in", "check_out", "rules")
+    assert_equal [ { "id" => rooms(:garden).id, "name" => "Garden", "room_type" => "double", "max_guests" => 2, "free" => true, "total" => 800_000 } ], body["rooms"]
     assert_no_match "Anh Minh", response.body
+    get v1_booking_site_path(@place.slug)
+    assert_equal [ nil, nil ], body["rooms"].first.values_at("free", "total")
 
     @place.update!(site_open: false)
     get v1_booking_site_path(@place.slug)
@@ -98,5 +101,25 @@ class V1::BookingSiteControllerTest < ActionDispatch::IntegrationTest
     assert_nil body["phone"], "declined: no phone"
     get v1_booking_site_status_path(BookingRequest.last.signed_id(purpose: :booking_site))
     assert_equal "+84 338 268 606", body["phone"]
+  end
+
+  test "a guest picks a room (#290): the request holds it, its status names it; another homestay's room is refused" do
+    @place.update!(site_mode: "approve")
+    pick = guest.except(:room_type).merge(room_id: rooms(:garden).id)
+    post v1_booking_site_bookings_path(@place.slug), params: { booking: pick }, as: :json
+    assert_response :created
+    assert_equal [ "pending", "Phòng đôi", "Garden" ], body.values_at("status", "room_type", "room")
+    assert_equal rooms(:garden), BookingRequest.sole.room
+
+    get v1_booking_site_path(@place.slug, from: "2026-10-01", to: "2026-10-03")
+    assert_equal [ false ], body["rooms"].pluck("free")
+    assert_equal 0, body["room_types"].first["left"]
+
+    other = places(:hiuhill).rooms.create!(name: "Sen", room_type: "double", max_guests: 2)
+    post v1_booking_site_bookings_path(@place.slug), params: { booking: pick.merge(room_id: other.id) }, as: :json
+    assert_response :unprocessable_entity
+    assert_equal [ "Phòng này không nhận đặt online" ], body.dig("errors", "base")
+    post v1_booking_site_bookings_path(@place.slug), params: { booking: pick.merge(guest_name: "Anh Tú") }, as: :json
+    assert_equal [ Place::SITE_ROOM_FULL ], body.dig("errors", "base")
   end
 end

@@ -114,18 +114,23 @@ class Place < ApplicationRecord
 
   SITE_MAX_NIGHTS = 30
   SITE_FULL = "Hết phòng loại này trong những ngày đã chọn"
+  SITE_ROOM_FULL = "Phòng này đã có khách trong những ngày đã chọn"
 
   # A guest's request from the booking page. Auto mode: the first free switched-on room of that type (by name) for those
   # dates, held for site_hold_minutes when a deposit is asked. Approve mode: a BookingRequest for the type, if a room is
-  # free. Returns the booking or request, saved or with errors. Errors never come from the room checks: those name the
-  # booking in the way, another guest's.
-  def book_online(room_type: nil, **fields)
+  # free. room_id (#290): that room instead, of an offered type; the type comes from it. Returns the booking or request,
+  # saved or with errors. Errors never come from the room checks: those name the booking in the way, another guest's.
+  def book_online(room_type: nil, room_id: nil, **fields)
+    if room_id.present?
+      room = rooms.where(active: true, room_type: site_room_types).find_by(id: room_id.to_s)
+      room_type = room&.room_type
+    end
     attrs = fields.slice(:start_date, :end_date, :guests, :guest_name, :guest_phone, :note).merge(online: true)
     booking = Booking.new(attrs).tap(&:validate)
     booking.errors.delete(:base)
     booking.errors.delete(:room)
     booking.errors.add(:base, "Homestay đang tạm ngưng nhận đặt phòng online") unless site_open
-    booking.errors.add(:base, "Loại phòng này không nhận đặt online") unless room_type.in?(site_room_types)
+    booking.errors.add(:base, room_id.present? ? "Phòng này không nhận đặt online" : "Loại phòng này không nhận đặt online") unless room_type.in?(site_room_types)
     booking.errors.add(:guest_name, :blank) if booking.guest_name.blank?
     booking.errors.add(:guest_phone, :blank) if booking.guest_phone.blank?
     booking.errors.add(:guests, :blank) unless booking.guests&.positive?
@@ -137,23 +142,29 @@ class Place < ApplicationRecord
     return booking if booking.errors.any?
 
     fitting = rooms.where(active: true, room_type:).where(max_guests: booking.guests..).order(:name).to_a
-    return booking.tap { it.errors.add(:guests, "nhiều hơn sức chứa của loại phòng này") } if fitting.none?
-    booking = site_free_rooms(fitting, from, to).first&.then { Booking.new(room: it, **attrs) }
-    return Booking.new(attrs).tap { it.errors.add(:base, SITE_FULL) } unless booking&.valid?
+    if room ? fitting.exclude?(room) : fitting.none?
+      return booking.tap { it.errors.add(:guests, "nhiều hơn sức chứa của #{room ? "phòng" : "loại phòng"} này") }
+    end
+    free = site_free_rooms(fitting, from, to, keep: room)
+    booking = (room ? (room if free.include?(room)) : free.first)&.then { Booking.new(room: it, **attrs) }
+    full = room ? SITE_ROOM_FULL : SITE_FULL
+    return Booking.new(attrs).tap { it.errors.add(:base, full) } unless booking&.valid?
     if site_mode == "approve"
-      return booking_requests.create!(room_type:, reply_by: site_reply_minutes.minutes.from_now, **attrs.except(:online))
+      return booking_requests.create!(room_type:, room:, reply_by: site_reply_minutes.minutes.from_now, **attrs.except(:online))
     end
     booking.hold_expires_at = site_hold_minutes.minutes.from_now if site_deposit_percent.positive?
-    booking.save || booking.tap { it.errors.clear; it.errors.add(:base, SITE_FULL) }
+    booking.save || booking.tap { it.errors.clear; it.errors.add(:base, full) }
     booking
   end
 
-  # Rooms of one type free on hue-ni for from...to: free on the calendar, less the most pending requests holding the
-  # type on any one night (requests on different nights can share a room). except: a request not to count.
-  def site_free_rooms(typed, from, to, except: nil)
-    free = typed.select { Booking.new(room: it, start_date: from, end_date: to).date_problems.empty? }
-    held = booking_requests.holding(typed.first.room_type, from, to).where.not(id: except).pluck(:start_date, :end_date)
-    free.drop((from...to).map { |night| held.count { |first, last| night >= first && night < last } }.max.to_i)
+  # Rooms of one type free on hue-ni for from...to: free on the calendar, less the rooms pending requests picked (#290),
+  # less the most pending typed requests on any one night (requests on different nights can share a room).
+  # except: a request not to count. keep: a room the typed holds take last, so it stays in while any room does.
+  def site_free_rooms(typed, from, to, except: nil, keep: nil)
+    held = booking_requests.holding(typed.first.room_type, from, to).where.not(id: except).pluck(:room_id, :start_date, :end_date)
+    picked, any = held.partition(&:first)
+    free = typed.reject { it.id.in?(picked.map(&:first)) }.select { Booking.new(room: it, start_date: from, end_date: to).date_problems.empty? }
+    free.partition { it != keep }.sum([]).drop((from...to).map { |night| any.count { |_, first, last| night >= first && night < last } }.max.to_i)
   end
 
   # Room types offered online: those of switched-on rooms, minus the hidden ones. Rooms without a type are not offered.

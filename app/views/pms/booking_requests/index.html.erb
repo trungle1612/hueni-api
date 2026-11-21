@@ -48,6 +48,7 @@
         <% if request.open? %>
           <% rooms = request.rooms.to_a %>
           <% free = request.free_rooms %>
+          <% picked = free.include?(request.room) ? request.room : free.first %>
           <% quote = ->(room) { Booking.new(room:, start_date: request.start_date, end_date: request.end_date) } %>
         <% end %>
         <%# Declined / expired: no Tạm tính, today's prices would not be what the guest was quoted. %>
@@ -69,6 +70,9 @@
           <dl class="px-3 text-[14px]">
             <div class="flex justify-between gap-3 py-1.5"><dt class="text-pms-text-2">Ngày</dt><dd class="font-medium text-right"><%= dates %></dd></div>
             <div class="flex justify-between gap-3 py-1.5"><dt class="text-pms-text-2">Phòng · khách</dt><dd class="font-medium text-right"><%= type %> · <%= request.guests %> khách</dd></div>
+            <% if request.room %>
+              <div class="flex justify-between gap-3 py-1.5"><dt class="text-pms-text-2">Khách chọn</dt><dd class="font-medium text-right">Phòng <%= request.room.name %></dd></div>
+            <% end %>
             <% if request.open? || request.booking %>
               <div class="flex justify-between gap-3 py-1.5"><dt class="text-pms-text-2">Tạm tính</dt><dd class="font-medium text-right"><%= total ? pms_money(total) : "—" %></dd></div>
             <% end %>
@@ -114,12 +118,15 @@
                 <h2 id="<%= dom_id(request, :accept_t) %>" class="text-base font-semibold">Nhận yêu cầu của <%= request.guest_name %></h2>
                 <fieldset>
                   <legend class="mb-1.5 text-[13px] font-semibold">Xếp phòng · <%= dates %></legend>
+                  <% if request.room %>
+                    <p class="mb-1.5 text-[13px] <%= picked == request.room ? "text-pms-text-2" : "text-pms-danger font-semibold" %>">Khách chọn phòng <%= request.room.name %><%= ", phòng này không còn trống: báo khách khi xếp phòng khác" unless picked == request.room %></p>
+                  <% end %>
                   <div class="pms-panel divide-y divide-pms-border">
                     <% rooms.each do |room| %>
                       <% busy = !free.include?(room) %>
                       <% stay = quote.(room) %>
                       <label class="flex items-center gap-2.5 min-h-13 px-3 py-1.5 <%= busy ? "opacity-50 cursor-not-allowed" : "cursor-pointer" %>">
-                        <%= radio_button_tag :room_id, room.id, room == free.first, disabled: busy, required: true, id: dom_id(request, "room_#{room.id}"), class: "size-4.5 accent-pms-primary",
+                        <%= radio_button_tag :room_id, room.id, room == picked, disabled: busy, required: true, id: dom_id(request, "room_#{room.id}"), class: "size-4.5 accent-pms-primary",
                               data: { deposits: Place::SITE_DEPOSIT_PERCENTS.to_h { [ it, (pms_money(stay.site_deposit(it)) if stay.site_deposit(it).positive?) ] }.to_json } %>
                         <span class="flex-1 min-w-0">
                           <span class="block font-semibold"><%= room.name %></span>
