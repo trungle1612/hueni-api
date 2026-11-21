@@ -221,6 +221,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_100000) do
     t.integer "room_id"
     t.integer "refund_request_id"
     t.datetime "created_at", null: false
+    t.integer "booking_request_id"
+    t.index ["booking_request_id"], name: "index_notifications_on_booking_request_id"
     t.index ["place_id", "created_at"], name: "index_notifications_on_place_id_and_created_at"
   end
 
@@ -508,6 +510,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_100000) do
   add_foreign_key "invites", "places"
   add_foreign_key "invites", "users", column: "created_by_id"
   add_foreign_key "notification_reads", "users"
+  add_foreign_key "notifications", "booking_requests", on_delete: :nullify
   add_foreign_key "notifications", "places"
   add_foreign_key "payments", "bookings"
   add_foreign_key "payments", "users"

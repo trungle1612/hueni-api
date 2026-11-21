@@ -35,5 +35,7 @@ class CreateBookingRequests < ActiveRecord::Migration[8.1]
       t.check_constraint "decline_reason IS NULL OR decline_reason IN ('full', 'dates', 'rules')", name: "booking_requests_decline_reason"
     end
     add_index :booking_requests, %i[status reply_by]
+    # Its Thông báo: urgent while the request waits, pushed only until reply_by.
+    add_reference :notifications, :booking_request, foreign_key: { on_delete: :nullify }
   end
 end

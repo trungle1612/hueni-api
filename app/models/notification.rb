@@ -39,11 +39,12 @@ class Notification < ApplicationRecord
 
   # Worded now, saved by NotificationJob after the event commits; created_at is when it happened.
   # Who did it: the signed-in user, else by: (the OTA, the guest on the booking page), else "Hệ thống" (jobs, console).
-  def self.record(kind, place:, details: [], room: nil, booking: nil, refund_request: nil, by: nil)
+  def self.record(kind, place:, details: [], room: nil, booking: nil, refund_request: nil, booking_request: nil, by: nil)
     user = Current.user unless by
     NotificationJob.perform_later(place_id: place.id, kind:, title: KINDS.fetch(kind)[3], actor_id: user&.id, source: by || user&.name || "Hệ thống",
       body: [ *details, ("Phòng #{room.name}" if room) ].compact_blank.join(" · ").presence,
-      booking_id: booking&.id, room_id: room&.id, refund_request_id: refund_request&.id, created_at: Time.current)
+      booking_id: booking&.id, room_id: room&.id, refund_request_id: refund_request&.id, booking_request_id: booking_request&.id,
+      created_at: Time.current)
   end
 
   # Đặt phòng mới / bị huỷ / OTA đã huỷ: an iCal booking is the OTA's doing, an online one the guest's.
@@ -56,7 +57,7 @@ class Notification < ApplicationRecord
 
   # Hiển thị trên hue-ni (#282): a guest's request to answer before its deadline.
   def self.booking_request(request)
-    record("booking_request", place: request.place, by: "Khách đặt online",
+    record("booking_request", place: request.place, booking_request: request, by: "Khách đặt online",
       details: [ request.guest_name, Room::ROOM_TYPES[request.room_type], dates(request) ])
   end
 
@@ -103,9 +104,12 @@ class Notification < ApplicationRecord
       url: Rails.application.routes.url_helpers.pms_open_notification_path(key, co_so: place.slug) }
   end
 
-  # A request must be answered within the reply deadline: delivered at once, dropped if the phone is offline past it.
+  # A request must be answered before reply_by: delivered at once, dropped if the phone is still offline then.
+  # nil = not worth pushing any more (answered or past its deadline).
   def push_options
-    kind == "booking_request" ? { urgency: "high", ttl: place.site_reply_minutes.minutes.to_i } : {}
+    return {} unless kind == "booking_request"
+    left = BookingRequest.open.find_by(id: booking_request_id)&.reply_by&.-(Time.current)
+    { urgency: "high", ttl: left.to_i } if left
   end
 
   def self.quiet?(user, type) = user.quiet_hours && !Time.current.hour.in?(QUIET_UNTIL...QUIET_FROM) && type != "channel"
@@ -126,10 +130,11 @@ class Notification < ApplicationRecord
     kinds -= OWNER_ONLY unless user.allowed_to?(:manage, place)
     rows = where(place:, kind: kinds, created_at: DAYS.days.ago..).where("actor_id IS NULL OR actor_id <> ?", user.id).to_a
     pending = RefundRequest.pending.where(id: rows.filter_map(&:refund_request_id)).ids.to_set
+    waiting = BookingRequest.open.where(id: rows.filter_map(&:booking_request_id)).ids.to_set
     rows.map do |row|
       type, icon, tone = KINDS.fetch(row.kind)
       Item.new(key: row.key, type:, icon:, tone:, title: row.title, body: row.body, source: row.source, at: row.created_at,
-        urgent: pending.include?(row.refund_request_id), link: row.link)
+        urgent: pending.include?(row.refund_request_id) || waiting.include?(row.booking_request_id), link: row.link)
     end
   end
 

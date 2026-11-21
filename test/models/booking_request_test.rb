@@ -40,6 +40,7 @@ class BookingRequestTest < ActiveSupport::TestCase
     assert_empty Booking.new(room: rooms(:garden), start_date: Date.current, end_date: Date.tomorrow).date_problems
     assert_equal 1, Vacancy.on(Date.current).dig(@place.slug, :left)
 
+    assert ask(start_date: "2026-10-02", end_date: "2026-10-03", guest_name: "Anh Tú").persisted?, "the next night shares the room"
     travel 31.minutes
     assert ask(guest_name: "Anh Tú").persisted?, "an expired request holds nothing"
   end
@@ -63,6 +64,12 @@ class BookingRequestTest < ActiveSupport::TestCase
     assert_not late.accept(room: places(:hiuhill).rooms.create!(name: "101", max_guests: 2), deposit_percent: 0)
     assert_equal [ "Phòng không thuộc cơ sở này" ], late.errors[:base]
     assert_not late.accept(room: rooms(:limdim), deposit_percent: 40)
+    rooms(:limdim).update!(room_type: "family")
+    assert_not late.accept(room: rooms(:limdim), deposit_percent: 0)
+    assert_equal [ "Phòng Limdim không phải Phòng đôi" ], late.errors[:base]
+    rooms(:limdim).update!(room_type: "double", active: false)
+    assert_not late.accept(room: rooms(:limdim), deposit_percent: 0)
+    assert_equal [ "Phòng Limdim đang tắt" ], late.errors[:base]
   end
 
   test "Từ chối needs a reason; suggested dates are kept when they make sense" do
@@ -90,6 +97,15 @@ class BookingRequestTest < ActiveSupport::TestCase
       notification.values_at(:kind, :title, :body, :source)
     assert_equal [ users(:owner), staff ].to_set, notification.recipients.to_set
     assert_requested :post, /fcm/, headers: { "Urgency" => "high", "TTL" => "1800" }
+    assert Notification.for(users(:owner), @place).find { it.key == notification.key }.urgent, "Cần xử lý while it waits"
+
+    travel 10.minutes
+    assert_equal({ urgency: "high", ttl: 1200 }, notification.push_options, "only until reply_by")
+    travel 21.minutes
+    assert_nil notification.push_options
+    perform_enqueued_jobs { PushNotificationJob.perform_later(notification) }
+    assert_requested :post, /fcm/, times: 1
+    assert_not Notification.for(users(:owner), @place).find { it.key == notification.key }.urgent
   ensure
     WebPush.key = nil
   end

@@ -43,6 +43,8 @@ class BookingRequest < ApplicationRecord
       next refuse(CLOSED) unless open?
       next refuse("Cọc không hợp lệ") unless deposit_percent.in?(Place::SITE_DEPOSIT_PERCENTS)
       next refuse("Phòng không thuộc cơ sở này") unless room.place_id == place_id
+      next refuse("Phòng #{room.name} đang tắt") unless room.active?
+      next refuse("Phòng #{room.name} không phải #{Room::ROOM_TYPES[room_type]}") unless room.room_type == room_type
       booking = room.bookings.build(start_date:, end_date:, guests:, guest_name:, guest_phone:, note:, online: true,
         hold_expires_at: (place.site_hold_minutes.minutes.from_now if deposit_percent.positive?))
       next refuse(*booking.errors.full_messages) unless booking.save
