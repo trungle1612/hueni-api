@@ -22,6 +22,11 @@ vi:
         site_hidden_room_types: Loại phòng ẩn
         site_hold_minutes: Thời gian giữ phòng
         site_cutoff_hour: Hạn đặt trong ngày
+        site_mode: Cách nhận yêu cầu
+        site_reply_minutes: Thời hạn trả lời
+        check_in_time: Giờ nhận phòng
+        check_out_time: Giờ trả phòng
+        house_rules: Quy định
         cancel_policy: Chính sách huỷ
       season:
         name: Tên mùa
