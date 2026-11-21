@@ -167,12 +167,12 @@
   <section class="px-4 pt-4" aria-label="Yêu cầu đặt phòng">
     <% requests = place.booking_requests %>
     <% month = requests.where(created_at: Time.current.all_month) %>
-    <div id="requests" class="pms-panel <%= row %>">
+    <%= link_to pms_booking_requests_path, id: "requests", class: "pms-panel #{row}" do %>
       <span class="flex-1 min-w-0">
         <span class="block font-semibold">Yêu cầu đặt phòng</span>
         <span class="block text-[13px] text-pms-text-2"><%= requests.open.count %> chờ trả lời · tháng này <%= month.count %> yêu cầu, nhận <%= month.accepted.count %></span>
-      </span>
-    </div>
+      </span><%= chevron %>
+    <% end %>
   </section>
 
   <div id="rules_sheet" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="rules_sheet_t" <%= "data-controller=open" if @rules_failed %>>

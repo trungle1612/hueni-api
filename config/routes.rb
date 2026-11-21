@@ -38,6 +38,10 @@ Rails.application.routes.draw do
     get "hien-thi-hue-ni", to: "listings#show", as: :listing
     patch "hien-thi-hue-ni", to: "listings#update"
     patch "hien-thi-hue-ni/quy-dinh", to: "listings#rules", as: :listing_rules
+    resources :booking_requests, path: "yeu-cau-dat-phong", only: :index do
+      post :accept, on: :member, path: "nhan"
+      post :decline, on: :member, path: "tu-choi"
+    end
     resources :members, path: "nhan-vien", only: %i[index create update destroy] do
       post :lock, on: :member, path: "khoa"
       post :unlock, on: :member, path: "mo-khoa"
