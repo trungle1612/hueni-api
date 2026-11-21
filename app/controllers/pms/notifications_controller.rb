@@ -49,6 +49,7 @@ class Pms::NotificationsController < Pms::BaseController
       when "channels" then pms_channels_path
       when "housekeeping" then pms_rooms_path
       when "approvals" then pms_members_path
+      when "requests" then pms_booking_requests_path
       when "today" then pms_today_path
       end
     end

@@ -34,14 +34,46 @@ class BookingRequest < ApplicationRecord
   # What the guest's status link says: expired as soon as the deadline passes, before expire runs.
   def site_status = pending? && !open? ? "expired" : status
 
+  # Yêu cầu đặt phòng (#284): the switched-on rooms of its type that fit the guests (those book_online offered), and
+  # the ones free on the calendar for its dates now (what Nhận can book).
+  def rooms = place.rooms.where(active: true, room_type:).where(max_guests: guests..).order(:name)
+  def free_rooms = rooms.select { free?(it, start_date, end_date) }
+  # Tạm tính: the cheapest stay among those rooms, as hue-ni's Giá từ.
+  def estimate = rooms.filter_map { Booking.new(room: it, start_date:, end_date:).room_total }.min
+
+  # Hết phòng: the first night with no room free, and the OTA of a booking taking a room that night, if any.
+  # nil when every night has a room free but no one room is free for the whole stay.
+  def full_from
+    typed = rooms.to_a
+    night = (start_date...end_date).find { |day| typed.none? { free?(it, day, day.next_day) } }
+    return [ nil, nil ] unless night
+    ota = Booking.ical.occupying(night, night.next_day).where(room: typed).includes(:calendar_feed).first
+    [ night, ota && (ota.calendar_feed&.provider_label || "iCal") ]
+  end
+
+  SUGGEST_DAYS = 14
+
+  # Từ chối · Hết phòng: the first stay as long as the one asked, starting within SUGGEST_DAYS after it, that hue-ni
+  # would take now: free there (other pending requests hold rooms; this one won't once declined), not past the cutoff.
+  def suggestion
+    nights = (end_date - start_date).to_i
+    typed = rooms.to_a
+    from = (1..SUGGEST_DAYS).map { start_date + it }.find do |day|
+      next false if day < Date.current || (day == Date.current && Time.current.hour >= place.site_cutoff_hour)
+      typed.any? && place.site_free_rooms(typed, day, day + nights, except: self).any?
+    end
+    from && [ from, from + nights ]
+  end
+
   # Nhận: books the room for the request's dates, held for the homestay's Giữ phòng chờ cọc when a deposit is asked.
   # The room must still be free now (an OTA or a walk-in may have taken it). Returns true, or false with errors.
   def accept(room:, deposit_percent:)
-    deposit_percent = deposit_percent.to_i
+    deposit_percent = Integer(deposit_percent.to_s, exception: false)
     errors.clear
     with_lock do
       next refuse(CLOSED) unless open?
       next refuse("Cọc không hợp lệ") unless deposit_percent.in?(Place::SITE_DEPOSIT_PERCENTS)
+      next refuse("Cần tài khoản chuyển khoản ở Cài đặt cơ sở để nhận cọc") if deposit_percent.positive? && !place.bank?
       next refuse("Phòng không thuộc cơ sở này") unless room.place_id == place_id
       next refuse("Phòng #{room.name} đang tắt") unless room.active?
       next refuse("Phòng #{room.name} không phải #{Room::ROOM_TYPES[room_type]}") unless room.room_type == room_type
@@ -62,6 +94,8 @@ class BookingRequest < ApplicationRecord
   end
 
   private
+    def free?(room, from, to) = Booking.new(room:, start_date: from, end_date: to).date_problems.empty?
+
     def refuse(*messages)
       messages.each { errors.add(:base, it) }
       false
