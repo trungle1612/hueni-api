@@ -17,6 +17,7 @@
     ([ "Kênh bán phòng (OTA)", "Link lịch Airbnb, Booking.com, Agoda · đồng bộ", pms_channels_path ] if current_place) ].compact,
   "Thiết lập · chủ cơ sở" => ([ [ "Danh sách phòng", "#{current_place.rooms.count} phòng · thêm, sửa, giá", pms_rooms_path ],
     [ "Cài đặt cơ sở", "Tài khoản chuyển khoản, dịch vụ", pms_settings_path ],
+    [ "Hiển thị trên hue-ni", current_place.site_open ? "Đang hiện và nhận yêu cầu" : "Đang tạm dừng nhận yêu cầu", pms_listing_path ],
     [ "Nhân viên và nhật ký", [ "#{current_place.place_memberships.count} tài khoản", RefundRequest.pending_at(current_place).count.then { "#{it} yêu cầu chờ duyệt" if it.positive? } ].compact.join(" · "), pms_members_path ] ] if current_place && allowed_to?(:manage, current_place)),
   "Trang quản lý" => ([ [ "Mở trang quản lý", "Người dùng, đăng ký, mã mời, thông báo hệ thống", admin_root_path ] ] if user.admin?)
 }.compact %>

@@ -35,6 +35,9 @@ Rails.application.routes.draw do
     get "cai-dat", to: "settings#show", as: :settings
     patch "cai-dat/chuyen-khoan", to: "settings#bank", as: :settings_bank
     resources :services, path: "cai-dat/dich-vu", only: %i[create update destroy]
+    get "hien-thi-hue-ni", to: "listings#show", as: :listing
+    patch "hien-thi-hue-ni", to: "listings#update"
+    patch "hien-thi-hue-ni/quy-dinh", to: "listings#rules", as: :listing_rules
     resources :members, path: "nhan-vien", only: %i[index create update destroy] do
       post :lock, on: :member, path: "khoa"
       post :unlock, on: :member, path: "mo-khoa"

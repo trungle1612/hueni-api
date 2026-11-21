@@ -1,0 +1,204 @@
+<% content_for :title, "Hiển thị trên hue-ni · hueni" %>
+<% content_for :bar do %>
+  <header class="sticky top-0 z-10 flex items-center gap-1 min-h-14 pl-1 pr-3 bg-pms-surface border-b border-pms-border">
+    <%= link_to pms_more_path, class: "flex-none flex items-center justify-center size-11 rounded-md", "aria-label": "Quay lại" do %>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    <% end %>
+    <div class="flex-1 min-w-0 flex flex-col">
+      <h1 class="text-[17px] leading-tight font-semibold truncate">Hiển thị trên hue-ni</h1>
+      <span class="text-xs text-pms-text-2 truncate">Khách du lịch thấy phòng trống và gửi yêu cầu cho bạn</span>
+    </div>
+  </header>
+<% end %>
+
+<% if (place = current_place) %>
+  <% chevron = tag.svg(tag.path(d: "M9 6l6 6-6 6"), class: "flex-none text-pms-text-2", width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 2, "aria-hidden": true) %>
+  <% row = "flex items-center gap-3 min-h-14 px-3 py-2 w-full text-left no-underline" %>
+  <% missing = place.site_missing %>
+  <% live = place.site_open_in_database %>
+  <% blocked = missing.any? && !live %>
+  <% tonight = Date.current %>
+  <%# Each offered type tonight: its cheapest room (season % and all, like the booking page) and rooms free on hue-ni. %>
+  <% types = place.rooms.where(active: true).where.not(room_type: nil).order(:name).group_by(&:room_type).sort_by { Room::ROOM_TYPES.keys.index(it.first) }.map do |type, rooms|
+       { key: type, label: Room::ROOM_TYPES[type], free: place.site_free_rooms(rooms, tonight, tonight.next_day).size,
+         price: rooms.filter_map { Booking.new(room: it, start_date: tonight, end_date: tonight.next_day).room_total }.min }
+     end %>
+  <% shown = types.select { it[:key].in?(place.site_room_types) } %>
+  <% support = Pms::LegalController::LEGAL["support_phone"] %>
+
+  <%= form_with scope: :listing, url: pms_listing_path, method: :patch, id: "listing_form", html: { novalidate: true } do |form| %>
+    <div class="px-4 pt-4">
+      <div class="pms-panel">
+        <label class="<%= row %> cursor-pointer">
+          <span class="flex-1 min-w-0">
+            <span class="block font-semibold"><%= live ? "Đang hiện và nhận yêu cầu" : "Đang tạm dừng nhận yêu cầu" %></span>
+            <span class="block text-xs text-pms-text-2 truncate font-mono">hueni.me/details/<%= place.slug %></span>
+          </span>
+          <%= form.check_box :open, { checked: place.site_open, disabled: blocked, role: "switch", class: "pms-switch", aria: { label: "Hiện trên hue-ni" } }, "1", "0" %>
+        </label>
+      </div>
+      <% if place.errors.any? && !@rules_failed %>
+        <ul id="listing_errors" role="alert" class="mt-2 flex flex-col gap-1 text-[13px] font-semibold text-pms-danger">
+          <% place.errors.full_messages.uniq.each do |message| %><li><%= message %></li><% end %>
+        </ul>
+      <% end %>
+      <% if blocked %>
+        <p class="mt-2 text-[13px] font-semibold text-pms-danger">Hoàn thành các mục còn thiếu bên dưới để bật hiển thị.</p>
+      <% elsif !live %>
+        <p class="mt-2 text-[13px] text-pms-text-2">Homestay vẫn có trên bản đồ hue-ni nhưng ghi “Liên hệ để hỏi phòng” và không nhận yêu cầu.</p>
+      <% end %>
+    </div>
+
+    <section class="px-4 pt-4" aria-labelledby="h-checks">
+      <h2 id="h-checks" class="pms-sec-h flex justify-between"><span>Thông tin cần có</span><span class="font-normal"><%= Place::SITE_CHECKLIST.size - missing.size %> / <%= Place::SITE_CHECKLIST.size %> đã xong</span></h2>
+      <div id="checklist" class="pms-panel divide-y divide-pms-border">
+        <% done = {
+             "photos" => [ "Ảnh homestay", "Có ảnh cho mỗi loại phòng hiển thị" ],
+             "map" => [ "Vị trí trên bản đồ", "Đã ghim#{" · #{place.address}" if place.address}" ],
+             "rules" => [ "Giờ nhận, trả phòng và quy định", "#{place.check_in_time} / #{place.check_out_time} · #{place.house_rules&.truncate(40)}" ],
+             "bank" => [ "Tài khoản nhận cọc", "#{place.bank_name} *** #{place.bank_account&.last(4)}" ]
+           } %>
+        <% done.each do |item, (label, ok)| %>
+          <% gap = item.in?(missing) %>
+          <% body = capture do %>
+            <span class="flex-none flex items-center justify-center size-5 rounded-full text-xs font-bold <%= gap ? "bg-pms-warn-bg text-pms-warn" : "bg-pms-pos-bg text-pms-pos" %>" aria-hidden="true"><%= gap ? "!" : "✓" %></span>
+            <span class="flex-1 min-w-0">
+              <span class="block"><%= label %></span>
+              <span class="block text-[13px] <%= gap ? "font-semibold text-pms-warn" : "text-pms-text-2" %>"><%= gap ? (item == "map" ? "Chưa có vị trí · gọi hue-ni #{support} để ghim" : Place::SITE_CHECKLIST[item].upcase_first) : ok %></span>
+            </span>
+            <%= chevron %>
+          <% end %>
+          <% case item %>
+          <% when "rules" %>
+            <button type="button" id="check_<%= item %>" popovertarget="rules_sheet" class="<%= row %> cursor-pointer"><%= body %></button>
+          <% else %>
+            <%= link_to body, { "photos" => pms_rooms_path, "map" => "tel:#{support}", "bank" => pms_settings_path }[item], id: "check_#{item}", class: row %>
+          <% end %>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="px-4 pt-4" aria-labelledby="h-types">
+      <h2 id="h-types" class="pms-sec-h flex justify-between items-baseline"><span>Loại phòng mở trên hue-ni</span><%= link_to "Sửa giá", pms_rooms_path, class: "text-pms-primary no-underline" %></h2>
+      <% if types.any? %>
+        <div class="pms-panel divide-y divide-pms-border">
+          <% types.each do |type| %>
+            <label class="<%= row %> cursor-pointer">
+              <span class="flex-1 min-w-0">
+                <span class="block truncate"><%= type[:label] %> · <%= type[:price] ? pms_money(type[:price]) : "chưa có giá" %></span>
+                <span class="block text-[13px] text-pms-text-2"><%= type[:free].positive? ? "Còn #{type[:free]} phòng trống tối nay" : "Hết phòng tối nay" %></span>
+              </span>
+              <%= check_box_tag "listing[shown_room_types][]", type[:key], type.in?(shown), id: "type_#{type[:key]}", role: "switch", class: "pms-switch", aria: { label: "Mở phòng #{type[:label]} trên hue-ni" } %>
+            </label>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="pms-panel p-3 text-pms-text-2">Chưa có phòng nào có loại phòng. Chọn Loại phòng trong Danh sách phòng để mở trên hue-ni.</p>
+      <% end %>
+      <p class="pt-2 text-[13px] text-pms-text-2">Phòng trống lấy tự động từ Lịch, kể cả đặt phòng từ Booking.com, Agoda. Giá lấy từ giá phòng, theo mùa.</p>
+    </section>
+
+    <section class="px-4 pt-4" aria-labelledby="h-mode">
+      <h2 id="h-mode" class="pms-sec-h">Cách nhận yêu cầu</h2>
+      <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="h-mode">
+        <% { "approve" => "Tôi duyệt từng yêu cầu", "auto" => "Tự nhận khi còn phòng" }.each do |mode, label| %>
+          <label class="pms-btn px-2 whitespace-normal text-center has-[:checked]:border-pms-primary has-[:checked]:bg-pms-primary-bg has-[:checked]:text-pms-primary">
+            <%= form.radio_button :mode, mode, checked: place.site_mode == mode, class: "sr-only" %><%= label %>
+          </label>
+        <% end %>
+      </div>
+      <p class="pt-2 text-[13px] text-pms-text-2"><%= place.site_mode == "auto" ?
+        "Còn phòng là tự tạo đặt phòng, xếp phòng trống đầu tiên. Bạn vẫn nhận thông báo." :
+        "Bạn nhận thông báo và bấm Nhận hoặc Từ chối. Hết thời hạn mà chưa trả lời, yêu cầu tự hết hạn và khách được báo." %></p>
+      <div class="grid grid-cols-2 gap-3 pt-3">
+        <% [ [ :reply_minutes, "Thời hạn trả lời", Place::SITE_REPLY_MINUTES.map { [ it < 60 ? "#{it} phút" : "#{it / 60} giờ", it ] }, place.site_reply_minutes ],
+             [ :cutoff_hour, "Nhận yêu cầu đến", Place::SITE_CUTOFF_HOURS.map { [ "#{it}:00 ngày đến", it ] }, place.site_cutoff_hour ],
+             [ :deposit_percent, "Cọc trước", Place::SITE_DEPOSIT_PERCENTS.map { [ it.zero? ? "Không cọc" : "#{it}%", it ] }, place.site_deposit_percent ],
+             [ :hold_minutes, "Giữ phòng chờ cọc", Place::SITE_HOLD_MINUTES.map { [ it < 60 ? "#{it} phút" : "#{it / 60} giờ", it ] }, place.site_hold_minutes ] ].each do |attr, label, choices, value| %>
+          <div class="flex flex-col gap-1.5 min-w-0">
+            <%= form.label attr, label, class: "text-[13px] font-semibold" %>
+            <%= form.select attr, choices, { selected: value }, class: "pms-input" %>
+          </div>
+        <% end %>
+      </div>
+      <p class="pt-2 text-[13px] text-pms-text-2">Thời hạn trả lời chỉ dùng khi bạn duyệt từng yêu cầu. Có cọc thì phòng được giữ chờ khách chuyển khoản.</p>
+      <div class="pms-panel mt-3">
+        <label class="<%= row %> cursor-pointer">
+          <span class="flex-1 min-w-0"><span class="block">Báo khách số điện thoại và Zalo</span><span class="block text-[13px] text-pms-text-2">Chỉ hiện sau khi bạn nhận yêu cầu</span></span>
+          <%= form.check_box :show_phone, { checked: place.site_show_phone, role: "switch", class: "pms-switch", aria: { label: "Báo khách số điện thoại" } }, "1", "0" %>
+        </label>
+      </div>
+    </section>
+  <% end %>
+
+  <section class="px-4 pt-4" aria-labelledby="h-preview">
+    <h2 id="h-preview" class="pms-sec-h">Khách thấy trên hue-ni</h2>
+    <% free = shown.sum { it[:free] } %>
+    <% from = shown.filter_map { it[:price] }.min %>
+    <div id="preview" class="rounded-lg overflow-hidden border border-[#ead9c2] bg-[#fdf6ec] text-[#2b1613]">
+      <% if place.cover_image_url %>
+        <%= image_tag place.cover_image_url, alt: "", class: "w-full h-30 object-cover" %>
+      <% else %>
+        <div class="h-30 bg-[#efe3d0]"></div>
+      <% end %>
+      <div class="p-3 flex flex-col gap-1">
+        <b class="font-serif text-[17px]"><%= place.name %></b>
+        <% if place.address %><span class="text-[13px] text-[#6b4f45]"><%= place.address %></span><% end %>
+      </div>
+      <div class="flex justify-between items-baseline px-3 py-2 border-t border-[#ead9c2] text-[13px]">
+        <span>Tối nay · <%= pms_short_day(tonight) %></span>
+        <b class="<%= live && free.positive? ? "text-[#2f6b3a]" : "text-[#7a5b4a]" %>"><%= !live ? "Liên hệ để hỏi phòng" : free.positive? ? "Còn phòng" : "Hết phòng" %></b>
+      </div>
+      <div class="flex justify-between items-baseline px-3 py-2 border-t border-[#ead9c2] text-[13px]">
+        <span>Giá từ</span><b><%= from ? "#{pms_money(from)} / đêm" : "—" %></b>
+      </div>
+      <% if live %>
+        <div class="mx-3 mt-1 mb-3 min-h-10 rounded-full bg-[#7d0010] text-white flex items-center justify-center font-semibold"><%= place.site_mode_in_database == "auto" ? "Đặt phòng" : "Gửi yêu cầu đặt phòng" %></div>
+      <% end %>
+    </div>
+    <p class="pt-1.5 text-xs text-pms-text-2">Mô phỏng thẻ homestay trên hue-ni, theo cài đặt đã lưu.</p>
+  </section>
+
+  <section class="px-4 pt-4" aria-label="Yêu cầu đặt phòng">
+    <% requests = place.booking_requests %>
+    <% month = requests.where(created_at: Time.current.all_month) %>
+    <div id="requests" class="pms-panel <%= row %>">
+      <span class="flex-1 min-w-0">
+        <span class="block font-semibold">Yêu cầu đặt phòng</span>
+        <span class="block text-[13px] text-pms-text-2"><%= requests.open.count %> chờ trả lời · tháng này <%= month.count %> yêu cầu, nhận <%= month.accepted.count %></span>
+      </span>
+    </div>
+  </section>
+
+  <div id="rules_sheet" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="rules_sheet_t" <%= "data-controller=open" if @rules_failed %>>
+    <div class="flex flex-col gap-3">
+      <h2 id="rules_sheet_t" class="text-base font-semibold">Giờ nhận, trả phòng và quy định</h2>
+      <%= form_with model: place, url: pms_listing_rules_path, method: :patch, class: "flex flex-col gap-3", html: { novalidate: true } do |form| %>
+        <div class="grid grid-cols-2 gap-3">
+          <% [ [ :check_in_time, "Giờ nhận phòng" ], [ :check_out_time, "Giờ trả phòng" ] ].each do |attr, label| %>
+            <div class="flex flex-col gap-1.5 min-w-0">
+              <%= form.label attr, label, class: "text-[13px] font-semibold" %>
+              <%= form.time_field attr, value: place.public_send(attr), class: pms_input_class(place, attr), aria: field_aria(place, attr) %>
+              <%= pms_field_error(place, attr) %>
+            </div>
+          <% end %>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <%= form.label :house_rules, "Quy định", class: "text-[13px] font-semibold" %>
+          <%= form.text_area :house_rules, rows: 4, maxlength: 2000, placeholder: "Ví dụ: Không hút thuốc trong phòng. Giữ yên lặng sau 22:00.", class: "#{pms_input_class(place, :house_rules)} h-auto py-2.5", aria: field_aria(place, :house_rules) %>
+          <%= pms_field_error(place, :house_rules) %>
+        </div>
+        <p class="text-[13px] text-pms-text-2">Khách thấy trên hue-ni trước khi gửi yêu cầu.</p>
+        <%= form.button "Lưu", class: "pms-btn pms-btn-primary w-full" %>
+      <% end %>
+      <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="rules_sheet" popovertargetaction="hide">Đóng</button>
+    </div>
+  </div>
+
+  <% content_for :footer do %>
+    <button type="submit" form="listing_form" class="pms-btn pms-btn-primary flex-1 min-h-12">Lưu thay đổi</button>
+  <% end %>
+  <%= render "pms/toast" %>
+<% else %>
+  <%= render "pms/no_place" %>
+<% end %>
