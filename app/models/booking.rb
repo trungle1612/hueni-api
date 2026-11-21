@@ -122,9 +122,9 @@ class Booking < ApplicationRecord
 
   def held? = confirmed? && hold_expires_at.present?
 
-  # The deposit an online guest is asked for: the homestay's Cọc trước % of the bill, rounded up to 1.000 ₫.
-  def site_deposit
-    percent = room.place.site_deposit_percent
+  # The deposit an online guest is asked for: the homestay's Cọc trước % (or the one picked on accept, #282) of the bill,
+  # rounded up to 1.000 ₫.
+  def site_deposit(percent = room.place.site_deposit_percent)
     total && percent.positive? ? (total * percent / 100r).ceil(-3) : 0
   end
 

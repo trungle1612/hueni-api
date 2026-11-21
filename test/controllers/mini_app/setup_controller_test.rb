@@ -90,12 +90,15 @@ class MiniApp::SetupControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
-  test "booking site: owners set it, open needs a room type shown and a bank for the deposit; staff 403, other homestay 404" do
+  test "booking site: owners set it, open needs the checklist done; staff 403, other homestay 404" do
     rooms(:limdim).update!(room_type: "double")
+    site_ready(places(:tomo))
+    places(:tomo).update!(bank_account: nil)
     as :owner, :patch, booking_site_api_v1_place_path(places(:tomo)), { booking_site: { open: true, deposit_percent: 30 } }
     assert_response :unprocessable_entity
     assert_equal [ "Nhận đặt phòng online cần tài khoản chuyển khoản để nhận cọc" ], body.dig("errors", "site_open")
 
+    places(:tomo).update!(bank_account: "0123456789")
     as :owner, :patch, booking_site_api_v1_place_path(places(:tomo)), { booking_site: { open: true, deposit_percent: 0, hold_minutes: 120, cutoff_hour: 22, hidden_room_types: [] } }
     assert_response :success
     assert_equal({ "open" => true, "deposit_percent" => 0, "hidden_room_types" => [], "hold_minutes" => 120, "cutoff_hour" => 22, "room_types" => [ "double" ] }, body["booking_site"])

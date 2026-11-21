@@ -15,8 +15,8 @@ class PushSubscription < ApplicationRecord
   end
 
   # Gone at the push service → deleted, nothing raised.
-  def deliver(payload, urgency: "normal")
-    WebPush.deliver(endpoint, p256dh:, auth:, payload:, urgency:)
+  def deliver(payload, **options)
+    WebPush.deliver(endpoint, p256dh:, auth:, payload:, **options)
   rescue WebPush::Gone
     destroy
   end

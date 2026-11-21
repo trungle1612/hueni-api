@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_18_134860) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_20_100000) do
   create_table "announcements", force: :cascade do |t|
     t.string "kind", default: "feature", null: false
     t.string "title", null: false
@@ -54,6 +54,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_134860) do
     t.check_constraint "unit_price >= 0 AND quantity > 0", name: "booking_charges_amounts"
   end
 
+  create_table "booking_requests", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.integer "booking_id"
+    t.string "status", default: "pending", null: false
+    t.datetime "reply_by", null: false
+    t.string "room_type", null: false
+    t.date "start_date", null: false
+    t.date "end_date", null: false
+    t.integer "guests", null: false
+    t.string "guest_name", null: false
+    t.string "guest_phone", null: false
+    t.text "note"
+    t.integer "deposit_percent"
+    t.string "decline_reason"
+    t.date "suggested_start_date"
+    t.date "suggested_end_date"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["booking_id"], name: "index_booking_requests_on_booking_id"
+    t.index ["place_id"], name: "index_booking_requests_on_place_id"
+    t.index ["status", "reply_by"], name: "index_booking_requests_on_status_and_reply_by"
+    t.check_constraint "decline_reason IS NULL OR decline_reason IN ('full', 'dates', 'rules')", name: "booking_requests_decline_reason"
+    t.check_constraint "status IN ('pending', 'accepted', 'declined', 'expired')", name: "booking_requests_status"
+  end
+
   create_table "bookings", force: :cascade do |t|
     t.integer "room_id", null: false
     t.date "start_date", null: false
@@ -80,10 +105,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_134860) do
     t.string "discount_reason"
     t.integer "group_id"
     t.boolean "pays_own", default: false, null: false
-    t.boolean "online", default: false, null: false
-    t.datetime "hold_expires_at"
     t.json "season_percents"
     t.boolean "long_stay", default: false, null: false
+    t.boolean "online", default: false, null: false
+    t.datetime "hold_expires_at"
     t.index ["calendar_feed_id", "uid"], name: "index_bookings_on_calendar_feed_id_and_uid", unique: true
     t.index ["group_id"], name: "index_bookings_on_group_id"
     t.index ["hold_expires_at"], name: "index_bookings_on_hold_expires_at"
@@ -196,6 +221,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_134860) do
     t.integer "room_id"
     t.integer "refund_request_id"
     t.datetime "created_at", null: false
+    t.integer "booking_request_id"
+    t.index ["booking_request_id"], name: "index_notifications_on_booking_request_id"
     t.index ["place_id", "created_at"], name: "index_notifications_on_place_id_and_created_at"
   end
 
@@ -247,15 +274,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_134860) do
     t.string "bank_account"
     t.string "bank_holder"
     t.integer "last_group_number", default: 0, null: false
+    t.boolean "long_stay", default: false, null: false
+    t.string "cancel_policy", default: "flex", null: false
     t.boolean "site_open", default: false, null: false
     t.integer "site_deposit_percent", default: 30, null: false
     t.json "site_hidden_room_types", default: [], null: false
     t.integer "site_hold_minutes", default: 30, null: false
     t.integer "site_cutoff_hour", default: 20, null: false
-    t.boolean "long_stay", default: false, null: false
-    t.string "cancel_policy", default: "flex", null: false
+    t.string "site_mode", default: "approve", null: false
+    t.integer "site_reply_minutes", default: 30, null: false
+    t.boolean "site_show_phone", default: false, null: false
+    t.string "check_in_time"
+    t.string "check_out_time"
+    t.text "house_rules"
     t.index ["slug"], name: "index_places_on_slug", unique: true
     t.check_constraint "cancel_policy IN ('flex', 'mid', 'strict')", name: "places_cancel_policy"
+    t.check_constraint "site_mode IN ('approve', 'auto')", name: "places_site_mode"
   end
 
   create_table "push_subscriptions", force: :cascade do |t|
@@ -461,6 +495,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_134860) do
   add_foreign_key "api_tokens", "users"
   add_foreign_key "booking_charges", "bookings"
   add_foreign_key "booking_charges", "users"
+  add_foreign_key "booking_requests", "bookings"
+  add_foreign_key "booking_requests", "places"
   add_foreign_key "bookings", "calendar_feeds"
   add_foreign_key "bookings", "groups"
   add_foreign_key "bookings", "rooms"
@@ -474,6 +510,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_134860) do
   add_foreign_key "invites", "places"
   add_foreign_key "invites", "users", column: "created_by_id"
   add_foreign_key "notification_reads", "users"
+  add_foreign_key "notifications", "booking_requests", on_delete: :nullify
   add_foreign_key "notifications", "places"
   add_foreign_key "payments", "bookings"
   add_foreign_key "payments", "users"
