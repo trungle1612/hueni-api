@@ -14,7 +14,8 @@
 
 <% groups = {
   "Vận hành hằng ngày" => [ [ "Tìm đặt phòng", "Tên, số điện thoại hoặc mã đặt phòng", pms_search_path ],
-    ([ "Kênh bán phòng (OTA)", "Link lịch Airbnb, Booking.com, Agoda · đồng bộ", pms_channels_path ] if current_place) ].compact,
+    ([ "Kênh bán phòng (OTA)", "Link lịch Airbnb, Booking.com, Agoda · đồng bộ", pms_channels_path ] if current_place),
+    ([ "Yêu cầu đặt phòng", "#{current_place.booking_requests.open.count} chờ trả lời · khách gửi từ hue-ni", pms_booking_requests_path ] if current_place&.then { it.site_open || it.booking_requests.exists? }) ].compact,
   "Thiết lập · chủ cơ sở" => ([ [ "Danh sách phòng", "#{current_place.rooms.count} phòng · thêm, sửa, giá", pms_rooms_path ],
     [ "Cài đặt cơ sở", "Tài khoản chuyển khoản, dịch vụ", pms_settings_path ],
     [ "Hiển thị trên hue-ni", current_place.site_open ? "Đang hiện và nhận yêu cầu" : "Đang tạm dừng nhận yêu cầu", pms_listing_path ],

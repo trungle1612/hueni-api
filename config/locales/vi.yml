@@ -28,6 +28,9 @@ vi:
         check_out_time: Giờ trả phòng
         house_rules: Quy định
         cancel_policy: Chính sách huỷ
+      booking_request:
+        decline_reason: Lý do từ chối
+        suggested_start_date: Ngày gợi ý
       season:
         name: Tên mùa
         from: Từ ngày

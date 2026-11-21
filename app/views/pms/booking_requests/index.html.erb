@@ -1,0 +1,194 @@
+<% content_for :title, "Yêu cầu đặt phòng · hueni" %>
+<% place = current_place %>
+<% manage = place && allowed_to?(:manage, place) %>
+<% content_for :bar do %>
+  <header class="sticky top-0 z-10 flex items-center gap-1 min-h-14 pl-1 pr-2 bg-pms-surface border-b border-pms-border">
+    <%= link_to pms_more_path, class: "flex-none flex items-center justify-center size-11 rounded-md", "aria-label": "Quay lại" do %>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    <% end %>
+    <div class="flex-1 min-w-0 flex flex-col">
+      <h1 class="text-[17px] leading-tight font-semibold truncate">Yêu cầu đặt phòng</h1>
+      <span class="text-xs text-pms-text-2 truncate">Khách gửi từ hue-ni · bạn quyết định nhận hay không</span>
+    </div>
+    <% if manage %>
+      <%= link_to pms_listing_path, class: "flex-none flex items-center justify-center size-11 rounded-md", "aria-label": "Cài đặt hiển thị trên hue-ni" do %>
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+      <% end %>
+    <% end %>
+  </header>
+<% end %>
+
+<% if place %>
+  <% waiting, accepted, closed = @requests.select(&:open?).sort_by(&:reply_by), *@requests.reject(&:open?).sort_by(&:created_at).reverse.partition(&:accepted?) %>
+  <% shown = { nil => waiting, "da-nhan" => accepted, "tu-choi" => closed }[@tab] %>
+  <nav class="flex items-center gap-1 px-3 bg-pms-surface border-b border-pms-border overflow-x-auto" aria-label="Lọc yêu cầu">
+    <% [ [ nil, "Chờ trả lời", waiting ], [ "da-nhan", "Đã nhận", accepted ], [ "tu-choi", "Từ chối, hết hạn", closed ] ].each do |key, label, list| %>
+      <%= link_to "#{label}#{" · #{list.size}" if list.any?}", pms_booking_requests_path(loc: key), "aria-current": ("page" if @tab == key),
+            class: "flex-none flex items-center min-h-11 px-2.5 border-b-2 no-underline whitespace-nowrap #{@tab == key ? "border-pms-primary text-pms-primary font-semibold" : "border-transparent text-pms-text-2"}" %>
+    <% end %>
+  </nav>
+
+  <% if shown.empty? %>
+    <div class="px-6 py-10 text-center text-pms-text-2">
+      <b class="block mb-1 text-[15px] text-pms-text"><%= @tab ? "Chưa có yêu cầu nào" : "Đã trả lời hết yêu cầu" %></b>
+      <%= @tab ? "Danh sách giữ #{BookingRequest::DAYS} ngày." : "Yêu cầu mới từ hue-ni sẽ hiện ở đây và báo qua thông báo." %>
+      <% unless place.site_open && place.site_mode == "approve" %>
+        <p class="mt-3"><%= place.site_open ? "Cơ sở đang tự nhận đặt phòng khi còn phòng, không cần duyệt." : "Cơ sở đang tạm dừng nhận yêu cầu trên hue-ni." %></p>
+      <% end %>
+      <% if manage %><%= link_to "Hiển thị trên hue-ni", pms_listing_path, class: "pms-btn mt-4 px-4" %><% end %>
+    </div>
+  <% else %>
+    <div class="px-4 pt-4 pb-6 flex flex-col gap-3">
+      <% shown.each do |request| %>
+        <% type = Room::ROOM_TYPES[request.room_type] %>
+        <% nights = (request.end_date - request.start_date).to_i %>
+        <% dates = "#{pms_short_day(request.start_date)} – #{pms_short_day(request.end_date)} · #{nights} đêm" %>
+        <% if request.open? %>
+          <% rooms = request.rooms.to_a %>
+          <% free = request.free_rooms %>
+          <% quote = ->(room) { Booking.new(room:, start_date: request.start_date, end_date: request.end_date) } %>
+        <% end %>
+        <% total = request.booking ? request.booking.total : request.estimate %>
+        <article id="<%= dom_id(request) %>" class="pms-panel" aria-label="Yêu cầu của <%= request.guest_name %>, <%= dates %>">
+          <div class="flex items-start gap-2.5 px-3 pt-3 pb-2">
+            <span class="flex-1 min-w-0">
+              <b class="block text-[15px] font-semibold"><%= request.guest_name %></b>
+              <span class="block text-[13px] text-pms-text-2"><span class="pms-badge bg-[#fdf6ec] text-[#7d0010] border border-[#ead9c2]">hue-ni</span> · gửi <%= pms_when(request.created_at).delete_prefix("hôm nay ") %> · <%= request.code %></span>
+            </span>
+            <% if request.open? %>
+              <% left = (request.reply_by - Time.current).ceil %>
+              <span class="pms-badge <%= left <= 10.minutes ? "pms-badge-warn" : "pms-badge-out" %>" data-controller="countdown" data-countdown-seconds-value="<%= left %>">Còn <%= (left / 60.0).ceil %> phút</span>
+            <% else %>
+              <% badge, tone = request.accepted? ? [ "Đã nhận", "pms-badge-pos" ] : request.declined? ? [ "Đã từ chối", "pms-badge-out" ] : [ "Hết hạn", "pms-badge-warn" ] %>
+              <span class="pms-badge <%= tone %>"><%= badge %></span>
+            <% end %>
+          </div>
+          <dl class="px-3 text-[14px]">
+            <div class="flex justify-between gap-3 py-1.5"><dt class="text-pms-text-2">Ngày</dt><dd class="font-medium text-right"><%= dates %></dd></div>
+            <div class="flex justify-between gap-3 py-1.5"><dt class="text-pms-text-2">Phòng · khách</dt><dd class="font-medium text-right"><%= type %> · <%= request.guests %> khách</dd></div>
+            <div class="flex justify-between gap-3 py-1.5"><dt class="text-pms-text-2">Tạm tính</dt><dd class="font-medium text-right"><%= total ? pms_money(total) : "—" %></dd></div>
+          </dl>
+          <% if request.note %>
+            <p class="mx-3 mt-1 px-2.5 py-2 border-l-[3px] border-pms-border-strong bg-pms-bg text-[13px]">“<%= request.note %>”</p>
+          <% end %>
+
+          <% if request.open? %>
+            <% if free.any? %>
+              <p class="mx-3 mt-2 text-[13px] font-semibold text-pms-pos"><%= type %>: còn <%= free.size %> phòng trống những ngày này</p>
+              <div class="flex gap-2 p-3">
+                <button type="button" popovertarget="<%= dom_id(request, :decline) %>" class="pms-btn flex-1">Từ chối</button>
+                <button type="button" popovertarget="<%= dom_id(request, :accept) %>" class="pms-btn pms-btn-primary flex-1">Nhận</button>
+              </div>
+            <% else %>
+              <% night, ota = request.full_from %>
+              <p class="mx-3 mt-2 text-[13px] font-semibold text-pms-danger"><%= type %>: hết phòng từ ngày <%= night.strftime("%d/%m") %><%= " (đã có khách đặt qua #{ota})" if ota %>.</p>
+              <div class="flex gap-2 p-3">
+                <%= link_to "Xem lịch", pms_calendar_path(from: request.start_date), class: "pms-btn flex-1" %>
+                <button type="button" popovertarget="<%= dom_id(request, :decline) %>" class="pms-btn pms-btn-primary flex-1 whitespace-normal">Từ chối, gợi ý ngày khác</button>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="mt-2 px-3 py-2.5 border-t border-pms-border text-[13px] text-pms-text-2">
+              <% if (booking = request.booking) %>
+                <% deposit = booking.site_deposit(request.deposit_percent) %>
+                Đã nhận · phòng <%= booking.room.name %> · <%= booking.cancelled? ? "đặt phòng đã huỷ" : booking.held? ? "chờ cọc #{pms_money(deposit)} đến #{booking.hold_expires_at.strftime("%H:%M")}" : deposit.positive? ? "đã xác nhận" : "không cọc" %>
+                · <%= link_to "Xem đặt phòng", pms_booking_path(booking), class: "font-semibold text-pms-primary" %>
+              <% elsif request.declined? %>
+                Từ chối: <%= BookingRequest::DECLINE_REASONS[request.decline_reason].downcase_first %><%= " · khách được gợi ý #{pms_range(request.suggested_start_date, request.suggested_end_date)}" if request.suggested_start_date %>
+              <% else %>
+                Hết hạn sau <%= ((request.reply_by - request.created_at) / 60).round %> phút không trả lời
+              <% end %>
+            </div>
+          <% end %>
+        </article>
+
+        <% if request.open? %>
+          <% if free.any? %>
+            <div id="<%= dom_id(request, :accept) %>" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="<%= dom_id(request, :accept_t) %>">
+              <%= form_with url: accept_pms_booking_request_path(request), class: "flex flex-col gap-3", data: { controller: "deposit-preview", action: "change->deposit-preview#update" } do %>
+                <h2 id="<%= dom_id(request, :accept_t) %>" class="text-base font-semibold">Nhận yêu cầu của <%= request.guest_name %></h2>
+                <fieldset>
+                  <legend class="mb-1.5 text-[13px] font-semibold">Xếp phòng · <%= dates %></legend>
+                  <div class="pms-panel divide-y divide-pms-border">
+                    <% rooms.each do |room| %>
+                      <% busy = !free.include?(room) %>
+                      <% stay = quote.(room) %>
+                      <label class="flex items-center gap-2.5 min-h-13 px-3 py-1.5 <%= busy ? "opacity-50 cursor-not-allowed" : "cursor-pointer" %>">
+                        <%= radio_button_tag :room_id, room.id, room == free.first, disabled: busy, required: true, id: dom_id(request, "room_#{room.id}"), class: "size-4.5 accent-pms-primary",
+                              data: { deposits: Place::SITE_DEPOSIT_PERCENTS.to_h { [ it, (pms_money(stay.site_deposit(it)) if stay.site_deposit(it).positive?) ] }.to_json } %>
+                        <span class="flex-1 min-w-0">
+                          <span class="block font-semibold"><%= room.name %></span>
+                          <span class="block text-[13px] text-pms-text-2"><%= [ busy ? "Đã có khách" : "Trống", ("Tầng #{room.floor}" if room.floor.present?), ("Tạm tính #{pms_money(stay.room_total)}" if stay.room_total) ].compact.join(" · ") %></span>
+                        </span>
+                      </label>
+                    <% end %>
+                  </div>
+                </fieldset>
+                <fieldset>
+                  <legend class="mb-1.5 text-[13px] font-semibold">Cọc</legend>
+                  <div class="grid grid-flow-col auto-cols-fr gap-2">
+                    <% Place::SITE_DEPOSIT_PERCENTS.each do |percent| %>
+                      <label class="pms-btn px-1 has-[:checked]:border-pms-primary has-[:checked]:bg-pms-primary-bg has-[:checked]:text-pms-primary has-[:disabled]:opacity-45 has-[:disabled]:cursor-not-allowed">
+                        <%= radio_button_tag :deposit_percent, percent, percent == (place.bank? ? place.site_deposit_percent : 0), disabled: percent.positive? && !place.bank?,
+                              id: dom_id(request, "deposit_#{percent}"), class: "sr-only" %><%= percent.zero? ? "Không cọc" : "#{percent}%" %>
+                      </label>
+                    <% end %>
+                  </div>
+                  <% unless place.bank? %><p class="pt-2 text-[13px] text-pms-text-2">Thêm tài khoản chuyển khoản ở Cài đặt cơ sở để nhận cọc.</p><% end %>
+                </fieldset>
+                <div class="flex flex-col gap-1.5">
+                  <span class="text-[13px] font-semibold">Khách thấy trên hue-ni</span>
+                  <p class="px-3 py-2.5 rounded-lg border border-pms-border bg-pms-bg text-[13px] leading-relaxed">
+                    <%= place.name %> đã nhận yêu cầu của bạn: <%= type %>, <%= pms_range(request.start_date, request.end_date) %> (<%= nights %> đêm).
+                    <span data-deposit-preview-target="deposit">Vui lòng chuyển cọc <b data-deposit-preview-target="amount"></b> vào tài khoản <%= place.bank_name %> trong <%= place.site_hold_minutes < 60 ? "#{place.site_hold_minutes} phút" : "#{place.site_hold_minutes / 60} giờ" %>. Quá hạn phòng sẽ được mở lại.</span>
+                    <span data-deposit-preview-target="none">Không cần cọc, thanh toán khi nhận phòng.</span>
+                    <% if place.check_in_time %>Nhận phòng từ <%= place.check_in_time %>.<% end %>
+                  </p>
+                </div>
+                <p class="text-[13px] text-pms-text-2">Khách chuyển cọc thẳng vào tài khoản của bạn. hue-ni và hueni PMS không giữ tiền.</p>
+                <button class="pms-btn pms-btn-primary w-full">Nhận và báo khách</button>
+                <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="<%= dom_id(request, :accept) %>" popovertargetaction="hide">Đóng</button>
+              <% end %>
+            </div>
+          <% end %>
+
+          <div id="<%= dom_id(request, :decline) %>" popover class="pms-sheet max-h-[90dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="<%= dom_id(request, :decline_t) %>">
+            <%= form_with url: decline_pms_booking_request_path(request), class: "group flex flex-col gap-3" do %>
+              <h2 id="<%= dom_id(request, :decline_t) %>" class="text-base font-semibold">Từ chối yêu cầu của <%= request.guest_name %></h2>
+              <fieldset>
+                <legend class="mb-1.5 text-[13px] font-semibold">Lý do</legend>
+                <div class="pms-panel divide-y divide-pms-border">
+                  <% subs = { "full" => "Gợi ý khách ngày khác còn phòng", "dates" => "Ví dụ: nghỉ, sửa chữa", "rules" => "Ví dụ: số khách vượt quá phòng" } %>
+                  <% BookingRequest::DECLINE_REASONS.each do |value, name| %>
+                    <label class="flex items-center gap-2.5 min-h-13 px-3 py-1.5 cursor-pointer">
+                      <%= radio_button_tag :reason, value, value == "full" && free.empty?, required: true, id: dom_id(request, "reason_#{value}"), class: "size-4.5 accent-pms-primary" %>
+                      <span class="flex-1 min-w-0"><span class="block"><%= name %></span><span class="block text-[13px] text-pms-text-2"><%= subs[value] %></span></span>
+                    </label>
+                  <% end %>
+                </div>
+              </fieldset>
+              <% suggested = request.suggestion %>
+              <div class="hidden group-has-[input[value=full]:checked]:block px-3 py-2.5 rounded-md border border-[#bccbe0] bg-pms-info-bg text-pms-info text-[13px] font-medium">
+                <% if suggested %>
+                  <%= hidden_field_tag :suggested_start_date, suggested.first, id: nil %><%= hidden_field_tag :suggested_end_date, suggested.last, id: nil %>
+                  Khách sẽ thấy gợi ý: <%= type %> còn trống <%= pms_range(*suggested) %>. Khách bấm là gửi yêu cầu mới.
+                <% else %>
+                  <%= type %> không còn trống trong <%= BookingRequest::SUGGEST_DAYS %> ngày sau, khách không nhận gợi ý ngày.
+                <% end %>
+              </div>
+              <p class="text-[13px] text-pms-text-2">Khách thấy lý do bạn chọn trên hue-ni. Không hiện tên người trả lời.</p>
+              <button class="pms-btn pms-btn-danger w-full">Từ chối</button>
+              <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="<%= dom_id(request, :decline) %>" popovertargetaction="hide">Đóng</button>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+      <% unless @tab %>
+        <p class="text-[13px] text-pms-text-2">Không trả lời trong thời hạn, yêu cầu tự hết hạn và khách được báo để tìm nơi khác.<%= " Thời hạn đổi ở Hiển thị trên hue-ni." if manage %></p>
+      <% end %>
+    </div>
+  <% end %>
+  <%= render "pms/toast" %>
+<% else %>
+  <%= render "pms/no_place" %>
+<% end %>
