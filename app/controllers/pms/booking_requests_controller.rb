@@ -16,12 +16,12 @@ class Pms::BookingRequestsController < Pms::BaseController
   end
 
   def accept
-    room = @request.place.rooms.find(params[:room_id])
-    if @request.accept(room:, deposit_percent: params[:deposit_percent])
+    room = @request.place.rooms.find_by(id: params[:room_id])
+    if room && @request.accept(room:, deposit_percent: params[:deposit_percent])
       redirect_to pms_booking_requests_path(loc: "da-nhan"), status: :see_other,
         flash: { toast: "Đã nhận, tạo đặt phòng #{@request.booking.code} cho #{@request.guest_name}" }
     else
-      redirect_to pms_booking_requests_path, status: :see_other, alert: @request.errors.full_messages.to_sentence
+      redirect_to pms_booking_requests_path, status: :see_other, alert: room ? @request.errors.full_messages.to_sentence : "Chọn phòng để nhận"
     end
   end
 

@@ -27,6 +27,7 @@ class Pms::BookingRequestsTest < ActionDispatch::IntegrationTest
     assert_select "nav a[aria-current=page]", text: "Chờ trả lời · 1"
     assert_select "##{dom_id(request)}", text: /Chị Hoa.*hue-ni · gửi 12:00 · YC-\d{4}.*Còn 30 phút.*T5 01\/10 – T6 02\/10 · 1 đêm.*Phòng đôi · 2 khách.*400.000đ.*Mình đến khoảng 21h.*Phòng đôi: còn 1 phòng trống/m
     assert_select "##{dom_id(request)} [data-countdown-seconds-value='1800']"
+    assert_select "meta[name=turbo-cache-control][content=no-cache]", 1, "Back must not restart the countdown from a cached page"
     assert_select "##{dom_id(request, :accept)} input[name=room_id][value='#{rooms(:garden).id}'][checked]"
     assert_select "##{dom_id(request, :accept)} input[name=room_id][value='#{rooms(:limdim).id}'][disabled]"
     assert_select "##{dom_id(request, :accept)} input[name=room_id][data-deposits*='120.000đ']"
@@ -80,6 +81,59 @@ class Pms::BookingRequestsTest < ActionDispatch::IntegrationTest
     assert_equal [ "declined", "full", Date.new(2026, 10, 3) ], request.reload.values_at(:status, :decline_reason, :suggested_start_date)
     follow_redirect!
     assert_select "##{dom_id(request)}", text: /Đã từ chối.*Từ chối: hết phòng loại này · khách được gợi ý 03 – 04\/10/m
+  end
+
+  test "Nhận refuses a missing room, a blank Cọc and a deposit with no bank account" do
+    request = ask
+    log_in users(:owner)
+    post accept_pms_booking_request_path(request), params: { room_id: "", deposit_percent: 0 }
+    follow_redirect!
+    assert_select "[role=alert]", text: "Chọn phòng để nhận"
+    post accept_pms_booking_request_path(request), params: { room_id: rooms(:garden).id }
+    follow_redirect!
+    assert_select "[role=alert]", text: "Cọc không hợp lệ"
+    @place.update_columns(bank_account: nil)
+    post accept_pms_booking_request_path(request), params: { room_id: rooms(:garden).id, deposit_percent: 30 }
+    follow_redirect!
+    assert_select "[role=alert]", text: /Cần tài khoản chuyển khoản/
+    assert_select "##{dom_id(request, :accept)} input[name=deposit_percent][value='30'][disabled]"
+    assert request.reload.pending?
+  end
+
+  test "a hold past midnight shows its date, an ended one says so; closed requests show no Tạm tính" do
+    @place.update!(site_hold_minutes: 120)
+    travel_to Time.zone.local(2026, 10, 1, 23)
+    request = ask(start_date: "2026-10-05", end_date: "2026-10-06")
+    expired = ask(start_date: "2026-10-07", end_date: "2026-10-08")
+    expired.update_columns(status: "expired")
+    request.accept(room: rooms(:garden), deposit_percent: 30)
+    log_in users(:owner)
+    get pms_booking_requests_path(loc: "da-nhan")
+    assert_select "##{dom_id(request)}", text: /chờ cọc 120.000đ đến 01:00 02\/10/
+    travel 3.hours
+    get pms_booking_requests_path(loc: "da-nhan")
+    assert_select "##{dom_id(request)}", text: /hết hạn giữ chỗ/
+    get pms_booking_requests_path(loc: "tu-choi")
+    assert_select "##{dom_id(expired)}", text: /Ngày/
+    assert_select "##{dom_id(expired)}", text: /Tạm tính/, count: 0
+  end
+
+  test "each night has a room free but no one room the whole stay: says so, names no night" do
+    request = ask(start_date: "2026-10-03", end_date: "2026-10-05")
+    rooms(:garden).bookings.create!(start_date: "2026-10-04", end_date: "2026-10-05", guest_name: "Khách A")
+    rooms(:limdim).bookings.create!(start_date: "2026-10-03", end_date: "2026-10-04", guest_name: "Khách B")
+    log_in users(:owner)
+    get pms_booking_requests_path
+    assert_select "##{dom_id(request)}", text: /Phòng đôi: không phòng nào trống suốt những ngày này\./
+  end
+
+  test "the Hết phòng suggestion skips dates other pending requests hold on hue-ni" do
+    request = ask(start_date: "2026-10-02", end_date: "2026-10-03")
+    rooms(:garden).bookings.create!(start_date: "2026-10-02", end_date: "2026-10-04", guest_name: "Khách A")
+    ask(guest_name: "Anh Tú", start_date: "2026-10-03", end_date: "2026-10-04") # holds limdim, the one room free 03–04
+    log_in users(:owner)
+    get pms_booking_requests_path
+    assert_select "##{dom_id(request, :decline)}", text: /Phòng đôi còn trống 04 – 05\/10/
   end
 
   test "Từ chối needs a reason; suggested dates go with Hết phòng only" do

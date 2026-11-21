@@ -149,10 +149,10 @@ class Place < ApplicationRecord
   end
 
   # Rooms of one type free on hue-ni for from...to: free on the calendar, less the most pending requests holding the
-  # type on any one night (requests on different nights can share a room).
-  def site_free_rooms(typed, from, to)
+  # type on any one night (requests on different nights can share a room). except: a request not to count.
+  def site_free_rooms(typed, from, to, except: nil)
     free = typed.select { Booking.new(room: it, start_date: from, end_date: to).date_problems.empty? }
-    held = booking_requests.holding(typed.first.room_type, from, to).pluck(:start_date, :end_date)
+    held = booking_requests.holding(typed.first.room_type, from, to).where.not(id: except).pluck(:start_date, :end_date)
     free.drop((from...to).map { |night| held.count { |first, last| night >= first && night < last } }.max.to_i)
   end
 

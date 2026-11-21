@@ -1,4 +1,6 @@
 <% content_for :title, "Yêu cầu đặt phòng · hueni" %>
+<%# Back must not show a cached countdown (it counts from the seconds left when rendered). %>
+<% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
 <% place = current_place %>
 <% manage = place && allowed_to?(:manage, place) %>
 <% content_for :bar do %>
@@ -48,7 +50,8 @@
           <% free = request.free_rooms %>
           <% quote = ->(room) { Booking.new(room:, start_date: request.start_date, end_date: request.end_date) } %>
         <% end %>
-        <% total = request.booking ? request.booking.total : request.estimate %>
+        <%# Declined / expired: no Tạm tính, today's prices would not be what the guest was quoted. %>
+        <% total = request.booking ? request.booking.total : (request.estimate if request.open?) %>
         <article id="<%= dom_id(request) %>" class="pms-panel" aria-label="Yêu cầu của <%= request.guest_name %>, <%= dates %>">
           <div class="flex items-start gap-2.5 px-3 pt-3 pb-2">
             <span class="flex-1 min-w-0">
@@ -66,7 +69,9 @@
           <dl class="px-3 text-[14px]">
             <div class="flex justify-between gap-3 py-1.5"><dt class="text-pms-text-2">Ngày</dt><dd class="font-medium text-right"><%= dates %></dd></div>
             <div class="flex justify-between gap-3 py-1.5"><dt class="text-pms-text-2">Phòng · khách</dt><dd class="font-medium text-right"><%= type %> · <%= request.guests %> khách</dd></div>
-            <div class="flex justify-between gap-3 py-1.5"><dt class="text-pms-text-2">Tạm tính</dt><dd class="font-medium text-right"><%= total ? pms_money(total) : "—" %></dd></div>
+            <% if request.open? || request.booking %>
+              <div class="flex justify-between gap-3 py-1.5"><dt class="text-pms-text-2">Tạm tính</dt><dd class="font-medium text-right"><%= total ? pms_money(total) : "—" %></dd></div>
+            <% end %>
           </dl>
           <% if request.note %>
             <p class="mx-3 mt-1 px-2.5 py-2 border-l-[3px] border-pms-border-strong bg-pms-bg text-[13px]">“<%= request.note %>”</p>
@@ -81,7 +86,7 @@
               </div>
             <% else %>
               <% night, ota = request.full_from %>
-              <p class="mx-3 mt-2 text-[13px] font-semibold text-pms-danger"><%= type %>: hết phòng từ ngày <%= night.strftime("%d/%m") %><%= " (đã có khách đặt qua #{ota})" if ota %>.</p>
+              <p class="mx-3 mt-2 text-[13px] font-semibold text-pms-danger"><%= type %>: <%= night ? "hết phòng từ ngày #{night.strftime("%d/%m")}#{" (đã có khách đặt qua #{ota})" if ota}" : "không phòng nào trống suốt những ngày này" %>.</p>
               <div class="flex gap-2 p-3">
                 <%= link_to "Xem lịch", pms_calendar_path(from: request.start_date), class: "pms-btn flex-1" %>
                 <button type="button" popovertarget="<%= dom_id(request, :decline) %>" class="pms-btn pms-btn-primary flex-1 whitespace-normal">Từ chối, gợi ý ngày khác</button>
@@ -91,7 +96,7 @@
             <div class="mt-2 px-3 py-2.5 border-t border-pms-border text-[13px] text-pms-text-2">
               <% if (booking = request.booking) %>
                 <% deposit = booking.site_deposit(request.deposit_percent) %>
-                Đã nhận · phòng <%= booking.room.name %> · <%= booking.cancelled? ? "đặt phòng đã huỷ" : booking.held? ? "chờ cọc #{pms_money(deposit)} đến #{booking.hold_expires_at.strftime("%H:%M")}" : deposit.positive? ? "đã xác nhận" : "không cọc" %>
+                Đã nhận · phòng <%= booking.room.name %> · <%= booking.cancelled? ? "đặt phòng đã huỷ" : booking.held? ? (booking.hold_expires_at.future? ? "chờ cọc #{pms_money(deposit)} đến #{booking.hold_expires_at.strftime(booking.hold_expires_at.to_date == Date.current ? "%H:%M" : "%H:%M %d/%m")}" : "hết hạn giữ chỗ") : deposit.positive? ? "đã xác nhận" : "không cọc" %>
                 · <%= link_to "Xem đặt phòng", pms_booking_path(booking), class: "font-semibold text-pms-primary" %>
               <% elsif request.declined? %>
                 Từ chối: <%= BookingRequest::DECLINE_REASONS[request.decline_reason].downcase_first %><%= " · khách được gợi ý #{pms_range(request.suggested_start_date, request.suggested_end_date)}" if request.suggested_start_date %>
@@ -129,7 +134,7 @@
                   <div class="grid grid-flow-col auto-cols-fr gap-2">
                     <% Place::SITE_DEPOSIT_PERCENTS.each do |percent| %>
                       <label class="pms-btn px-1 has-[:checked]:border-pms-primary has-[:checked]:bg-pms-primary-bg has-[:checked]:text-pms-primary has-[:disabled]:opacity-45 has-[:disabled]:cursor-not-allowed">
-                        <%= radio_button_tag :deposit_percent, percent, percent == (place.bank? ? place.site_deposit_percent : 0), disabled: percent.positive? && !place.bank?,
+                        <%= radio_button_tag :deposit_percent, percent, percent == (place.bank? ? place.site_deposit_percent : 0), disabled: percent.positive? && !place.bank?, required: true,
                               id: dom_id(request, "deposit_#{percent}"), class: "sr-only" %><%= percent.zero? ? "Không cọc" : "#{percent}%" %>
                       </label>
                     <% end %>
@@ -167,15 +172,18 @@
                   <% end %>
                 </div>
               </fieldset>
-              <% suggested = request.suggestion %>
-              <div class="hidden group-has-[input[value=full]:checked]:block px-3 py-2.5 rounded-md border border-[#bccbe0] bg-pms-info-bg text-pms-info text-[13px] font-medium">
-                <% if suggested %>
-                  <%= hidden_field_tag :suggested_start_date, suggested.first, id: nil %><%= hidden_field_tag :suggested_end_date, suggested.last, id: nil %>
-                  Khách sẽ thấy gợi ý: <%= type %> còn trống <%= pms_range(*suggested) %>. Khách bấm là gửi yêu cầu mới.
-                <% else %>
-                  <%= type %> không còn trống trong <%= BookingRequest::SUGGEST_DAYS %> ngày sau, khách không nhận gợi ý ngày.
-                <% end %>
-              </div>
+              <%# Suggested dates only when the type is full now (and Hết phòng is picked). %>
+              <% if free.empty? %>
+                <% suggested = request.suggestion %>
+                <div class="hidden group-has-[input[value=full]:checked]:block px-3 py-2.5 rounded-md border border-[#bccbe0] bg-pms-info-bg text-pms-info text-[13px] font-medium">
+                  <% if suggested %>
+                    <%= hidden_field_tag :suggested_start_date, suggested.first, id: nil %><%= hidden_field_tag :suggested_end_date, suggested.last, id: nil %>
+                    Khách sẽ thấy gợi ý: <%= type %> còn trống <%= pms_range(*suggested) %>. Khách bấm là gửi yêu cầu mới.
+                  <% else %>
+                    <%= type %> không còn trống trong <%= BookingRequest::SUGGEST_DAYS %> ngày sau, khách không nhận gợi ý ngày.
+                  <% end %>
+                </div>
+              <% end %>
               <p class="text-[13px] text-pms-text-2">Khách thấy lý do bạn chọn trên hue-ni. Không hiện tên người trả lời.</p>
               <button class="pms-btn pms-btn-danger w-full">Từ chối</button>
               <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="<%= dom_id(request, :decline) %>" popovertargetaction="hide">Đóng</button>
