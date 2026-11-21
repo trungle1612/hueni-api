@@ -14,16 +14,21 @@
 <% if (place = current_place) %>
   <% chevron = tag.svg(tag.path(d: "M9 6l6 6-6 6"), class: "flex-none text-pms-text-2", width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 2, "aria-hidden": true) %>
   <% row = "flex items-center gap-3 min-h-14 px-3 py-2 w-full text-left no-underline" %>
-  <% missing = place.site_missing %>
-  <% live = place.site_open_in_database %>
+  <%# After a refused save the form keeps what was typed; the checklist, switch state and preview follow what is saved. %>
+  <% saved = place.changed? ? Place.find(place.id) : place %>
+  <% missing = saved.site_missing %>
+  <% live = saved.site_open %>
   <% blocked = missing.any? && !live %>
-  <% tonight = Date.current %>
-  <%# Each offered type tonight: its cheapest room (season % and all, like the booking page) and rooms free on hue-ni. %>
+  <%# Tonight, or tomorrow once same-day requests are closed (site_cutoff_hour), as book_online would take them. %>
+  <% day = Time.current.hour >= saved.site_cutoff_hour ? Date.tomorrow : Date.current %>
+  <% night = day == Date.current ? "tối nay" : "đêm mai" %>
+  <%# Each offered type that night: its cheapest room (season % and all, like the booking page) and rooms free on hue-ni. %>
   <% types = place.rooms.where(active: true).where.not(room_type: nil).order(:name).group_by(&:room_type).sort_by { Room::ROOM_TYPES.keys.index(it.first) }.map do |type, rooms|
-       { key: type, label: Room::ROOM_TYPES[type], free: place.site_free_rooms(rooms, tonight, tonight.next_day).size,
-         price: rooms.filter_map { Booking.new(room: it, start_date: tonight, end_date: tonight.next_day).room_total }.min }
+       { key: type, label: Room::ROOM_TYPES[type], free: place.site_free_rooms(rooms, day, day.next_day).size,
+         price: rooms.filter_map { Booking.new(room: it, start_date: day, end_date: day.next_day).room_total }.min }
      end %>
   <% shown = types.select { it[:key].in?(place.site_room_types) } %>
+  <% saved_shown = types.select { it[:key].in?(saved.site_room_types) } %>
   <% support = Pms::LegalController::LEGAL["support_phone"] %>
 
   <%= form_with scope: :listing, url: pms_listing_path, method: :patch, id: "listing_form", html: { novalidate: true } do |form| %>
@@ -54,9 +59,9 @@
       <div id="checklist" class="pms-panel divide-y divide-pms-border">
         <% done = {
              "photos" => [ "Ảnh homestay", "Có ảnh cho mỗi loại phòng hiển thị" ],
-             "map" => [ "Vị trí trên bản đồ", "Đã ghim#{" · #{place.address}" if place.address}" ],
-             "rules" => [ "Giờ nhận, trả phòng và quy định", "#{place.check_in_time} / #{place.check_out_time} · #{place.house_rules&.truncate(40)}" ],
-             "bank" => [ "Tài khoản nhận cọc", "#{place.bank_name} *** #{place.bank_account&.last(4)}" ]
+             "map" => [ "Vị trí trên bản đồ", "Đã ghim#{" · #{saved.address}" if saved.address}" ],
+             "rules" => [ "Giờ nhận, trả phòng và quy định", "#{saved.check_in_time} / #{saved.check_out_time} · #{saved.house_rules&.truncate(40)}" ],
+             "bank" => [ "Tài khoản nhận cọc", "#{saved.bank_name} *** #{saved.bank_account&.last(4)}" ]
            } %>
         <% done.each do |item, (label, ok)| %>
           <% gap = item.in?(missing) %>
@@ -86,7 +91,7 @@
             <label class="<%= row %> cursor-pointer">
               <span class="flex-1 min-w-0">
                 <span class="block truncate"><%= type[:label] %> · <%= type[:price] ? pms_money(type[:price]) : "chưa có giá" %></span>
-                <span class="block text-[13px] text-pms-text-2"><%= type[:free].positive? ? "Còn #{type[:free]} phòng trống tối nay" : "Hết phòng tối nay" %></span>
+                <span class="block text-[13px] text-pms-text-2"><%= type[:free].positive? ? "Còn #{type[:free]} phòng trống #{night}" : "Hết phòng #{night}" %></span>
               </span>
               <%= check_box_tag "listing[shown_room_types][]", type[:key], type.in?(shown), id: "type_#{type[:key]}", role: "switch", class: "pms-switch", aria: { label: "Mở phòng #{type[:label]} trên hue-ni" } %>
             </label>
@@ -133,8 +138,8 @@
 
   <section class="px-4 pt-4" aria-labelledby="h-preview">
     <h2 id="h-preview" class="pms-sec-h">Khách thấy trên hue-ni</h2>
-    <% free = shown.sum { it[:free] } %>
-    <% from = shown.filter_map { it[:price] }.min %>
+    <% free = saved_shown.sum { it[:free] } %>
+    <% from = saved_shown.filter_map { it[:price] }.min %>
     <div id="preview" class="rounded-lg overflow-hidden border border-[#ead9c2] bg-[#fdf6ec] text-[#2b1613]">
       <% if place.cover_image_url %>
         <%= image_tag place.cover_image_url, alt: "", class: "w-full h-30 object-cover" %>
@@ -146,14 +151,14 @@
         <% if place.address %><span class="text-[13px] text-[#6b4f45]"><%= place.address %></span><% end %>
       </div>
       <div class="flex justify-between items-baseline px-3 py-2 border-t border-[#ead9c2] text-[13px]">
-        <span>Tối nay · <%= pms_short_day(tonight) %></span>
+        <span><%= night.upcase_first %> · <%= pms_short_day(day) %></span>
         <b class="<%= live && free.positive? ? "text-[#2f6b3a]" : "text-[#7a5b4a]" %>"><%= !live ? "Liên hệ để hỏi phòng" : free.positive? ? "Còn phòng" : "Hết phòng" %></b>
       </div>
       <div class="flex justify-between items-baseline px-3 py-2 border-t border-[#ead9c2] text-[13px]">
         <span>Giá từ</span><b><%= from ? "#{pms_money(from)} / đêm" : "—" %></b>
       </div>
       <% if live %>
-        <div class="mx-3 mt-1 mb-3 min-h-10 rounded-full bg-[#7d0010] text-white flex items-center justify-center font-semibold"><%= place.site_mode_in_database == "auto" ? "Đặt phòng" : "Gửi yêu cầu đặt phòng" %></div>
+        <div class="mx-3 mt-1 mb-3 min-h-10 rounded-full bg-[#7d0010] text-white flex items-center justify-center font-semibold"><%= saved.site_mode == "auto" ? "Đặt phòng" : "Gửi yêu cầu đặt phòng" %></div>
       <% end %>
     </div>
     <p class="pt-1.5 text-xs text-pms-text-2">Mô phỏng thẻ homestay trên hue-ni, theo cài đặt đã lưu.</p>
@@ -188,6 +193,13 @@
           <%= form.text_area :house_rules, rows: 4, maxlength: 2000, placeholder: "Ví dụ: Không hút thuốc trong phòng. Giữ yên lặng sau 22:00.", class: "#{pms_input_class(place, :house_rules)} h-auto py-2.5", aria: field_aria(place, :house_rules) %>
           <%= pms_field_error(place, :house_rules) %>
         </div>
+        <% listing_errors = place.errors.reject { it.attribute.in?(%i[check_in_time check_out_time house_rules]) }.map(&:full_message).uniq %>
+        <% if listing_errors.any? %>
+          <div id="rules_listing_errors" role="alert" class="text-[13px] font-semibold text-pms-danger">
+            <% listing_errors.each do |message| %><p><%= message %></p><% end %>
+            <p class="font-normal">Đang hiện trên hue-ni nên phải đủ các mục này. Sửa mục còn thiếu hoặc tạm dừng hiển thị rồi lưu lại.</p>
+          </div>
+        <% end %>
         <p class="text-[13px] text-pms-text-2">Khách thấy trên hue-ni trước khi gửi yêu cầu.</p>
         <%= form.button "Lưu", class: "pms-btn pms-btn-primary w-full" %>
       <% end %>

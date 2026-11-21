@@ -41,6 +41,8 @@ class Pms::ListingTest < ActionDispatch::IntegrationTest
     patch pms_listing_rules_path, params: { place: { check_in_time: "25:00", house_rules: "Không hút thuốc." } }
     assert_response :unprocessable_entity
     assert_select "#rules_sheet[data-controller=open] #check_in_time_error", text: /phải theo dạng 14:00/
+    assert_select "#check_rules", text: /!.*Cần giờ nhận, trả phòng và quy định/m
+    assert_select "input[name='listing[open]'][disabled]"
     patch pms_listing_rules_path, params: { place: { check_in_time: "14:00", check_out_time: "12:00", house_rules: "Không hút thuốc." } }
     assert_redirected_to pms_listing_path
     follow_redirect!
@@ -73,7 +75,29 @@ class Pms::ListingTest < ActionDispatch::IntegrationTest
     patch pms_listing_path, params: listing(shown_room_types: nil)
     assert_response :unprocessable_entity
     assert_select "#listing_errors", text: /cần ít nhất một loại phòng hiển thị/
+    assert_select "#preview", text: /Tối nay · T5 01\/10\s*Còn phòng.*Giá từ\s*400.000đ/m
     assert_equal [], @place.reload.site_hidden_room_types
+  end
+
+  test "rules refused by the listing's own checks say why in the sheet" do
+    site_ready(@place)
+    @place.update!(site_open: true)
+    @place.rooms.update_all(active: false)
+    log_in users(:owner)
+    patch pms_listing_rules_path, params: { place: { house_rules: "Giữ yên lặng sau 22:00." } }
+    assert_response :unprocessable_entity
+    assert_select "#rules_sheet[data-controller=open] #rules_listing_errors", text: /cần ít nhất một loại phòng hiển thị.*tạm dừng hiển thị/m
+    assert_equal "Không hút thuốc trong phòng.", @place.reload.house_rules
+  end
+
+  test "after the same-day cutoff the preview shows tomorrow night" do
+    travel_to Time.zone.local(2026, 10, 1, 21)
+    site_ready(@place)
+    @place.update!(site_open: true)
+    log_in users(:owner)
+    get pms_listing_path
+    assert_select "main", text: /Phòng gia đình · 600.000đ\s*Hết phòng đêm mai/
+    assert_select "#preview", text: /Đêm mai · T6 02\/10\s*Còn phòng/
   end
 
   test "staff get 403; a homestay of someone else stays untouched; no homestay is 404" do
@@ -91,8 +115,10 @@ class Pms::ListingTest < ActionDispatch::IntegrationTest
 
     other = places(:hiuhill)
     log_in users(:owner)
+    # ?co_so= of a homestay the user isn't in is ignored: the request stays on their own homestay.
     patch pms_listing_path(co_so: other.slug), params: listing(open: "0", mode: "auto")
-    assert_equal "approve", other.reload.site_mode
+    assert_redirected_to pms_listing_path
+    assert_equal [ "approve", "auto" ], [ other.reload.site_mode, @place.reload.site_mode ]
 
     @place.place_memberships.where(user: users(:owner)).delete_all
     patch pms_listing_path, params: listing(open: "0")
