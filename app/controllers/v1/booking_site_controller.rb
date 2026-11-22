@@ -15,19 +15,20 @@ class V1::BookingSiteController < V1::BaseController
     from = to = nil unless from && to&.after?(from) && to - from <= Place::SITE_MAX_NIGHTS
     rooms = place.rooms.where(active: true, room_type: place.site_room_types).order(:name).to_a
     by_type = rooms.group_by(&:room_type)
+    free = (by_type.transform_values { place.site_free_rooms(it, from, to) } if from)
     render json: {
       name: place.name, open: true,
       deposit_percent: place.site_deposit_percent, hold_minutes: place.site_hold_minutes, cutoff_hour: place.site_cutoff_hour,
       mode: place.site_mode, reply_minutes: place.site_reply_minutes,
       check_in: place.check_in_time, check_out: place.check_out_time, rules: place.house_rules,
       room_types: by_type.map do |type, typed|
-        free = (place.site_free_rooms(typed, from, to).map { Booking.new(room: it, start_date: from, end_date: to) } if from)
         { key: type, label: Room::ROOM_TYPES[type], max_guests: typed.map(&:max_guests).max,
-          left: free&.size, total: free&.filter_map(&:room_total)&.min }
+          left: (place.site_rooms_left(typed, from, to) if from),
+          total: free&.dig(type)&.filter_map { Booking.new(room: it, start_date: from, end_date: to).room_total }&.min }
       end,
       rooms: rooms.map do |room|
         { id: room.id, name: room.name, room_type: room.room_type, max_guests: room.max_guests,
-          free: (place.site_free_rooms(by_type[room.room_type], from, to, keep: room).include?(room) if from),
+          free: (free[room.room_type].include?(room) if from),
           total: (Booking.new(room:, start_date: from, end_date: to).room_total if from) }
       end
     }

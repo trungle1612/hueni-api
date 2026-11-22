@@ -64,6 +64,29 @@ class BookingRequestTest < ActiveSupport::TestCase
     assert_match "Phòng đôi · Phòng Garden · ", Notification.where(kind: "booking_request").last.body
   end
 
+  test "holds by need (#290): Nhận leaves a picked room alone, a picked room taken or retyped still holds one, sizes count" do
+    stay = { start_date: "2026-10-05", end_date: "2026-10-06" }
+    typed = ask(**stay)
+    picked = ask(room_id: rooms(:limdim).id, guest_name: "Anh Tú", **stay)
+    assert_equal [ rooms(:garden) ], typed.free_rooms
+    assert_not typed.accept(room: rooms(:limdim), deposit_percent: 0)
+    assert_equal [ "Phòng Limdim đang giữ cho yêu cầu khác trên hue-ni" ], typed.errors[:base]
+    assert typed.accept(room: rooms(:garden), deposit_percent: 0)
+
+    picked.update!(start_date: "2026-10-07", end_date: "2026-10-08")
+    rooms(:limdim).bookings.create!(start_date: "2026-10-07", end_date: "2026-10-08", guest_name: "Khách OTA")
+    assert_equal [ Place::SITE_FULL ], ask(start_date: "2026-10-07", end_date: "2026-10-08").errors[:base], "its room taken, it holds Garden"
+    picked.update!(start_date: "2026-10-09", end_date: "2026-10-10")
+    rooms(:limdim).update!(room_type: "family")
+    assert_equal [ Place::SITE_FULL ], ask(start_date: "2026-10-09", end_date: "2026-10-10").errors[:base], "its room retyped, it holds Garden"
+
+    rooms(:limdim).update!(room_type: "double")
+    stay = { start_date: "2026-10-11", end_date: "2026-10-12" }
+    assert ask(guests: 4, **stay).persisted?
+    assert_equal [ Place::SITE_ROOM_FULL ], ask(room_id: rooms(:limdim).id, guest_name: "Chị Mai", **stay).errors[:base], "Limdim is the only room for 4"
+    assert ask(room_id: rooms(:garden).id, guest_name: "Chị Mai", **stay).persisted?
+  end
+
   test "a picked room must be this homestay's, on, of a shown type, big enough and free; auto mode books it" do
     other = places(:hiuhill).rooms.create!(name: "Sen", room_type: "double", max_guests: 2)
     assert_equal [ "Phòng này không nhận đặt online" ], ask(room_id: other.id).errors[:base]

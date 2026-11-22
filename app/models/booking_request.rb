@@ -38,10 +38,13 @@ class BookingRequest < ApplicationRecord
   # What the guest's status link says: expired as soon as the deadline passes, before expire runs.
   def site_status = pending? && !open? ? "expired" : status
 
+  HELD = "Phòng %s đang giữ cho yêu cầu khác trên hue-ni"
+
   # Yêu cầu đặt phòng (#284): the switched-on rooms of its type that fit the guests (those book_online offered), and
-  # the ones free on the calendar for its dates now (what Nhận can book).
+  # the ones Nhận can book now: free on the calendar and not needed by another pending request (#290).
   def rooms = place.rooms.where(active: true, room_type:).where(max_guests: guests..).order(:name)
-  def free_rooms = rooms.select { free?(it, start_date, end_date) }
+  def free_rooms = place.site_free_rooms(type_rooms, start_date, end_date, except: self, guests:)
+  def calendar_free?(room) = free?(room, start_date, end_date)
   # Tạm tính: the picked room's stay, else the cheapest among those rooms, as hue-ni's Giá từ.
   def estimate = (room ? [ room ] : rooms).filter_map { Booking.new(room: it, start_date:, end_date:).room_total }.min
 
@@ -59,13 +62,13 @@ class BookingRequest < ApplicationRecord
 
   # Từ chối · Hết phòng: the first stay as long as the one asked, starting within SUGGEST_DAYS after it, that hue-ni
   # would take now: free there (other pending requests hold rooms; this one won't once declined), not past the cutoff.
+  # The room the guest picked first, else any room of the type.
   def suggestion
     nights = (end_date - start_date).to_i
-    typed = rooms.to_a
-    from = (1..SUGGEST_DAYS).map { start_date + it }.find do |day|
-      next false if day < Date.current || (day == Date.current && Time.current.hour >= place.site_cutoff_hour)
-      typed.any? && place.site_free_rooms(typed, day, day + nights, except: self).any?
-    end
+    typed = type_rooms
+    days = (1..SUGGEST_DAYS).map { start_date + it }.reject { it < Date.current || (it == Date.current && Time.current.hour >= place.site_cutoff_hour) }
+    free = days.index_with { place.site_free_rooms(typed, it, it + nights, except: self, guests:) }
+    from = (days.find { free[it].include?(room) } if room) || days.find { free[it].any? }
     from && [ from, from + nights ]
   end
 
@@ -83,7 +86,9 @@ class BookingRequest < ApplicationRecord
       next refuse("Phòng #{room.name} không phải #{Room::ROOM_TYPES[room_type]}") unless room.room_type == room_type
       booking = room.bookings.build(start_date:, end_date:, guests:, guest_name:, guest_phone:, note:, online: true,
         hold_expires_at: (place.site_hold_minutes.minutes.from_now if deposit_percent.positive?))
-      next refuse(*booking.errors.full_messages) unless booking.save
+      next refuse(*booking.errors.full_messages) unless booking.valid?
+      next refuse(format(HELD, room.name)) unless room.in?(place.site_free_rooms(type_rooms, start_date, end_date, except: self))
+      booking.save!
       update!(status: "accepted", booking:, deposit_percent:)
     end
   end
@@ -128,6 +133,8 @@ class BookingRequest < ApplicationRecord
   end
 
   private
+    def type_rooms = place.rooms.where(active: true, room_type:).order(:name).to_a
+
     def free?(room, from, to) = Booking.new(room:, start_date: from, end_date: to).date_problems.empty?
 
     def refuse(*messages)

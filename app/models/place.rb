@@ -141,11 +141,11 @@ class Place < ApplicationRecord
     end
     return booking if booking.errors.any?
 
-    fitting = rooms.where(active: true, room_type:).where(max_guests: booking.guests..).order(:name).to_a
-    if room ? fitting.exclude?(room) : fitting.none?
+    typed = rooms.where(active: true, room_type:).order(:name).to_a
+    if (room ? [ room ] : typed).none? { it.max_guests >= booking.guests }
       return booking.tap { it.errors.add(:guests, "nhiều hơn sức chứa của #{room ? "phòng" : "loại phòng"} này") }
     end
-    free = site_free_rooms(fitting, from, to, keep: room)
+    free = site_free_rooms(typed, from, to, guests: booking.guests)
     booking = (room ? (room if free.include?(room)) : free.first)&.then { Booking.new(room: it, **attrs) }
     full = room ? SITE_ROOM_FULL : SITE_FULL
     return Booking.new(attrs).tap { it.errors.add(:base, full) } unless booking&.valid?
@@ -157,14 +157,19 @@ class Place < ApplicationRecord
     booking
   end
 
-  # Rooms of one type free on hue-ni for from...to: free on the calendar, less the rooms pending requests picked (#290),
-  # less the most pending typed requests on any one night (requests on different nights can share a room).
-  # except: a request not to count. keep: a room the typed holds take last, so it stays in while any room does.
-  def site_free_rooms(typed, from, to, except: nil, keep: nil)
-    held = booking_requests.holding(typed.first.room_type, from, to).where.not(id: except).pluck(:room_id, :start_date, :end_date)
-    picked, any = held.partition(&:first)
-    free = typed.reject { it.id.in?(picked.map(&:first)) }.select { Booking.new(room: it, start_date: from, end_date: to).date_problems.empty? }
-    free.partition { it != keep }.sum([]).drop((from...to).map { |night| any.count { |_, first, last| night >= first && night < last } }.max.to_i)
+  # Rooms of one type hue-ni can sell for from...to, each on its own: free on the calendar, and taking it leaves every
+  # pending request of the type as well served on each of its nights (#290): a request needs the room its guest picked
+  # while that room is free for its stay, else any room of the type that fits its guests (an OTA took the picked room,
+  # or the owner changed its type). except: a request not to count. guests: only rooms that fit.
+  def site_free_rooms(typed, from, to, except: nil, guests: 1)
+    pool, holds = site_stock(typed, from, to, except)
+    pool.select { it.max_guests >= guests.to_i && site_keeps_holds?(holds, pool, [ it ], from, to) }
+  end
+
+  # How many more stays hue-ni can take for from...to: rooms taken one by one while the pending requests keep theirs.
+  def site_rooms_left(typed, from, to)
+    pool, holds = site_stock(typed, from, to, nil)
+    pool.each_with_object([]) { |room, taken| taken << room if site_keeps_holds?(holds, pool, taken + [ room ], from, to) }.size
   end
 
   # Room types offered online: those of switched-on rooms, minus the hidden ones. Rooms without a type are not offered.
@@ -215,4 +220,38 @@ class Place < ApplicationRecord
     end
     counts
   end
+
+  private
+    # The calendar-free rooms, and each pending request's need: [first night, departure, rooms it can use]. A picked
+    # room free for the request's stay but busy in from...to holds nothing here.
+    def site_stock(typed, from, to, except)
+      return [ [], [] ] if typed.empty?
+      free = ->(room, first, last) { Booking.new(room:, start_date: first, end_date: last).date_problems.empty? }
+      pool = typed.select { free.(it, from, to) }
+      holds = booking_requests.holding(typed.first.room_type, from, to).where.not(id: except).includes(:room).filter_map do |request|
+        picked = request.room if request.room.in?(typed) && free.(request.room, request.start_date, request.end_date)
+        next if picked && !picked.in?(pool)
+        [ request.start_date, request.end_date, picked ? [ picked ] : typed.select { it.max_guests >= request.guests } ]
+      end
+      [ pool, holds ]
+    end
+
+    # Taking these rooms serves as many requests on every night as the whole pool does.
+    def site_keeps_holds?(holds, pool, taken, from, to)
+      rest = pool - taken
+      (from...to).map { |night| holds.select { |first, last, _| night >= first && night < last } }.uniq
+        .all? { |active| site_served(active, rest) == site_served(active, pool) }
+    end
+
+    # Most requests given a room at once (augmenting paths; a handful of requests and rooms per type).
+    def site_served(holds, rooms)
+      match = {}
+      holds.count { |hold| site_augment(hold, rooms, match, Set.new) }
+    end
+
+    def site_augment(hold, rooms, match, seen)
+      (hold.last & rooms).any? do |room|
+        seen.add?(room) && (match[room].nil? || site_augment(match[room], rooms, match, seen)) && (match[room] = hold)
+      end
+    end
 end

@@ -139,7 +139,7 @@
                               data: { deposits: Place::SITE_DEPOSIT_PERCENTS.to_h { [ it, (pms_money(stay.site_deposit(it)) if stay.site_deposit(it).positive?) ] }.to_json } %>
                         <span class="flex-1 min-w-0">
                           <span class="block font-semibold"><%= room.name %></span>
-                          <span class="block text-[13px] text-pms-text-2"><%= [ busy ? "Đã có khách" : "Trống", ("Tầng #{room.floor}" if room.floor.present?), ("Tạm tính #{pms_money(stay.room_total)}" if stay.room_total) ].compact.join(" · ") %></span>
+                          <span class="block text-[13px] text-pms-text-2"><%= [ busy ? (request.calendar_free?(room) ? "Giữ cho yêu cầu khác" : "Đã có khách") : "Trống", ("Tầng #{room.floor}" if room.floor.present?), ("Tạm tính #{pms_money(stay.room_total)}" if stay.room_total) ].compact.join(" · ") %></span>
                         </span>
                       </label>
                     <% end %>
