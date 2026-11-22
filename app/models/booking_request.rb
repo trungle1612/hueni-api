@@ -11,6 +11,8 @@ class BookingRequest < ApplicationRecord
   }.freeze
   CLOSED = "Yêu cầu này đã được trả lời hoặc đã hết hạn"
   DAYS = 30
+  # Hoàn tác (#292): how long after Nhận / Từ chối the toast's undo is honoured.
+  UNDO_MINUTES = 10
 
   belongs_to :place
   belongs_to :booking, optional: true
@@ -92,6 +94,36 @@ class BookingRequest < ApplicationRecord
     with_lock do
       next refuse(CLOSED) unless open?
       update(status: "declined", decline_reason: reason, suggested_start_date:, suggested_end_date:) || (restore_attributes; false)
+    end
+  end
+
+  # Hoàn tác (#292): back to pending, as if never answered. An accepted one's booking goes without a trace (its
+  # versions, notifications, no Đặt phòng bị huỷ), so only while its Lịch sử is its creation alone, and never once the
+  # guest was shown the bank account for a deposit (the transfer is recorded by hand, it may be on its way).
+  def undo
+    errors.clear
+    with_lock do
+      next refuse(undo_refusal) if undo_refusal
+      if (booking = self.booking)
+        update!(status: "pending", booking: nil, deposit_percent: nil)
+        PaperTrail::Version.where(item_type: "Booking", item_id: booking.id).delete_all
+        Notification.where(booking_id: booking.id).delete_all
+        booking.delete
+        Vacancy.bust
+      else
+        update!(status: "pending", decline_reason: nil, suggested_start_date: nil, suggested_end_date: nil)
+      end
+      true
+    end
+  end
+
+  def can_undo? = undo_refusal.nil?
+
+  def undo_refusal
+    if !(accepted? || declined?) then "Yêu cầu này chưa được trả lời"
+    elsif updated_at < UNDO_MINUTES.minutes.ago || !reply_by.future? then "Đã quá thời gian hoàn tác"
+    elsif deposit_percent.to_i.positive? then "Khách đã thấy tài khoản để chuyển cọc, không hoàn tác được"
+    elsif booking&.history&.many? then "Đặt phòng đã được sửa, thu tiền hoặc nhận phòng, không hoàn tác được"
     end
   end
 

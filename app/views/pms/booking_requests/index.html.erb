@@ -10,7 +10,7 @@
     <% end %>
     <div class="flex-1 min-w-0 flex flex-col">
       <h1 class="text-[17px] leading-tight font-semibold truncate">Yêu cầu đặt phòng</h1>
-      <span class="text-xs text-pms-text-2 truncate">Khách gửi từ hue-ni · bạn quyết định nhận hay không</span>
+      <span class="text-xs text-pms-text-2 truncate">Khách đang chờ bạn gọi hoặc nhắn Zalo</span>
     </div>
     <% if manage %>
       <%= link_to pms_listing_path, class: "flex-none flex items-center justify-center size-11 rounded-md", "aria-label": "Cài đặt hiển thị trên hue-ni" do %>
@@ -80,6 +80,15 @@
           <% if request.note %>
             <p class="mx-3 mt-1 px-2.5 py-2 border-l-[3px] border-pms-border-strong bg-pms-bg text-[13px]">“<%= request.note %>”</p>
           <% end %>
+          <%# #292: the homestay calls or Zalos the guest itself; no phone once declined or expired. %>
+          <% if request.open? || request.accepted? %>
+            <% dial = request.guest_phone.gsub(/[^\d+]/, "") %>
+            <div class="mx-3 mt-2 flex items-center gap-2 px-3 py-2 rounded-lg border border-pms-border">
+              <span class="flex-1 min-w-0"><span class="block text-[13px] text-pms-text-2">Số của khách</span><b class="block tabular-nums"><%= request.guest_phone %></b></span>
+              <%= link_to "Gọi", "tel:#{dial}", class: "pms-btn px-3" %>
+              <%= link_to "Nhắn Zalo", "https://zalo.me/#{dial.delete("+")}", target: "_blank", rel: "noopener", class: "pms-btn px-3" %>
+            </div>
+          <% end %>
 
           <% if request.open? %>
             <% if free.any? %>
@@ -148,17 +157,22 @@
                   </div>
                   <% unless place.bank? %><p class="pt-2 text-[13px] text-pms-text-2">Thêm tài khoản chuyển khoản ở Cài đặt cơ sở để nhận cọc.</p><% end %>
                 </fieldset>
-                <div class="flex flex-col gap-1.5">
-                  <span class="text-[13px] font-semibold">Khách thấy trên hue-ni</span>
-                  <p class="px-3 py-2.5 rounded-lg border border-pms-border bg-pms-bg text-[13px] leading-relaxed">
+                <%# zalo.me links can't prefill text: the owner copies it and pastes it into Zalo. %>
+                <div class="flex flex-col gap-1.5" data-controller="copy">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-[13px] font-semibold">Tin nhắn soạn sẵn · dán vào Zalo khi nhắn khách</span>
+                    <button type="button" class="pms-btn pms-btn-ghost min-h-9 px-2" data-copy-target="button" data-action="copy#copy">Sao chép</button>
+                  </div>
+                  <p data-copy-target="source" class="px-3 py-2.5 rounded-lg border border-pms-border bg-pms-bg text-[13px] leading-relaxed">
                     <%= place.name %> đã nhận yêu cầu của bạn: <%= type %>, <%= pms_range(request.start_date, request.end_date) %> (<%= nights %> đêm).
                     <span data-deposit-preview-target="deposit">Vui lòng chuyển cọc <b data-deposit-preview-target="amount"></b> vào tài khoản <%= place.bank_name %> trong <%= place.site_hold_minutes < 60 ? "#{place.site_hold_minutes} phút" : "#{place.site_hold_minutes / 60} giờ" %>. Quá hạn phòng sẽ được mở lại.</span>
                     <span data-deposit-preview-target="none">Không cần cọc, thanh toán khi nhận phòng.</span>
                     <% if place.check_in_time %>Nhận phòng từ <%= place.check_in_time %>.<% end %>
                   </p>
                 </div>
+                <p class="px-3 py-2.5 rounded-md border border-[#bccbe0] bg-pms-info-bg text-pms-info text-[13px] font-medium">Sau khi nhận, hãy gọi hoặc nhắn Zalo cho khách ngay: khách được báo là homestay sẽ liên hệ trong <%= place.site_reply_minutes %> phút.</p>
                 <p class="text-[13px] text-pms-text-2">Khách chuyển cọc thẳng vào tài khoản của bạn. hue-ni và hueni PMS không giữ tiền.</p>
-                <button class="pms-btn pms-btn-primary w-full">Nhận và báo khách</button>
+                <button class="pms-btn pms-btn-primary w-full">Nhận yêu cầu</button>
                 <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="<%= dom_id(request, :accept) %>" popovertargetaction="hide">Đóng</button>
               <% end %>
             </div>
@@ -191,7 +205,7 @@
                   <% end %>
                 </div>
               <% end %>
-              <p class="text-[13px] text-pms-text-2">Khách thấy lý do bạn chọn trên hue-ni. Không hiện tên người trả lời.</p>
+              <p class="text-[13px] text-pms-text-2">Trang yêu cầu của khách hiện lý do bạn chọn. Nên gọi hoặc nhắn khách một câu để họ kịp tìm nơi khác.</p>
               <button class="pms-btn pms-btn-danger w-full">Từ chối</button>
               <button type="button" class="pms-btn pms-btn-ghost w-full" popovertarget="<%= dom_id(request, :decline) %>" popovertargetaction="hide">Đóng</button>
             <% end %>
@@ -199,11 +213,11 @@
         <% end %>
       <% end %>
       <% unless @tab %>
-        <p class="text-[13px] text-pms-text-2">Không trả lời trong thời hạn, yêu cầu tự hết hạn và khách được báo để tìm nơi khác.<%= " Thời hạn đổi ở Hiển thị trên hue-ni." if manage %></p>
+        <p class="text-[13px] text-pms-text-2">Khách được báo: homestay sẽ gọi hoặc nhắn Zalo trong thời hạn trả lời. Quá hạn, yêu cầu tự hết hạn.<%= " Thời hạn đổi ở Hiển thị trên hue-ni." if manage %></p>
       <% end %>
     </div>
   <% end %>
-  <%= render "pms/toast" %>
+  <%= render "pms/toast", undo: @undo %>
 <% else %>
   <%= render "pms/no_place" %>
 <% end %>
