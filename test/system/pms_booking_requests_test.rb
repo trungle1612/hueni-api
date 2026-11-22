@@ -29,9 +29,10 @@ class PmsBookingRequestsTest < ApplicationSystemTestCase
       assert_no_text "Vui lòng chuyển cọc"
       find("label", text: "50%").click
       assert_text "Vui lòng chuyển cọc 200.000đ"
-      click_button "Nhận và báo khách"
+      assert_button "Sao chép"
+      click_button "Nhận yêu cầu"
     end
-    assert_selector ".pms-toast", text: "Đã nhận, tạo đặt phòng"
+    assert_selector ".pms-toast", text: "Đã nhận, đã tạo đặt phòng. Gọi hoặc nhắn Chị Hoa ngay"
     assert_link "Xem đặt phòng"
     assert_equal [ "accepted", 50 ], first.reload.values_at(:status, :deposit_percent)
 
@@ -44,5 +45,11 @@ class PmsBookingRequestsTest < ApplicationSystemTestCase
     assert_selector ".pms-toast", text: "Đã từ chối và báo khách"
     assert_text "Từ chối: không nhận khách những ngày này"
     assert_equal [ "declined", "dates" ], second.reload.values_at(:status, :decline_reason)
+
+    within(".pms-toast") { click_button "Hoàn tác" }
+    assert_selector ".pms-toast", text: "Đã hoàn tác, yêu cầu chờ trả lời lại"
+    assert_link "Chờ trả lời · 1"
+    assert_link "Nhắn Zalo", href: "https://zalo.me/0905111333"
+    assert second.reload.pending?
   end
 end

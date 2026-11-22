@@ -7,6 +7,8 @@ class NotificationJob < ApplicationJob
   discard_on ActiveRecord::InvalidForeignKey
 
   def perform(attributes)
+    # Hoàn tác of a Nhận (#292) deleted the booking before this ran.
+    return if attributes[:booking_id] && !Booking.exists?(attributes[:booking_id])
     notification = Notification.create!(attributes)
     PushNotificationJob.perform_later(notification) if WebPush.enabled?
   end
