@@ -47,8 +47,8 @@ class Pms::BookingRequestsTest < ActionDispatch::IntegrationTest
     booking = request.reload.booking
     assert_equal [ "accepted", 30, rooms(:garden), true ], [ request.status, request.deposit_percent, booking.room, booking.held? ]
     follow_redirect!
-    assert_select ".pms-toast", text: /Đã nhận, đã tạo đặt phòng. Gọi hoặc nhắn Chị Hoa ngay\s*Hoàn tác/
-    assert_select ".pms-toast form[action=?]", undo_pms_booking_request_path(request)
+    assert_select ".pms-toast", text: "Đã nhận, đã tạo đặt phòng. Gọi hoặc nhắn Chị Hoa ngay"
+    assert_select ".pms-toast form", 0, "the guest already sees the bank account: no Hoàn tác"
     assert_select "##{dom_id(request)}", text: /Đã nhận.*phòng Garden · chờ cọc 120.000đ đến 12:30/m
     assert_select "##{dom_id(request)} a[href=?]", pms_booking_path(booking), text: "Xem đặt phòng"
   end
@@ -189,6 +189,7 @@ class Pms::BookingRequestsTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     post decline_pms_booking_request_path(other), params: { reason: "dates" }
     assert_response :not_found
+    assert other.reload.pending?
     other.decline(reason: "dates")
     post undo_pms_booking_request_path(other)
     assert_response :not_found
@@ -222,18 +223,24 @@ class Pms::BookingRequestsTest < ActionDispatch::IntegrationTest
     assert_select "##{dom_id(expired)}"
     assert_select "a[href^='tel:'], a[href^='https://zalo.me']", count: 0
     assert_select "main", text: /0905 111 333/, count: 0
+
+    abroad = ask(start_date: "2026-10-11", end_date: "2026-10-12", guest_phone: "+84 905 111 444")
+    get pms_booking_requests_path
+    assert_select "##{dom_id(abroad)} a[href='tel:+84905111444']"
+    assert_select "##{dom_id(abroad)} a[href='https://zalo.me/84905111444']"
   end
 
   test "Hoàn tác after Nhận removes the booking without a trace; the request waits again" do
     request = ask
     log_in users(:owner)
-    post accept_pms_booking_request_path(request), params: { room_id: rooms(:garden).id, deposit_percent: 30 }
-    perform_enqueued_jobs
+    post accept_pms_booking_request_path(request), params: { room_id: rooms(:garden).id, deposit_percent: 0 }
+    follow_redirect!
+    assert_select ".pms-toast form[action=?]", undo_pms_booking_request_path(request)
     booking = request.reload.booking
-    assert Notification.exists?(booking_id: booking.id)
     assert_no_enqueued_jobs only: NotificationJob do
       post undo_pms_booking_request_path(request)
     end
+    perform_enqueued_jobs # Đặt phòng mới, queued before the undo
     assert_redirected_to pms_booking_requests_path
     assert_equal [ "pending", nil, nil ], request.reload.values_at(:status, :booking_id, :deposit_percent)
     assert_not Booking.exists?(booking.id)
@@ -255,20 +262,22 @@ class Pms::BookingRequestsTest < ActionDispatch::IntegrationTest
     assert_equal "pending", request.site_status
   end
 
-  test "Hoàn tác is refused once the booking has money or a guest in, and after the undo window" do
-    request = ask
+  test "Hoàn tác is refused once the booking was worked on, with a deposit asked, and after the undo window" do
+    paid, edited, deposit = ask, ask(start_date: "2026-10-05", end_date: "2026-10-06"), ask(start_date: "2026-10-07", end_date: "2026-10-08")
+    [ paid, edited ].each { it.accept(room: rooms(:garden), deposit_percent: 0) }
+    deposit.accept(room: rooms(:garden), deposit_percent: 30)
     log_in users(:owner)
-    post accept_pms_booking_request_path(request), params: { room_id: rooms(:garden).id, deposit_percent: 0 }
-    follow_redirect!
-    assert_select ".pms-toast form[action=?]", undo_pms_booking_request_path(request)
-    request.reload.booking.payments.create!(amount: 100_000, payment_method: "cash")
-    post undo_pms_booking_request_path(request)
-    assert_redirected_to pms_booking_requests_path(loc: "da-nhan")
-    follow_redirect!
-    assert_select "[role=alert]", text: /đã có thu tiền/
-    assert request.reload.accepted?
+    paid.booking.payments.create!(amount: 100_000, payment_method: "cash").destroy! # added then deleted: still in Lịch sử
+    edited.booking.update!(note: "Đến muộn")
+    { paid => /đã được sửa, thu tiền/, edited => /đã được sửa, thu tiền/, deposit => /đã thấy tài khoản để chuyển cọc/ }.each do |request, message|
+      post undo_pms_booking_request_path(request)
+      assert_redirected_to pms_booking_requests_path(loc: "da-nhan")
+      follow_redirect!
+      assert_select "[role=alert]", text: message
+      assert request.reload.accepted?
+    end
 
-    other = ask(start_date: "2026-10-05", end_date: "2026-10-06")
+    other = ask(start_date: "2026-10-09", end_date: "2026-10-10")
     other.decline(reason: "dates")
     travel (BookingRequest::UNDO_MINUTES + 1).minutes
     post undo_pms_booking_request_path(other)

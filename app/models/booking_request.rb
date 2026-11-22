@@ -96,7 +96,8 @@ class BookingRequest < ApplicationRecord
   end
 
   # Hoàn tác (#292): back to pending, as if never answered. An accepted one's booking goes without a trace (its
-  # versions, notifications, no Đặt phòng bị huỷ), so only while nobody has worked on it yet.
+  # versions, notifications, no Đặt phòng bị huỷ), so only while its Lịch sử is its creation alone, and never once the
+  # guest was shown the bank account for a deposit (the transfer is recorded by hand, it may be on its way).
   def undo
     errors.clear
     with_lock do
@@ -119,8 +120,8 @@ class BookingRequest < ApplicationRecord
   def undo_refusal
     if !(accepted? || declined?) then "Yêu cầu này chưa được trả lời"
     elsif updated_at < UNDO_MINUTES.minutes.ago || !reply_by.future? then "Đã quá thời gian hoàn tác"
-    elsif booking && (booking.cancelled? || booking.checked_in_at || booking.payments.exists? || booking.charges.exists?)
-      "Đặt phòng đã có thu tiền, dịch vụ hoặc khách đã nhận phòng, không hoàn tác được"
+    elsif deposit_percent.to_i.positive? then "Khách đã thấy tài khoản để chuyển cọc, không hoàn tác được"
+    elsif booking&.history&.many? then "Đặt phòng đã được sửa, thu tiền hoặc nhận phòng, không hoàn tác được"
     end
   end
 

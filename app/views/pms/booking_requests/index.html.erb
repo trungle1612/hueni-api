@@ -78,11 +78,11 @@
           <% end %>
           <%# #292: the homestay calls or Zalos the guest itself; no phone once declined or expired. %>
           <% if request.open? || request.accepted? %>
-            <% digits = request.guest_phone.delete("^0-9") %>
+            <% dial = request.guest_phone.gsub(/[^\d+]/, "") %>
             <div class="mx-3 mt-2 flex items-center gap-2 px-3 py-2 rounded-lg border border-pms-border">
               <span class="flex-1 min-w-0"><span class="block text-[13px] text-pms-text-2">Số của khách</span><b class="block tabular-nums"><%= request.guest_phone %></b></span>
-              <%= link_to "Gọi", "tel:#{digits}", class: "pms-btn px-3" %>
-              <%= link_to "Nhắn Zalo", "https://zalo.me/#{digits}", target: "_blank", rel: "noopener", class: "pms-btn px-3" %>
+              <%= link_to "Gọi", "tel:#{dial}", class: "pms-btn px-3" %>
+              <%= link_to "Nhắn Zalo", "https://zalo.me/#{dial.delete("+")}", target: "_blank", rel: "noopener", class: "pms-btn px-3" %>
             </div>
           <% end %>
 
