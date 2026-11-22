@@ -41,6 +41,7 @@ Rails.application.routes.draw do
     resources :booking_requests, path: "yeu-cau-dat-phong", only: :index do
       post :accept, on: :member, path: "nhan"
       post :decline, on: :member, path: "tu-choi"
+      post :undo, on: :member, path: "hoan-tac"
     end
     resources :members, path: "nhan-vien", only: %i[index create update destroy] do
       post :lock, on: :member, path: "khoa"
