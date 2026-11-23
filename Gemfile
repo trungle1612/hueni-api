@@ -81,4 +81,4 @@ gem "rollbar", "~> 3.8"
 gem "newrelic_rpm", "~> 10.9"
 
 # Ảnh phòng (#187): resize to WebP and strip EXIF with libvips (in the Docker image).
-gem "image_processing", "~> 1.14", require: false
+gem "image_processing", "~> 2.2", require: false
