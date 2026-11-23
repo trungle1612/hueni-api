@@ -10,9 +10,14 @@ class V1::PhotosControllerTest < ActionDispatch::IntegrationTest
 
     get "/v1/places/tomo-homestay/photos", headers: { "Origin" => "https://hueni.me" }
     assert_response :success
-    assert_equal({ "rooms" => [ { "name" => "Garden", "room_type" => "double", "photos" => urls } ] }, response.parsed_body)
+    assert_equal({ "rooms" => [ { "id" => rooms(:garden).id, "name" => "Garden", "room_type" => "double", "bookable" => false, "photos" => urls } ] }, response.parsed_body)
     assert_equal "max-age=300, public", response.headers["Cache-Control"]
     assert_equal "https://hueni.me", response.headers["Access-Control-Allow-Origin"]
+
+    site_ready(places(:tomo))
+    places(:tomo).update!(site_open: true)
+    get "/v1/places/tomo-homestay/photos"
+    assert_equal [ true ], response.parsed_body["rooms"].pluck("bookable"), "open, its type shown: bookable as itself"
 
     get "/v1/places/hiuhill-homestay/photos"
     assert_equal({ "rooms" => [] }, response.parsed_body)

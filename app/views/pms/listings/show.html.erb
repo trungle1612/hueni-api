@@ -24,7 +24,7 @@
   <% night = day == Date.current ? "tối nay" : "đêm mai" %>
   <%# Each offered type that night: its cheapest room (season % and all, like the booking page) and rooms free on hue-ni. %>
   <% types = place.rooms.where(active: true).where.not(room_type: nil).order(:name).group_by(&:room_type).sort_by { Room::ROOM_TYPES.keys.index(it.first) }.map do |type, rooms|
-       { key: type, label: Room::ROOM_TYPES[type], free: place.site_free_rooms(rooms, day, day.next_day).size,
+       { key: type, label: Room::ROOM_TYPES[type], free: place.site_rooms_left(rooms, day, day.next_day),
          price: rooms.filter_map { Booking.new(room: it, start_date: day, end_date: day.next_day).room_total }.min }
      end %>
   <% shown = types.select { it[:key].in?(place.site_room_types) } %>
