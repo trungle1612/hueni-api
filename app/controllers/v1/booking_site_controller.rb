@@ -6,16 +6,16 @@ class V1::BookingSiteController < V1::BaseController
   rate_limit to: 5, within: 10.minutes, only: :create,
     with: -> { render json: { error: "rate_limited", message: "Thử lại sau ít phút." }, status: :too_many_requests }
 
-  # ?from=&to= (YYYY-MM-DD): rooms left and the cheapest stay per room type for those nights; rooms (#290): each room of
-  # those types, free on hue-ni and its stay for those nights.
+  # ?from=&to= (YYYY-MM-DD): rooms (#290, #302): each shown room, free on hue-ni and its stay for those nights. room_types
+  # (older hue-ni): rooms left and the cheapest stay per type, only from typed rooms.
   def show
     place = Place.find_by!(slug: params[:slug])
     return render(json: { name: place.name, open: false }) unless place.site_open
     from, to = date_param(:from), date_param(:to)
     from = to = nil unless from && to&.after?(from) && to - from <= Place::SITE_MAX_NIGHTS
-    rooms = place.rooms.where(active: true, room_type: place.site_room_types).order(:name).to_a
-    by_type = rooms.group_by(&:room_type)
-    free = (by_type.transform_values { place.site_free_rooms(it, from, to) } if from)
+    rooms = place.site_rooms.order(:name).to_a
+    free = (place.site_free_rooms(rooms, from, to) if from)
+    by_type = rooms.group_by(&:room_type).except(nil)
     render json: {
       name: place.name, open: true,
       deposit_percent: place.site_deposit_percent, hold_minutes: place.site_hold_minutes, cutoff_hour: place.site_cutoff_hour,
@@ -24,18 +24,18 @@ class V1::BookingSiteController < V1::BaseController
       room_types: by_type.map do |type, typed|
         { key: type, label: Room::ROOM_TYPES[type], max_guests: typed.map(&:max_guests).max,
           left: (place.site_rooms_left(typed, from, to) if from),
-          total: free&.dig(type)&.filter_map { Booking.new(room: it, start_date: from, end_date: to).room_total }&.min }
+          total: free&.select { it.room_type == type }&.filter_map { Booking.new(room: it, start_date: from, end_date: to).room_total }&.min }
       end,
       rooms: rooms.map do |room|
         { id: room.id, name: room.name, room_type: room.room_type, max_guests: room.max_guests,
-          free: (free[room.room_type].include?(room) if from),
+          free: (free.include?(room) if from),
           total: (Booking.new(room:, start_date: from, end_date: to).room_total if from) }
       end
     }
   end
 
-  # { booking: { room_type, start_date, end_date, guests, guest_name, guest_phone, note } }, or room_id (#290) in place of
-  # room_type. website is a honeypot.
+  # { booking: { room_id, start_date, end_date, guests, guest_name, guest_phone, note } }; neither room_id nor room_type
+  # (#302) = any free room. room_type (older hue-ni) limits it to that type. website is a honeypot.
   def create
     place = Place.find_by!(slug: params[:slug])
     attrs = params.expect(booking: %i[room_type room_id start_date end_date guests guest_name guest_phone note website])
@@ -74,7 +74,7 @@ class V1::BookingSiteController < V1::BaseController
       return status_json(request.booking).merge(request: request.code, deposit: request.booking.site_deposit(request.deposit_percent)) if request.accepted?
       {
         code: request.code, status: request.site_status, reply_by: request.reply_by, homestay: request.place.name,
-        start_date: request.start_date, end_date: request.end_date, room_type: Room::ROOM_TYPES[request.room_type], room: request.room&.name, guests: request.guests,
+        start_date: request.start_date, end_date: request.end_date, room_type: Room::ROOM_TYPES[request.room_type || request.room&.room_type], room: request.room&.name, guests: request.guests,
         reason: (BookingRequest::DECLINE_REASONS[request.decline_reason] if request.declined?),
         suggested: ({ start_date: request.suggested_start_date, end_date: request.suggested_end_date } if request.suggested_start_date)
       }

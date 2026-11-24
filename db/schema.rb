@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_21_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_24_100000) do
   create_table "announcements", force: :cascade do |t|
     t.string "kind", default: "feature", null: false
     t.string "title", null: false
@@ -59,7 +59,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_100000) do
     t.integer "booking_id"
     t.string "status", default: "pending", null: false
     t.datetime "reply_by", null: false
-    t.string "room_type", null: false
+    t.string "room_type"
     t.date "start_date", null: false
     t.date "end_date", null: false
     t.integer "guests", null: false
@@ -289,6 +289,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_100000) do
     t.string "check_in_time"
     t.string "check_out_time"
     t.text "house_rules"
+    t.json "site_hidden_room_ids", default: [], null: false
     t.index ["slug"], name: "index_places_on_slug", unique: true
     t.check_constraint "cancel_policy IN ('flex', 'mid', 'strict')", name: "places_cancel_policy"
     t.check_constraint "site_mode IN ('approve', 'auto')", name: "places_site_mode"

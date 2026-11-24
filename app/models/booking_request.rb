@@ -24,8 +24,9 @@ class BookingRequest < ApplicationRecord
   validate :suggested_dates_make_sense
 
   scope :open, -> { pending.where(reply_by: Time.current..) }
-  # Pending requests of a type with a night in from...to: each holds its room, or any one room of the type, on hue-ni.
-  scope :holding, ->(room_type, from, to) { open.where(room_type:, start_date: ...to, end_date: from.next_day..) }
+  # Pending requests with a night in from...to: each holds its room, or any one room (of its type, if older hue-ni named
+  # one), on hue-ni.
+  scope :holding, ->(from, to) { open.where(start_date: ...to, end_date: from.next_day..) }
 
   after_create_commit { Notification.booking_request(self) }
 
@@ -42,7 +43,7 @@ class BookingRequest < ApplicationRecord
 
   # Yêu cầu đặt phòng (#284): the switched-on rooms of its type that fit the guests (those book_online offered), and
   # the ones Nhận can book now: free on the calendar and not needed by another pending request (#290).
-  def rooms = place.rooms.where(active: true, room_type:).where(max_guests: guests..).order(:name)
+  def rooms = place.rooms.where(active: true).where(max_guests: guests..).then { room_type ? it.where(room_type:) : it }.order(:name)
   def free_rooms = place.site_free_rooms(type_rooms, start_date, end_date, except: self, guests:)
   def calendar_free?(room) = free?(room, start_date, end_date)
   # Tạm tính: the picked room's stay, else the cheapest among those rooms, as hue-ni's Giá từ.
@@ -83,7 +84,7 @@ class BookingRequest < ApplicationRecord
       next refuse("Cần tài khoản chuyển khoản ở Cài đặt cơ sở để nhận cọc") if deposit_percent.positive? && !place.bank?
       next refuse("Phòng không thuộc cơ sở này") unless room.place_id == place_id
       next refuse("Phòng #{room.name} đang tắt") unless room.active?
-      next refuse("Phòng #{room.name} không phải #{Room::ROOM_TYPES[room_type]}") unless room.room_type == room_type
+      next refuse("Phòng #{room.name} không phải #{Room::ROOM_TYPES[room_type]}") unless room_type.nil? || room.room_type == room_type
       booking = room.bookings.build(start_date:, end_date:, guests:, guest_name:, guest_phone:, note:, online: true,
         hold_expires_at: (place.site_hold_minutes.minutes.from_now if deposit_percent.positive?))
       next refuse(*booking.errors.full_messages) unless booking.valid?
@@ -133,7 +134,7 @@ class BookingRequest < ApplicationRecord
   end
 
   private
-    def type_rooms = place.rooms.where(active: true, room_type:).order(:name).to_a
+    def type_rooms = place.rooms.where(active: true).then { room_type ? it.where(room_type:) : it }.order(:name).to_a
 
     def free?(room, from, to) = Booking.new(room:, start_date: from, end_date: to).date_problems.empty?
 

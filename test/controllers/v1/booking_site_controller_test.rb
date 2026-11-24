@@ -7,7 +7,7 @@ class V1::BookingSiteControllerTest < ActionDispatch::IntegrationTest
     rooms(:limdim).update!(room_type: "family", price: 500_000)
     @place = places(:tomo)
     site_ready(@place)
-    @place.update!(site_mode: "auto", site_open: true, site_hidden_room_types: [ "family" ])
+    @place.update!(site_mode: "auto", site_open: true, site_hidden_room_ids: [ rooms(:limdim).id ])
   end
 
   def body = response.parsed_body

@@ -11,12 +11,12 @@ class Pms::ListingsController < Pms::BaseController
   def show
   end
 
-  # Room types come as the shown ones; hidden = the offered ones left out, plus hidden types with no active room now.
+  # Rooms come as the shown ones; hidden = the active rooms left out, plus hidden rooms switched off now (#302).
   def update
-    site = params.expect(listing: [ :open, :mode, :reply_minutes, :cutoff_hour, :deposit_percent, :hold_minutes, :show_phone, shown_room_types: [] ])
-    offered = @place.rooms.where(active: true).where.not(room_type: nil).distinct.pluck(:room_type)
-    hidden = (@place.site_hidden_room_types.to_a - offered) | (offered - site.fetch(:shown_room_types, []))
-    if @place.update(site.except(:shown_room_types).to_h.transform_keys { "site_#{it}" }.merge(site_hidden_room_types: hidden))
+    site = params.expect(listing: [ :open, :mode, :reply_minutes, :cutoff_hour, :deposit_percent, :hold_minutes, :show_phone, shown_room_ids: [] ])
+    active = @place.rooms.where(active: true).ids
+    hidden = (@place.site_hidden_room_ids.to_a - active) | (active - site.fetch(:shown_room_ids, []).map(&:to_i))
+    if @place.update(site.except(:shown_room_ids).to_h.transform_keys { "site_#{it}" }.merge(site_hidden_room_ids: hidden))
       redirect_to pms_listing_path, status: :see_other, flash: { toast: SAVED }
     else
       render :show, status: :unprocessable_entity
