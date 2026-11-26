@@ -16,8 +16,8 @@ class PmsListingTest < ApplicationSystemTestCase
     assert_selector "input[name='listing[open]'][type=checkbox]:disabled"
     click_button "Giờ nhận, trả phòng"
     within("#rules_sheet") do
-      fill_in "Giờ nhận phòng", with: "14:00"
-      fill_in "Giờ trả phòng", with: "12:00"
+      fill_in "Giờ nhận phòng", with: Time.new(2000, 1, 1, 14, 0)
+      fill_in "Giờ trả phòng", with: Time.new(2000, 1, 1, 12, 0)
       fill_in "Quy định", with: "Không hút thuốc trong phòng."
       click_button "Lưu"
     end
