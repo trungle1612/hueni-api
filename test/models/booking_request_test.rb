@@ -166,7 +166,7 @@ class BookingRequestTest < ActiveSupport::TestCase
     WebPush.key = nil
   end
 
-  test "the checklist: photos for every shown type, the map pin, times and rules, the bank; turning on needs them all" do
+  test "the checklist: photos for every shown room, the map pin, times, the bank with a Cọc; turning on needs them all" do
     assert_empty @place.site_missing
     rooms(:garden).update!(room_type: "family")
     RoomPhoto.where(room: rooms(:garden)).delete_all
@@ -179,6 +179,20 @@ class BookingRequestTest < ActiveSupport::TestCase
     assert_not @place.update(site_open: true)
     assert_equal Place::SITE_CHECKLIST.values.to_set, @place.errors[:site_open].to_set
     assert_not @place.update(check_in_time: "2pm")
+  end
+
+  test "the bank is needed only with a Cọc, house rules never (#304)" do
+    @place.update!(site_open: false, site_deposit_percent: 0, bank_account: nil, house_rules: nil)
+    assert_empty @place.site_missing
+    assert_equal %w[photos map rules], @place.site_required
+    assert @place.update(site_open: true)
+
+    assert_not @place.update(site_deposit_percent: nil), "a null Cọc is an error, not a crash"
+    assert_not @place.update(site_deposit_percent: 30), "raising Cọc on an open page needs a bank"
+    assert_includes @place.errors[:site_open], Place::SITE_CHECKLIST["bank"]
+    @place.update!(site_open: false)
+    @place.site_deposit_percent = 30
+    assert_equal %w[bank], @place.site_missing
   end
 
   test "rooms are offered whatever their type (#302): no type needed, a request without room or type holds any room" do

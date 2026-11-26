@@ -1,5 +1,5 @@
 # Hiển thị trên hue-ni (#283, board HueniListing.dc.html, owners): the site_* settings of the current homestay, the
-# Thông tin cần có checklist (Place#site_missing), Giờ nhận, trả phòng và quy định, and a preview of hue-ni's card.
+# Thông tin cần có checklist (Place#site_missing; the bank only with a Cọc), Giờ nhận, trả phòng (+ optional quy định), and a preview of hue-ni's card.
 # Readiness and validation live in Place (#282); the frozen Mini App's PATCH booking_site edits the same columns.
 class Pms::ListingsController < Pms::BaseController
   before_action -> { authorize!(:manage, current_place) if current_place }, only: :show

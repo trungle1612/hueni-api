@@ -23,7 +23,7 @@ class Pms::ListingTest < ActionDispatch::IntegrationTest
     assert_select "#h-checks", text: /0 \/ 4 đã xong/
     assert_select "#check_photos[href=?]", pms_rooms_path, text: /!\s*Ảnh homestay\s*Cần ảnh cho mỗi phòng hiển thị/
     assert_select "#check_map", text: /Chưa có vị trí/
-    assert_select "#check_rules[popovertarget=rules_sheet]", text: /Cần giờ nhận, trả phòng và quy định/
+    assert_select "#check_rules[popovertarget=rules_sheet]", text: /Cần giờ nhận, trả phòng/
     assert_select "#check_bank[href=?]", pms_settings_path, text: /Cần tài khoản chuyển khoản/
     assert_select "#preview", text: /Liên hệ để hỏi phòng/
 
@@ -41,14 +41,14 @@ class Pms::ListingTest < ActionDispatch::IntegrationTest
     patch pms_listing_rules_path, params: { place: { check_in_time: "25:00", house_rules: "Không hút thuốc." } }
     assert_response :unprocessable_entity
     assert_select "#rules_sheet[data-controller=open] #check_in_time_error", text: /phải theo dạng 14:00/
-    assert_select "#check_rules", text: /!.*Cần giờ nhận, trả phòng và quy định/m
+    assert_select "#check_rules", text: /!.*Cần giờ nhận, trả phòng/m
     assert_select "input[name='listing[open]'][disabled]"
     patch pms_listing_rules_path, params: { place: { check_in_time: "14:00", check_out_time: "12:00", house_rules: "Không hút thuốc." } }
     assert_redirected_to pms_listing_path
     follow_redirect!
     assert_select ".pms-toast", text: "Đã cập nhật. hue-ni hiển thị thay đổi trong vài phút."
     assert_select "#h-checks", text: /4 \/ 4 đã xong/
-    assert_select "#check_rules", text: /✓.*14:00 \/ 12:00 · Không hút thuốc\./m
+    assert_select "#check_rules", text: /✓.*14:00 \/ 12:00/m
     assert_select "input[name='listing[open]']:not([disabled])"
     assert_select "#room_#{rooms(:garden).id}[checked]"
     assert_select "main", text: /Garden · 400.000đ\s*Còn trống tối nay/
@@ -93,6 +93,18 @@ class Pms::ListingTest < ActionDispatch::IntegrationTest
     assert_select "#listing_errors", text: /cần ít nhất một phòng hiển thị/
     assert_select "#preview", text: /Tối nay · T5 01\/10\s*Còn phòng.*Giá từ\s*400.000đ/m
     assert_equal [], @place.reload.site_hidden_room_ids
+  end
+
+  test "raising Cọc on an open page without a bank is refused and the checklist shows the bank row (#304)" do
+    site_ready(@place)
+    @place.update!(site_open: true, site_deposit_percent: 0, bank_account: nil)
+    log_in users(:owner)
+    get pms_listing_path
+    assert_select "#check_bank", count: 0
+    patch pms_listing_path, params: listing(deposit_percent: "30")
+    assert_response :unprocessable_entity
+    assert_select "#check_bank", text: /Cần tài khoản chuyển khoản/
+    assert_equal 0, @place.reload.site_deposit_percent
   end
 
   test "rules refused by the listing's own checks say why in the sheet" do

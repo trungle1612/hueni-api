@@ -16,7 +16,9 @@
   <% row = "flex items-center gap-3 min-h-14 px-3 py-2 w-full text-left no-underline" %>
   <%# After a refused save the form keeps what was typed; the checklist, switch state and preview follow what is saved. %>
   <% saved = place.changed? ? Place.find(place.id) : place %>
-  <% missing = saved.site_missing %>
+  <%# The bank row also shows when a typed Cọc > 0 was refused for lack of a bank. %>
+  <% required = saved.site_required | (place.changed? ? place.site_required : []) %>
+  <% missing = saved.site_missing(required) %>
   <% live = saved.site_open %>
   <% blocked = missing.any? && !live %>
   <%# Tonight, or tomorrow once same-day requests are closed (site_cutoff_hour), as book_online would take them. %>
@@ -54,15 +56,15 @@
     </div>
 
     <section class="px-4 pt-4" aria-labelledby="h-checks">
-      <h2 id="h-checks" class="pms-sec-h flex justify-between"><span>Thông tin cần có</span><span class="font-normal"><%= Place::SITE_CHECKLIST.size - missing.size %> / <%= Place::SITE_CHECKLIST.size %> đã xong</span></h2>
+      <h2 id="h-checks" class="pms-sec-h flex justify-between"><span>Thông tin cần có</span><span class="font-normal"><%= required.size - missing.size %> / <%= required.size %> đã xong</span></h2>
       <div id="checklist" class="pms-panel divide-y divide-pms-border">
         <% done = {
              "photos" => [ "Ảnh homestay", "Có ảnh cho mỗi phòng hiển thị" ],
              "map" => [ "Vị trí trên bản đồ", "Đã ghim#{" · #{saved.address}" if saved.address}" ],
-             "rules" => [ "Giờ nhận, trả phòng và quy định", "#{saved.check_in_time} / #{saved.check_out_time} · #{saved.house_rules&.truncate(40)}" ],
+             "rules" => [ "Giờ nhận, trả phòng", "#{saved.check_in_time} / #{saved.check_out_time}" ],
              "bank" => [ "Tài khoản nhận cọc", "#{saved.bank_name} *** #{saved.bank_account&.last(4)}" ]
            } %>
-        <% done.each do |item, (label, ok)| %>
+        <% done.slice(*required).each do |item, (label, ok)| %>
           <% gap = item.in?(missing) %>
           <% body = capture do %>
             <span class="flex-none flex items-center justify-center size-5 rounded-full text-xs font-bold <%= gap ? "bg-pms-warn-bg text-pms-warn" : "bg-pms-pos-bg text-pms-pos" %>" aria-hidden="true"><%= gap ? "!" : "✓" %></span>
