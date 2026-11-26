@@ -42,7 +42,7 @@
   <% else %>
     <div class="px-4 pt-4 pb-6 flex flex-col gap-3">
       <% shown.each do |request| %>
-        <% type = Room::ROOM_TYPES[request.room_type] %>
+        <% type = Room::ROOM_TYPES[request.room_type || request.room&.room_type] %>
         <% nights = (request.end_date - request.start_date).to_i %>
         <% dates = "#{pms_short_day(request.start_date)} – #{pms_short_day(request.end_date)} · #{nights} đêm" %>
         <% if request.open? %>

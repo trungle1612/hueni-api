@@ -79,7 +79,8 @@ class Place < ApplicationRecord
   validates :site_hold_minutes, inclusion: { in: SITE_HOLD_MINUTES }
   validates :site_cutoff_hour, inclusion: { in: SITE_CUTOFF_HOURS }
   validate -> { errors.add(:site_hidden_room_types, "không hợp lệ") unless site_hidden_room_types.is_a?(Array) && (site_hidden_room_types - Room::ROOM_TYPES.keys).empty? }
-  validate -> { errors.add(:site_open, "cần ít nhất một loại phòng hiển thị") if site_room_types.empty? }, if: :site_open
+  validate -> { errors.add(:site_hidden_room_ids, "không hợp lệ") unless site_hidden_room_ids.is_a?(Array) && site_hidden_room_ids.all?(Integer) }
+  validate -> { errors.add(:site_open, "cần ít nhất một phòng hiển thị") unless site_rooms.exists? }, if: :site_open
   validate -> { errors.add(:site_open, SITE_CHECKLIST["bank"]) unless bank? }, if: -> { site_open && site_deposit_percent.positive? }
 
   # Hiển thị trên hue-ni (#282): Tôi duyệt từng yêu cầu (approve: BookingRequest, answered within site_reply_minutes) or
@@ -95,7 +96,7 @@ class Place < ApplicationRecord
 
   # Thông tin cần có before the page can be turned on, by checklist item: the error when it's missing.
   SITE_CHECKLIST = {
-    "photos" => "cần ảnh cho mỗi loại phòng hiển thị",
+    "photos" => "cần ảnh cho mỗi phòng hiển thị",
     "map" => "cần vị trí trên bản đồ",
     "rules" => "cần giờ nhận, trả phòng và quy định",
     "bank" => "cần tài khoản chuyển khoản để nhận cọc"
@@ -104,33 +105,32 @@ class Place < ApplicationRecord
     site_missing.each { errors.add(:site_open, SITE_CHECKLIST[it]) unless errors.added?(:site_open, SITE_CHECKLIST[it]) }
   end
 
-  # The checklist items not done yet. Ảnh: every shown room type has a switched-on room with a photo. Bản đồ: hueni's pin.
+  # The checklist items not done yet. Ảnh: every shown room has a photo. Bản đồ: hueni's pin.
   def site_missing
-    shown = site_room_types
-    with_photos = rooms.where(active: true, room_type: shown).joins(:photos).distinct.pluck(:room_type)
-    { "photos" => shown.empty? || (shown - with_photos).any?, "map" => lat.nil? || lng.nil?,
+    { "photos" => !site_rooms.exists? || site_rooms.where.missing(:photos).exists?, "map" => lat.nil? || lng.nil?,
       "rules" => check_in_time.nil? || check_out_time.nil? || house_rules.nil?, "bank" => !bank? }.filter_map { |item, missing| item if missing }
   end
 
   SITE_MAX_NIGHTS = 30
-  SITE_FULL = "Hết phòng loại này trong những ngày đã chọn"
+  SITE_FULL = "Hết phòng trong những ngày đã chọn"
   SITE_ROOM_FULL = "Phòng này đã có khách trong những ngày đã chọn"
 
-  # A guest's request from the booking page. Auto mode: the first free switched-on room of that type (by name) for those
-  # dates, held for site_hold_minutes when a deposit is asked. Approve mode: a BookingRequest for the type, if a room is
-  # free. room_id (#290): that room instead, of an offered type; the type comes from it. Returns the booking or request,
+  # A guest's request from the booking page. Auto mode: the first free shown room (by name) that fits, for those dates,
+  # held for site_hold_minutes when a deposit is asked. Approve mode: a BookingRequest, if a room is free. room_id (#290,
+  # #302): that room instead. room_type (older hue-ni): only rooms of that type. Returns the booking or request,
   # saved or with errors. Errors never come from the room checks: those name the booking in the way, another guest's.
   def book_online(room_type: nil, room_id: nil, **fields)
-    if room_id.present?
-      room = rooms.where(active: true, room_type: site_room_types).find_by(id: room_id.to_s)
-      room_type = room&.room_type
-    end
+    pool = site_rooms.order(:name).to_a
+    room = pool.find { it.id.to_s == room_id.to_s } if room_id.present?
+    typed = room_type.present? ? pool.select { it.room_type == room_type } : pool
     attrs = fields.slice(:start_date, :end_date, :guests, :guest_name, :guest_phone, :note).merge(online: true)
     booking = Booking.new(attrs).tap(&:validate)
     booking.errors.delete(:base)
     booking.errors.delete(:room)
     booking.errors.add(:base, "Homestay đang tạm ngưng nhận đặt phòng online") unless site_open
-    booking.errors.add(:base, room_id.present? ? "Phòng này không nhận đặt online" : "Loại phòng này không nhận đặt online") unless room_type.in?(site_room_types)
+    if room_id.present? ? room.nil? : typed.empty?
+      booking.errors.add(:base, room_id.present? ? "Phòng này không nhận đặt online" : room_type.present? ? "Loại phòng này không nhận đặt online" : "Homestay chưa có phòng nhận đặt online")
+    end
     booking.errors.add(:guest_name, :blank) if booking.guest_name.blank?
     booking.errors.add(:guest_phone, :blank) if booking.guest_phone.blank?
     booking.errors.add(:guests, :blank) unless booking.guests&.positive?
@@ -141,26 +141,24 @@ class Place < ApplicationRecord
     end
     return booking if booking.errors.any?
 
-    typed = rooms.where(active: true, room_type:).order(:name).to_a
     if (room ? [ room ] : typed).none? { it.max_guests >= booking.guests }
-      return booking.tap { it.errors.add(:guests, "nhiều hơn sức chứa của #{room ? "phòng" : "loại phòng"} này") }
+      return booking.tap { it.errors.add(:guests, "nhiều hơn sức chứa của #{room ? "phòng này" : room_type.present? ? "loại phòng này" : "mọi phòng"}") }
     end
-    free = site_free_rooms(typed, from, to, guests: booking.guests)
+    free = site_free_rooms(pool, from, to, guests: booking.guests) & typed
     booking = (room ? (room if free.include?(room)) : free.first)&.then { Booking.new(room: it, **attrs) }
     full = room ? SITE_ROOM_FULL : SITE_FULL
     return Booking.new(attrs).tap { it.errors.add(:base, full) } unless booking&.valid?
     if site_mode == "approve"
-      return booking_requests.create!(room_type:, room:, reply_by: site_reply_minutes.minutes.from_now, **attrs.except(:online))
+      return booking_requests.create!(room_type: room_type.presence, room:, reply_by: site_reply_minutes.minutes.from_now, **attrs.except(:online))
     end
     booking.hold_expires_at = site_hold_minutes.minutes.from_now if site_deposit_percent.positive?
     booking.save || booking.tap { it.errors.clear; it.errors.add(:base, full) }
     booking
   end
 
-  # Rooms of one type hue-ni can sell for from...to, each on its own: free on the calendar, and taking it leaves every
-  # pending request of the type as well served on each of its nights (#290): a request needs the room its guest picked
-  # while that room is free for its stay, else any room of the type that fits its guests (an OTA took the picked room,
-  # or the owner changed its type). except: a request not to count. guests: only rooms that fit.
+  # Rooms hue-ni can sell for from...to, each on its own: free on the calendar, and taking it leaves every
+  # pending request as well served on each of its nights (#290): a request needs the room its guest picked while that
+  # room is free for its stay, else any room that fits its guests (an OTA took the picked room, or none was picked). except: a request not to count. guests: only rooms that fit.
   def site_free_rooms(typed, from, to, except: nil, guests: 1)
     pool, holds = site_stock(typed, from, to, except)
     pool.select { it.max_guests >= guests.to_i && site_keeps_holds?(holds, pool, [ it ], from, to) }
@@ -172,8 +170,10 @@ class Place < ApplicationRecord
     pool.each_with_object([]) { |room, taken| taken << room if site_keeps_holds?(holds, pool, taken + [ room ], from, to) }.size
   end
 
-  # Room types offered online: those of switched-on rooms, minus the hidden ones. Rooms without a type are not offered.
-  def site_room_types = rooms.where(active: true).where.not(room_type: nil).distinct.pluck(:room_type) - site_hidden_room_types.to_a
+  # Rooms offered online (#302): the switched-on rooms minus the hidden ones, whatever their type.
+  def site_rooms = rooms.where(active: true).where.not(id: site_hidden_room_ids.to_a)
+  # Their types, for the frozen Mini App and older hue-ni builds. Nothing is decided by it.
+  def site_room_types = site_rooms.where.not(room_type: nil).distinct.pluck(:room_type)
   # Chính sách huỷ (#163): shown to guests (booking page, confirmation); refunds stay the owner's call.
   CANCEL_POLICIES = {
     "flex" => [ "Linh hoạt", "Huỷ miễn phí trước 24 giờ. Sau đó mất cọc." ],
@@ -228,10 +228,10 @@ class Place < ApplicationRecord
       return [ [], [] ] if typed.empty?
       free = ->(room, first, last) { Booking.new(room:, start_date: first, end_date: last).date_problems.empty? }
       pool = typed.select { free.(it, from, to) }
-      holds = booking_requests.holding(typed.first.room_type, from, to).where.not(id: except).includes(:room).filter_map do |request|
+      holds = booking_requests.holding(from, to).where.not(id: except).includes(:room).filter_map do |request|
         picked = request.room if request.room.in?(typed) && free.(request.room, request.start_date, request.end_date)
         next if picked && !picked.in?(pool)
-        [ request.start_date, request.end_date, picked ? [ picked ] : typed.select { it.max_guests >= request.guests } ]
+        [ request.start_date, request.end_date, picked ? [ picked ] : typed.select { it.max_guests >= request.guests && (request.room_type.nil? || it.room_type == request.room_type) } ]
       end
       [ pool, holds ]
     end

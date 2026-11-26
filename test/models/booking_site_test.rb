@@ -60,12 +60,12 @@ class BookingSiteTest < ActiveSupport::TestCase
     assert request.persisted?, "the room is free again"
   end
 
-  test "opening the page needs a room type shown and, with a deposit, a bank account" do
-    @place.site_hidden_room_types = [ "double" ]
+  test "opening the page needs a room shown and, with a deposit, a bank account" do
+    @place.site_hidden_room_ids = @place.rooms.ids
     assert_not @place.valid?
-    @place.site_hidden_room_types = [ "bogus" ]
+    @place.site_hidden_room_ids = [ "bogus" ]
     assert_not @place.valid?
-    @place.assign_attributes(site_hidden_room_types: [], bank_account: nil)
+    @place.assign_attributes(site_hidden_room_ids: [], bank_account: nil)
     assert_includes @place.tap(&:validate).errors[:site_open], "cần tài khoản chuyển khoản để nhận cọc"
     @place.site_deposit_percent = 0
     assert @place.valid?

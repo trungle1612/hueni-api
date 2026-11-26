@@ -76,11 +76,6 @@ class BookingRequestTest < ActiveSupport::TestCase
     picked.update!(start_date: "2026-10-07", end_date: "2026-10-08")
     rooms(:limdim).bookings.create!(start_date: "2026-10-07", end_date: "2026-10-08", guest_name: "Khách OTA")
     assert_equal [ Place::SITE_FULL ], ask(start_date: "2026-10-07", end_date: "2026-10-08").errors[:base], "its room taken, it holds Garden"
-    picked.update!(start_date: "2026-10-09", end_date: "2026-10-10")
-    rooms(:limdim).update!(room_type: "family")
-    assert_equal [ Place::SITE_FULL ], ask(start_date: "2026-10-09", end_date: "2026-10-10").errors[:base], "its room retyped, it holds Garden"
-
-    rooms(:limdim).update!(room_type: "double")
     stay = { start_date: "2026-10-11", end_date: "2026-10-12" }
     assert ask(guests: 4, **stay).persisted?
     assert_equal [ Place::SITE_ROOM_FULL ], ask(room_id: rooms(:limdim).id, guest_name: "Chị Mai", **stay).errors[:base], "Limdim is the only room for 4"
@@ -93,10 +88,10 @@ class BookingRequestTest < ActiveSupport::TestCase
     assert_equal [ "Phòng này không nhận đặt online" ], ask(room_id: "abc").errors[:base]
     rooms(:garden).update!(active: false)
     assert_equal [ "Phòng này không nhận đặt online" ], ask(room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06").errors[:base]
-    rooms(:garden).update!(active: true, room_type: "family")
-    @place.update!(site_hidden_room_types: [ "family" ])
+    rooms(:garden).update!(active: true)
+    @place.update!(site_hidden_room_ids: [ rooms(:garden).id ])
     assert_equal [ "Phòng này không nhận đặt online" ], ask(room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06").errors[:base]
-    @place.update!(site_hidden_room_types: [])
+    @place.update!(site_hidden_room_ids: [])
     assert_equal [ "nhiều hơn sức chứa của phòng này" ], ask(room_id: rooms(:garden).id, guests: 3, start_date: "2026-10-05", end_date: "2026-10-06").errors[:guests]
     assert_equal [ Place::SITE_ROOM_FULL ], ask(room_id: rooms(:limdim).id).errors[:base], "Anh Minh is in limdim"
     assert_equal 0, BookingRequest.count
@@ -184,5 +179,24 @@ class BookingRequestTest < ActiveSupport::TestCase
     assert_not @place.update(site_open: true)
     assert_equal Place::SITE_CHECKLIST.values.to_set, @place.errors[:site_open].to_set
     assert_not @place.update(check_in_time: "2pm")
+  end
+
+  test "rooms are offered whatever their type (#302): no type needed, a request without room or type holds any room" do
+    rooms(:garden).update!(room_type: nil)
+    rooms(:limdim).update!(room_type: "family")
+    assert_equal [ rooms(:garden), rooms(:limdim) ], @place.site_rooms.order(:name).to_a
+    stay = { start_date: "2026-10-05", end_date: "2026-10-06" }
+    any = ask(room_type: nil, **stay)
+    assert_equal [ nil, nil ], any.values_at(:room_type, :room_id)
+    assert @place.book_online(room_id: rooms(:garden).id, guest_name: "Anh Tú", guest_phone: "0905111444", guests: 2, **stay).persisted?
+    assert_equal [ Place::SITE_FULL ], ask(room_type: nil, **stay).errors[:base], "two rooms, both held"
+    assert_equal [ "nhiều hơn sức chứa của mọi phòng" ], ask(room_type: nil, guests: 9, start_date: "2026-10-09", end_date: "2026-10-10").errors[:guests]
+  end
+
+  test "a hidden room is not offered, even when others share its type (#302)" do
+    @place.update!(site_hidden_room_ids: [ rooms(:garden).id ])
+    assert_equal [ rooms(:limdim) ], @place.site_rooms.to_a
+    assert_equal [ "Phòng này không nhận đặt online" ], ask(room_id: rooms(:garden).id, start_date: "2026-10-05", end_date: "2026-10-06").errors[:base]
+    assert_equal rooms(:limdim), ask(room_type: nil, start_date: "2026-10-05", end_date: "2026-10-06").then { assert it.persisted?; it.room || rooms(:limdim) }
   end
 end

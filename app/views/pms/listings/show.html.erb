@@ -22,13 +22,12 @@
   <%# Tonight, or tomorrow once same-day requests are closed (site_cutoff_hour), as book_online would take them. %>
   <% day = Time.current.hour >= saved.site_cutoff_hour ? Date.tomorrow : Date.current %>
   <% night = day == Date.current ? "tối nay" : "đêm mai" %>
-  <%# Each offered type that night: its cheapest room (season % and all, like the booking page) and rooms free on hue-ni. %>
-  <% types = place.rooms.where(active: true).where.not(room_type: nil).order(:name).group_by(&:room_type).sort_by { Room::ROOM_TYPES.keys.index(it.first) }.map do |type, rooms|
-       { key: type, label: Room::ROOM_TYPES[type], free: place.site_rooms_left(rooms, day, day.next_day),
-         price: rooms.filter_map { Booking.new(room: it, start_date: day, end_date: day.next_day).room_total }.min }
-     end %>
-  <% shown = types.select { it[:key].in?(place.site_room_types) } %>
-  <% saved_shown = types.select { it[:key].in?(saved.site_room_types) } %>
+  <%# Each active room that night: its stay (season % and all, like the booking page) and whether hue-ni can sell it (#302). %>
+  <% active = place.rooms.where(active: true).order(:name).to_a %>
+  <% sellable = place.site_free_rooms(active, day, day.next_day) %>
+  <% rooms = active.map { |room| { room:, free: room.in?(sellable), price: Booking.new(room:, start_date: day, end_date: day.next_day).room_total } } %>
+  <% shown_ids = place.site_rooms.ids %>
+  <% saved_ids = saved.site_rooms.ids %>
   <% support = Pms::LegalController::LEGAL["support_phone"] %>
 
   <%= form_with scope: :listing, url: pms_listing_path, method: :patch, id: "listing_form", html: { novalidate: true } do |form| %>
@@ -58,7 +57,7 @@
       <h2 id="h-checks" class="pms-sec-h flex justify-between"><span>Thông tin cần có</span><span class="font-normal"><%= Place::SITE_CHECKLIST.size - missing.size %> / <%= Place::SITE_CHECKLIST.size %> đã xong</span></h2>
       <div id="checklist" class="pms-panel divide-y divide-pms-border">
         <% done = {
-             "photos" => [ "Ảnh homestay", "Có ảnh cho mỗi loại phòng hiển thị" ],
+             "photos" => [ "Ảnh homestay", "Có ảnh cho mỗi phòng hiển thị" ],
              "map" => [ "Vị trí trên bản đồ", "Đã ghim#{" · #{saved.address}" if saved.address}" ],
              "rules" => [ "Giờ nhận, trả phòng và quy định", "#{saved.check_in_time} / #{saved.check_out_time} · #{saved.house_rules&.truncate(40)}" ],
              "bank" => [ "Tài khoản nhận cọc", "#{saved.bank_name} *** #{saved.bank_account&.last(4)}" ]
@@ -83,22 +82,22 @@
       </div>
     </section>
 
-    <section class="px-4 pt-4" aria-labelledby="h-types">
-      <h2 id="h-types" class="pms-sec-h flex justify-between items-baseline"><span>Loại phòng mở trên hue-ni</span><%= link_to "Sửa giá", pms_rooms_path, class: "text-pms-primary no-underline" %></h2>
-      <% if types.any? %>
+    <section class="px-4 pt-4" aria-labelledby="h-rooms">
+      <h2 id="h-rooms" class="pms-sec-h flex justify-between items-baseline"><span>Phòng mở trên hue-ni</span><%= link_to "Sửa giá", pms_rooms_path, class: "text-pms-primary no-underline" %></h2>
+      <% if rooms.any? %>
         <div class="pms-panel divide-y divide-pms-border">
-          <% types.each do |type| %>
+          <% rooms.each do |item| %>
             <label class="<%= row %> cursor-pointer">
               <span class="flex-1 min-w-0">
-                <span class="block truncate"><%= type[:label] %> · <%= type[:price] ? pms_money(type[:price]) : "chưa có giá" %></span>
-                <span class="block text-[13px] text-pms-text-2"><%= type[:free].positive? ? "Còn #{type[:free]} phòng trống #{night}" : "Hết phòng #{night}" %></span>
+                <span class="block truncate"><%= item[:room].name %> · <%= item[:price] ? pms_money(item[:price]) : "chưa có giá" %></span>
+                <span class="block text-[13px] text-pms-text-2"><%= item[:free] ? "Còn trống #{night}" : "Hết phòng #{night}" %></span>
               </span>
-              <%= check_box_tag "listing[shown_room_types][]", type[:key], type.in?(shown), id: "type_#{type[:key]}", role: "switch", class: "pms-switch", aria: { label: "Mở phòng #{type[:label]} trên hue-ni" } %>
+              <%= check_box_tag "listing[shown_room_ids][]", item[:room].id, item[:room].id.in?(shown_ids), id: "room_#{item[:room].id}", role: "switch", class: "pms-switch", aria: { label: "Mở phòng #{item[:room].name} trên hue-ni" } %>
             </label>
           <% end %>
         </div>
       <% else %>
-        <p class="pms-panel p-3 text-pms-text-2">Chưa có phòng nào có loại phòng. Chọn Loại phòng trong Danh sách phòng để mở trên hue-ni.</p>
+        <p class="pms-panel p-3 text-pms-text-2">Chưa có phòng nào đang bật. Thêm phòng trong Danh sách phòng để mở trên hue-ni.</p>
       <% end %>
       <p class="pt-2 text-[13px] text-pms-text-2">Phòng trống lấy tự động từ Lịch, kể cả đặt phòng từ Booking.com, Agoda. Giá lấy từ giá phòng, theo mùa.</p>
     </section>
@@ -138,8 +137,8 @@
 
   <section class="px-4 pt-4" aria-labelledby="h-preview">
     <h2 id="h-preview" class="pms-sec-h">Khách thấy trên hue-ni</h2>
-    <% free = saved_shown.sum { it[:free] } %>
-    <% from = saved_shown.filter_map { it[:price] }.min %>
+    <% free = rooms.count { it[:free] && it[:room].id.in?(saved_ids) } %>
+    <% from = rooms.filter_map { it[:price] if it[:room].id.in?(saved_ids) }.min %>
     <div id="preview" class="rounded-lg overflow-hidden border border-[#ead9c2] bg-[#fdf6ec] text-[#2b1613]">
       <% if place.cover_image_url %>
         <%= image_tag place.cover_image_url, alt: "", class: "w-full h-30 object-cover" %>
