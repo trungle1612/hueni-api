@@ -95,6 +95,18 @@ class Pms::ListingTest < ActionDispatch::IntegrationTest
     assert_equal [], @place.reload.site_hidden_room_ids
   end
 
+  test "raising Cọc on an open page without a bank is refused and the checklist shows the bank row (#304)" do
+    site_ready(@place)
+    @place.update!(site_open: true, site_deposit_percent: 0, bank_account: nil)
+    log_in users(:owner)
+    get pms_listing_path
+    assert_select "#check_bank", count: 0
+    patch pms_listing_path, params: listing(deposit_percent: "30")
+    assert_response :unprocessable_entity
+    assert_select "#check_bank", text: /Cần tài khoản chuyển khoản/
+    assert_equal 0, @place.reload.site_deposit_percent
+  end
+
   test "rules refused by the listing's own checks say why in the sheet" do
     site_ready(@place)
     @place.update!(site_open: true)

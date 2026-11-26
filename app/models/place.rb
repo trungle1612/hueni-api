@@ -81,7 +81,7 @@ class Place < ApplicationRecord
   validate -> { errors.add(:site_hidden_room_types, "không hợp lệ") unless site_hidden_room_types.is_a?(Array) && (site_hidden_room_types - Room::ROOM_TYPES.keys).empty? }
   validate -> { errors.add(:site_hidden_room_ids, "không hợp lệ") unless site_hidden_room_ids.is_a?(Array) && site_hidden_room_ids.all?(Integer) }
   validate -> { errors.add(:site_open, "cần ít nhất một phòng hiển thị") unless site_rooms.exists? }, if: :site_open
-  validate -> { errors.add(:site_open, SITE_CHECKLIST["bank"]) if site_missing.include?("bank") }, if: :site_open, unless: :will_save_change_to_site_open?
+  validate -> { errors.add(:site_open, SITE_CHECKLIST["bank"]) if site_deposit_percent.to_i.positive? && !bank? }, if: :site_open, unless: :will_save_change_to_site_open?
 
   # Hiển thị trên hue-ni (#282): Tôi duyệt từng yêu cầu (approve: BookingRequest, answered within site_reply_minutes) or
   # Tự nhận khi còn phòng (auto: book_online books at once); Báo khách số điện thoại sau khi nhận.
@@ -106,12 +106,12 @@ class Place < ApplicationRecord
   end
 
   # The items that count: the bank only when a Cọc is asked.
-  def site_required = site_deposit_percent.positive? ? SITE_CHECKLIST.keys : SITE_CHECKLIST.keys - %w[bank]
+  def site_required = site_deposit_percent.to_i.positive? ? SITE_CHECKLIST.keys : SITE_CHECKLIST.keys - %w[bank]
 
   # The checklist items not done yet. Ảnh: every shown room has a photo. Bản đồ: hueni's pin.
-  def site_missing
+  def site_missing(required = site_required)
     { "photos" => !site_rooms.exists? || site_rooms.where.missing(:photos).exists?, "map" => lat.nil? || lng.nil?,
-      "rules" => check_in_time.nil? || check_out_time.nil?, "bank" => !bank? }.filter_map { |item, missing| item if missing && site_required.include?(item) }
+      "rules" => check_in_time.nil? || check_out_time.nil?, "bank" => !bank? }.filter_map { |item, missing| item if missing && required.include?(item) }
   end
 
   SITE_MAX_NIGHTS = 30
