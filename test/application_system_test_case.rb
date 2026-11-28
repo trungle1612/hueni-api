@@ -6,6 +6,15 @@ Capybara::Selenium::Driver.prepend(Module.new do
   def invalid_element_errors = super + [ Selenium::WebDriver::Error::UnknownError ]
 end)
 
+# Chrome 158 rejects origin "*" in the Storage.clearDataForOrigin that Capybara's reset! sends ("* is not a valid URL"),
+# so every test errored in teardown; clear the cookies it asked for directly.
+Capybara::Selenium::Driver::ChromeDriver.prepend(Module.new do
+  def execute_cdp(cmd, **params)
+    return super unless cmd == "Storage.clearDataForOrigin" && params[:origin] == "*"
+    super("Network.clearBrowserCookies")
+  end
+end)
+
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1000 ]
 
