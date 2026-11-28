@@ -31,6 +31,15 @@ class Pms::TransfersTest < ActionDispatch::IntegrationTest
     assert request.transfers.first.reload.pending?
   end
 
+  test "past its deadline, before BookingRequest.expire runs, a request no longer shows the driver" do
+    request = ask
+    travel 31.minutes
+    log_in users(:owner)
+    get pms_booking_requests_path(loc: "tu-choi")
+    assert_select "##{dom_id(request)}", text: /Đón ở sân bay Phú Bài/
+    assert_select "##{dom_id(request)}", text: /Tài xế đối tác/, count: 0
+  end
+
   test "a declined request shows its pickup as cancelled, without the driver" do
     request = ask
     request.decline(reason: "dates")
@@ -49,7 +58,14 @@ class Pms::TransfersTest < ActionDispatch::IntegrationTest
     log_in users(:admin)
     get pms_booking_path(booking)
     assert_select "#dua-don", text: /Đón ở sân bay Phú Bài\s*Chờ đón.*Tài xế đối tác/m
-    assert_select "#dua-don form[action=?] button", pms_transfer_done_path(arrival), text: "Đã đón · đã thu tiền mặt"
+    assert_select "#dua-don form", 0, "Not before its day"
+    post pms_transfer_done_path(arrival)
+    assert_equal "Chưa đến ngày 05/10", flash[:alert]
+    assert arrival.reload.pending?
+
+    travel_to Time.zone.local(2026, 10, 5, 15)
+    get pms_booking_path(booking)
+    assert_select "#dua-don form[action=?][data-turbo-confirm*='200.000đ'] button", pms_transfer_done_path(arrival), text: "Đã đón · đã thu tiền mặt"
 
     post pms_transfer_done_path(arrival), headers: { "HTTP_REFERER" => pms_booking_url(booking) }
     assert_redirected_to pms_booking_path(booking)

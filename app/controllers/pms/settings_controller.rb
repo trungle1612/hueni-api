@@ -18,7 +18,8 @@ class Pms::SettingsController < Pms::BaseController
   # Đưa đón sân bay (#306, #307): partner on/off, price per leg (snapshotted on each new leg), the driver's phone.
   def transfer
     raise ActiveRecord::RecordNotFound unless current_place
-    if current_place.update(params.expect(place: %i[transfer_partner transfer_price driver_phone]))
+    current_place.assign_attributes(params.expect(place: %i[transfer_partner transfer_price driver_phone]))
+    if current_place.save(context: :transfer)
       redirect_to pms_settings_path, status: :see_other, flash: { toast: "Đã lưu đưa đón sân bay" }
     else
       render :show, status: :unprocessable_entity

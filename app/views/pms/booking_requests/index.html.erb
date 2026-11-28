@@ -81,7 +81,7 @@
             <p class="mx-3 mt-1 px-2.5 py-2 border-l-[3px] border-pms-border-strong bg-pms-bg text-[13px]">“<%= request.note %>”</p>
           <% end %>
           <% if request.transfers.any? %>
-            <div class="mx-3 mt-2"><p class="mb-1 text-[13px] font-semibold">Đưa đón sân bay</p><%= render "pms/transfers/transfers", transfers: request.transfers, place: %></div>
+            <div class="mx-3 mt-2"><p class="mb-1 text-[13px] font-semibold">Đưa đón sân bay</p><%= render "pms/transfers/transfers", transfers: request.transfers, place: place, driver: request.open? || request.accepted? %></div>
           <% end %>
           <%# #292: the homestay calls or Zalos the guest itself; no phone once declined or expired. %>
           <% if request.open? || request.accepted? %>

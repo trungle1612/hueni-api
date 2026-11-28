@@ -71,10 +71,11 @@ class PmsBookingRequestsTest < ApplicationSystemTestCase
       find("label", text: "Không cọc").click
       click_button "Nhận yêu cầu"
     end
+    request.transfers.update_all(date: Date.current) # the pickup day
     click_link "Xem đặt phòng"
     within("#dua-don") do
       assert_text "Chờ đón"
-      click_button "Đã đón · đã thu tiền mặt"
+      accept_confirm { click_button "Đã đón · đã thu tiền mặt" }
     end
     assert_selector ".pms-toast", text: "Đã đón khách ở sân bay"
     within("#dua-don") { assert_text "Đã đón" }
