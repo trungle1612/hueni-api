@@ -8,6 +8,7 @@ class Booking < ApplicationRecord
   has_many :payments, dependent: :destroy, autosave: false, validate: false
   has_many :charges, class_name: "BookingCharge", dependent: :destroy
   has_many :refund_requests, dependent: :destroy
+  has_many :transfers
   has_paper_trail on: %i[create update destroy], only: %i[room_id start_date end_date status guests guest_name guest_phone note price weekend_price discount discount_reason cancel_reason checked_in_at checked_out_at removed_from_feed_at declared_at group_id pays_own],
     meta: { place_id: ->(booking) { booking.room.place_id }, room_id: :room_id }
 
@@ -15,6 +16,13 @@ class Booking < ApplicationRecord
   # Thông báo (#216), saved with the change.
   after_create { Notification.booking("booking", self) }
   after_update { Notification.booking("cancel", self, [ guest_name.presence, Notification.dates(self) ].compact.join(" "), cancel_reason) if saved_change_to_status?(to: "cancelled") }
+  # Đưa đón sân bay (#306): cancelled with the booking, dates follow the stay.
+  after_update { transfers.pending.update_all(status: "cancelled", updated_at: Time.current) if saved_change_to_status?(to: "cancelled") }
+  after_update do
+    next unless saved_change_to_start_date? || saved_change_to_end_date?
+    transfers.pending.arrival.update_all(date: start_date, updated_at: Time.current)
+    transfers.pending.departure.update_all(date: end_date, updated_at: Time.current)
+  end
   after_update { Notification.booking("ota_removed", self, guest_name.presence || "Khách #{Notification.dates(self)}") if saved_change_to_removed_from_feed_at? && removed_from_feed_at }
   after_destroy { Notification.booking("ota_delete", self) }
 

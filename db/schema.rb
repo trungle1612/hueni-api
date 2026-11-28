@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_24_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_28_100000) do
   create_table "announcements", force: :cascade do |t|
     t.string "kind", default: "feature", null: false
     t.string "title", null: false
@@ -290,6 +290,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_24_100000) do
     t.string "check_out_time"
     t.text "house_rules"
     t.json "site_hidden_room_ids", default: [], null: false
+    t.boolean "transfer_partner", default: false, null: false
+    t.integer "transfer_price", default: 200000, null: false
+    t.string "driver_phone"
     t.index ["slug"], name: "index_places_on_slug", unique: true
     t.check_constraint "cancel_policy IN ('flex', 'mid', 'strict')", name: "places_cancel_policy"
     t.check_constraint "site_mode IN ('approve', 'auto')", name: "places_site_mode"
@@ -462,6 +465,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_24_100000) do
     t.check_constraint "\"trigger\" IN ('hourly', 'manual', 'added')", name: "sync_runs_trigger_values"
   end
 
+  create_table "transfers", force: :cascade do |t|
+    t.integer "place_id", null: false
+    t.integer "booking_request_id"
+    t.integer "booking_id"
+    t.string "kind", null: false
+    t.string "status", default: "pending", null: false
+    t.date "date", null: false
+    t.string "pickup_time"
+    t.string "flight"
+    t.integer "price", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["booking_id"], name: "index_transfers_on_booking_id"
+    t.index ["booking_request_id"], name: "index_transfers_on_booking_request_id"
+    t.index ["place_id"], name: "index_transfers_on_place_id"
+    t.check_constraint "kind IN ('arrival', 'departure')", name: "transfers_kind"
+    t.check_constraint "status IN ('pending', 'done', 'cancelled')", name: "transfers_status"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "phone_number"
     t.string "password_digest", null: false
@@ -538,4 +560,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_24_100000) do
   add_foreign_key "shift_closes", "users", column: "handed_to_id"
   add_foreign_key "surcharges", "places"
   add_foreign_key "sync_runs", "calendar_feeds", on_delete: :cascade
+  add_foreign_key "transfers", "booking_requests", on_delete: :cascade
+  add_foreign_key "transfers", "bookings", on_delete: :nullify
+  add_foreign_key "transfers", "places"
 end
