@@ -139,6 +139,9 @@ class V1::BookingSiteControllerTest < ActionDispatch::IntegrationTest
     assert_no_match "driver", response.body
 
     token = body["token"]
+    post v1_booking_site_bookings_path(@place.slug), params: { booking: guest.merge(guest_name: "Anh Tú", transfer: "yes") }, as: :json
+    assert_response :unprocessable_entity
+
     BookingRequest.last.decline(reason: "full")
     get v1_booking_site_status_path(token)
     assert_equal [ "cancelled" ], body["transfers"].map { it["status"] }.uniq

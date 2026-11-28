@@ -61,6 +61,7 @@ class Place < ApplicationRecord
       Payment.where(booking: bookings).delete_all
       BookingCharge.where(booking: bookings).delete_all
       booking_requests.delete_all
+      transfers.delete_all
       bookings.delete_all
       groups.delete_all
       guests.delete_all
@@ -118,7 +119,7 @@ class Place < ApplicationRecord
   # Đưa đón sân bay (#306): partner homestays only; the guest pays the driver in cash, so it is never billed here.
   TRANSFER_AIRPORT = "Sân bay Phú Bài"
   TRANSFER_REFUSED = "Cơ sở này chưa có dịch vụ đưa đón sân bay"
-  normalizes :driver_phone, with: ->(value) { value.strip.presence }
+  normalizes :driver_phone, with: ->(phone) { phone.gsub(/\D/, "").sub(/\A84(?=\d{9}\z)/, "0").presence }
   validates :transfer_price, numericality: { greater_than_or_equal_to: 0, only_integer: true }
 
   SITE_MAX_NIGHTS = 30
@@ -184,7 +185,7 @@ class Place < ApplicationRecord
     legs << { kind: "departure", date: stay.end_date, price: transfer_price, place: self } if departure
     legs.each do |leg|
       probe = Transfer.new(leg).tap(&:validate)
-      probe.errors.each { errors.add(:base, "#{Transfer.human_attribute_name(it.attribute).downcase} #{it.message}") }
+      probe.errors.each { errors.add(:base, it.message) }
     end
     legs
   end

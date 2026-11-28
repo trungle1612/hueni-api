@@ -32,9 +32,14 @@ class TransferTest < ActiveSupport::TestCase
   test "an arrival needs a valid time; nothing is saved" do
     bad = ask({ arrival: { time: "" } })
     assert_not bad.persisted?
-    assert_match "giờ", bad.errors.full_messages.join
+    assert_equal [ "Cần giờ máy bay đến để đón đúng giờ" ], bad.errors.full_messages
     assert_not ask({ arrival: { time: "25:00" } }).persisted?
     assert_equal [ 0, 0 ], [ Transfer.count, BookingRequest.count ]
+  end
+
+  test "driver phone is kept as 10 digits" do
+    @place.update!(driver_phone: "+84 912 345 678")
+    assert_equal "0912345678", @place.driver_phone
   end
 
   test "decline and expiry cancel the legs; undo of a decline brings them back" do
@@ -55,11 +60,21 @@ class TransferTest < ActiveSupport::TestCase
     assert request.accept(room: rooms(:garden), deposit_percent: 0)
     booking = request.reload.booking
     assert_equal [ booking.id ], request.transfers.pluck(:booking_id).uniq
-    booking.update!(start_date: "2026-10-04", end_date: "2026-10-08")
-    assert_equal [ Date.new(2026, 10, 4), Date.new(2026, 10, 8) ], booking.transfers.order(:id).pluck(:date)
+    booking.update!(end_date: "2026-10-08")
+    assert_equal [ Date.new(2026, 10, 5), Date.new(2026, 10, 8) ], booking.transfers.order(:id).pluck(:date)
     booking.cancel_reason = "Khách huỷ"
     booking.cancel!
     assert_equal [ "cancelled" ], booking.transfers.reload.map(&:status).uniq
+    booking.reopen!
+    assert_equal [ "pending" ], booking.transfers.reload.map(&:status).uniq
+  end
+
+  test "an arrival whose day moves is cancelled, the departure stays" do
+    request = ask
+    request.accept(room: rooms(:garden), deposit_percent: 0)
+    booking = request.reload.booking
+    booking.update!(start_date: "2026-10-04")
+    assert_equal [ [ "arrival", "cancelled" ], [ "departure", "pending" ] ], booking.transfers.order(:id).map { [ it.kind, it.status ] }
   end
 
   test "auto mode books and attaches the legs to the booking" do

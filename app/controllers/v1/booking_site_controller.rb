@@ -39,6 +39,8 @@ class V1::BookingSiteController < V1::BaseController
   # (#302) = any free room. room_type (older hue-ni) limits it to that type. website is a honeypot.
   def create
     place = Place.find_by!(slug: params[:slug])
+    transfer = params.dig(:booking, :transfer)
+    return render(json: { error: "invalid", message: "Thông tin đưa đón không hợp lệ.", errors: {} }, status: :unprocessable_entity) if transfer.present? && !transfer.respond_to?(:permitted?)
     attrs = params.expect(booking: [ *%i[room_type room_id start_date end_date guests guest_name guest_phone note website], { transfer: [ :departure, { arrival: %i[time flight] } ] } ])
     return render(json: { error: "invalid", message: "Không gửi được.", errors: {} }, status: :unprocessable_entity) if attrs[:website].present?
     made = PaperTrail.request(whodunnit: Activity::SITE) { place.book_online(**attrs.except(:website).to_h.symbolize_keys) }

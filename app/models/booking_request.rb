@@ -34,9 +34,11 @@ class BookingRequest < ApplicationRecord
   after_update { transfers.pending.update_all(status: "cancelled", updated_at: Time.current) if saved_change_to_status? && declined? }
 
   def self.expire
-    late = pending.where(reply_by: ...Time.current)
-    Transfer.pending.where(booking_request_id: late.select(:id)).update_all(status: "cancelled", updated_at: Time.current)
-    late.update_all(status: "expired", updated_at: Time.current)
+    transaction do
+      ids = pending.where(reply_by: ...Time.current).ids
+      Transfer.pending.where(booking_request_id: ids).update_all(status: "cancelled", updated_at: Time.current)
+      where(id: ids).update_all(status: "expired", updated_at: Time.current)
+    end
   end
   # Answered or expired requests go after DAYS days; accepted ones stay with their booking (the guest's link).
   def self.prune = where.not(status: "accepted").where(created_at: ...DAYS.days.ago).delete_all

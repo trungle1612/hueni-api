@@ -12,8 +12,10 @@ class Transfer < ApplicationRecord
   enum :status, STATUSES.index_by(&:itself), validate: true
   normalizes :flight, with: ->(value) { value.strip.upcase.presence }
 
-  validates :pickup_time, format: { with: /\A([01]\d|2[0-3]):[0-5]\d\z/, message: "phải theo dạng 14:30" }, allow_nil: true
-  validates :pickup_time, presence: { message: "cần giờ máy bay đến" }, if: :arrival?
-  validates :flight, length: { maximum: 20 }
+  # Full sentences: the guest sees them as they are (Place#transfer_legs), with no attribute names to translate.
+  validates :date, presence: { message: "Thiếu ngày đưa đón" }
+  validates :pickup_time, format: { with: /\A([01]\d|2[0-3]):[0-5]\d\z/, message: "Giờ máy bay đến phải theo dạng 14:30" }, allow_nil: true
+  validates :pickup_time, presence: { message: "Cần giờ máy bay đến để đón đúng giờ" }, if: :arrival?
+  validates :flight, length: { maximum: 20, message: "Số hiệu chuyến bay tối đa 20 ký tự" }
   validates :price, numericality: { greater_than_or_equal_to: 0, only_integer: true }
 end
