@@ -28,6 +28,9 @@ vi:
         check_out_time: Giờ trả phòng
         house_rules: Quy định
         cancel_policy: Chính sách huỷ
+        transfer_partner: Đưa đón sân bay
+        transfer_price: Giá mỗi chuyến
+        driver_phone: Số tài xế
       booking_request:
         decline_reason: Lý do từ chối
         suggested_start_date: Ngày gợi ý

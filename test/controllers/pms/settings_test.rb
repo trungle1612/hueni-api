@@ -54,6 +54,28 @@ class Pms::SettingsTest < ActionDispatch::IntegrationTest
     assert_not Service.exists?(service.id)
   end
 
+  test "owner turns on Đưa đón sân bay with a price and the driver's phone (#307); a bad phone or price is refused" do
+    log_in users(:owner)
+    get pms_settings_path
+    assert_select "#dua-don input[type=checkbox][name='place[transfer_partner]']:not([checked])"
+    assert_select "#dua-don input[name='place[transfer_price]'][value='200.000']"
+
+    patch pms_settings_transfer_path, params: { place: { transfer_partner: "1", transfer_price: "250k", driver_phone: "+84 912 345 678" } }
+    assert_redirected_to pms_settings_path
+    follow_redirect!
+    assert_select ".pms-toast", text: "Đã lưu đưa đón sân bay"
+    assert_equal [ true, 250_000, "0912345678" ], places(:tomo).reload.values_at(:transfer_partner, :transfer_price, :driver_phone)
+
+    patch pms_settings_transfer_path, params: { place: { driver_phone: "0912", transfer_price: "" } }
+    assert_response :unprocessable_entity
+    assert_select "#driver_phone_error", text: "Số tài xế phải có 10 số, ví dụ 0912 345 678"
+    assert_select "#transfer_price_error"
+    assert_equal [ 250_000, "0912345678" ], places(:tomo).reload.values_at(:transfer_price, :driver_phone)
+
+    patch pms_settings_transfer_path, params: { place: { transfer_partner: "0", driver_phone: "" } }
+    assert_equal [ false, nil ], places(:tomo).reload.values_at(:transfer_partner, :driver_phone)
+  end
+
   test "staff get Bạn chưa có quyền" do
     service = places(:tomo).services.create!(name: "Nước", price: 10_000)
     staff!
@@ -70,6 +92,9 @@ class Pms::SettingsTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
     delete pms_service_path(service)
     assert_response :forbidden
+    patch pms_settings_transfer_path, params: { place: { transfer_partner: "1" } }
+    assert_response :forbidden
+    assert_not places(:tomo).reload.transfer_partner
     assert_nil places(:tomo).reload.bank_name
     assert_equal [ "Nước", 10_000 ], service.reload.values_at(:name, :price)
   end
