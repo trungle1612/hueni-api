@@ -1,0 +1,26 @@
+<%# Đưa đón sân bay (#307): the legs a guest asked for on hue-ni. The homestay tells its partner driver by phone or Zalo; the
+    guest pays the driver in cash, so nothing here is billed. Đã đón once the booking exists; a refused request's legs show Đã huỷ. %>
+<% operate = allowed_to?(:operate, place) %>
+<div class="pms-panel divide-y divide-pms-border">
+  <% transfers.sort_by { [ it.kind, it.id ] }.each do |leg| %>
+    <% done_label = leg.arrival? ? "Đã đón" : "Đã đưa" %>
+    <% badge, tone = { "pending" => [ leg.arrival? ? "Chờ đón" : "Chờ đưa", "pms-badge-warn" ], "done" => [ done_label, "pms-badge-pos" ], "cancelled" => [ "Đã huỷ", "pms-badge-out" ] }[leg.status] %>
+    <div id="<%= dom_id(leg) %>" class="px-3 py-2.5">
+      <div class="flex items-center justify-between gap-2">
+        <b class="font-semibold"><%= leg.arrival? ? "Đón ở #{Place::TRANSFER_AIRPORT.downcase_first}" : "Đưa ra #{Place::TRANSFER_AIRPORT.downcase_first}" %></b>
+        <span class="pms-badge <%= tone %>"><%= badge %></span>
+      </div>
+      <p class="text-[13px] text-pms-text-2"><%= [ pms_short_day(leg.date), (leg.arrival? ? "máy bay đến #{leg.pickup_time}" : nil), ("chuyến #{leg.flight}" if leg.flight), "#{pms_money(leg.price)} khách trả tiền mặt" ].compact.join(" · ") %></p>
+      <% if operate && leg.pending? && leg.booking_id %>
+        <%= button_to "#{done_label} · đã thu tiền mặt", pms_transfer_done_path(leg), class: "pms-btn w-full mt-2" %>
+      <% end %>
+    </div>
+  <% end %>
+  <% if place.driver_phone && transfers.any?(&:pending?) %>
+    <div class="flex items-center gap-2 px-3 py-2">
+      <span class="flex-1 min-w-0"><span class="block text-[13px] text-pms-text-2">Tài xế đối tác</span><b class="block tabular-nums"><%= place.driver_phone %></b></span>
+      <%= link_to "Gọi", "tel:#{place.driver_phone}", class: "pms-btn px-3" %>
+      <%= link_to "Nhắn Zalo", "https://zalo.me/#{place.driver_phone}", target: "_blank", rel: "noopener", class: "pms-btn px-3" %>
+    </div>
+  <% end %>
+</div>

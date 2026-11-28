@@ -88,6 +88,7 @@ Rails.application.routes.draw do
       post "doi-phong", action: :move, as: :move
       post "khai-bao", action: :declare, as: :declare
     end
+    post "dua-don/:id/xong", to: "transfers#done", as: :transfer_done
   end
   root "sessions#new"
 

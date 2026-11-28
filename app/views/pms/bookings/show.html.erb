@@ -65,6 +65,13 @@
   <% end %>
 </section>
 
+<% if (transfers = b.transfers.to_a).any? %>
+  <section id="dua-don" class="px-4 pt-4" aria-labelledby="h-transfer">
+    <h2 id="h-transfer" class="pms-sec-h">Đưa đón sân bay</h2>
+    <%= render "pms/transfers/transfers", transfers:, place: @place %>
+  </section>
+<% end %>
+
 <section id="thanh-toan" class="px-4 pt-4" aria-labelledby="h-pay">
   <h2 id="h-pay" class="pms-sec-h">Thanh toán</h2>
   <div class="pms-panel">

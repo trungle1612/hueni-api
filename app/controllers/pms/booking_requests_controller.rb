@@ -13,7 +13,7 @@ class Pms::BookingRequestsController < Pms::BaseController
 
   def index
     @tab = params[:loc].presence_in(TABS)
-    @requests = current_place&.booking_requests&.where(created_at: BookingRequest::DAYS.days.ago..)&.includes(:room, booking: :room)&.to_a
+    @requests = current_place&.booking_requests&.where(created_at: BookingRequest::DAYS.days.ago..)&.includes(:room, :transfers, booking: :room)&.to_a
     @undo = @requests&.find { it.id == flash[:undo].first } if flash[:undo]&.last == "request"
   end
 

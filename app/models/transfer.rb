@@ -18,4 +18,11 @@ class Transfer < ApplicationRecord
   validates :pickup_time, presence: { message: "Cần giờ máy bay đến để đón đúng giờ" }, if: :arrival?
   validates :flight, length: { maximum: 20, message: "Số hiệu chuyến bay tối đa 20 ký tự" }
   validates :price, numericality: { greater_than_or_equal_to: 0, only_integer: true }
+
+  # Đã đón / Đã đưa (#307): the driver took the guest and the cash. Only a leg still waiting, once its booking exists.
+  def finish
+    return update!(status: "done") if pending? && booking_id
+    errors.add(:base, cancelled? ? "Chuyến đưa đón này đã huỷ" : done? ? "Chuyến đưa đón này đã xong" : "Nhận yêu cầu đặt phòng trước")
+    false
+  end
 end

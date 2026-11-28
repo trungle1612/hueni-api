@@ -52,4 +52,33 @@ class PmsBookingRequestsTest < ApplicationSystemTestCase
     assert_link "Nhắn Zalo", href: "https://zalo.me/0905111333"
     assert second.reload.pending?
   end
+
+  test "a pickup shows on the request and the booking, marked Đã đón there (#307)" do
+    @place.update!(transfer_partner: true, driver_phone: "0912345678")
+    request = @place.book_online(room_type: "double", start_date: Date.current + 10, end_date: Date.current + 11, guests: 2, guest_name: "Chị Hoa",
+      guest_phone: "0905111333", transfer: { arrival: { time: "14:30", flight: "VJ123" } })
+
+    OmniAuth.config.mock_auth[:zalo2] = OmniAuth::AuthHash.new(provider: "zalo2", uid: "zalo-chi-lan")
+    visit pms_booking_requests_path
+    click_button "Đăng nhập bằng Zalo"
+    within("##{dom_id(request)}") do
+      assert_text "Đón ở sân bay Phú Bài"
+      assert_text "máy bay đến 14:30 · chuyến VJ123 · 200.000đ khách trả tiền mặt"
+      assert_link "Gọi", href: "tel:0912345678"
+      click_button "Nhận"
+    end
+    within("##{dom_id(request, :accept)}") do
+      find("label", text: "Không cọc").click
+      click_button "Nhận yêu cầu"
+    end
+    click_link "Xem đặt phòng"
+    within("#dua-don") do
+      assert_text "Chờ đón"
+      click_button "Đã đón · đã thu tiền mặt"
+    end
+    assert_selector ".pms-toast", text: "Đã đón khách ở sân bay"
+    within("#dua-don") { assert_text "Đã đón" }
+    assert_no_button "Đã đón · đã thu tiền mặt"
+    assert request.transfers.first.reload.done?
+  end
 end
