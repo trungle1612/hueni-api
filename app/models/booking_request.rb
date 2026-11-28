@@ -142,6 +142,7 @@ class BookingRequest < ApplicationRecord
     elsif updated_at < UNDO_MINUTES.minutes.ago || !reply_by.future? then "Đã quá thời gian hoàn tác"
     elsif deposit_percent.to_i.positive? then "Khách đã thấy tài khoản để chuyển cọc, không hoàn tác được"
     elsif booking&.history&.many? then "Đặt phòng đã được sửa, thu tiền hoặc nhận phòng, không hoàn tác được"
+    elsif transfers.done.exists? then "Đã đón hoặc đưa khách ở sân bay, không hoàn tác được"
     end
   end
 

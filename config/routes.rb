@@ -34,6 +34,7 @@ Rails.application.routes.draw do
     patch "co-so/:slug", to: "places#update", as: :place
     get "cai-dat", to: "settings#show", as: :settings
     patch "cai-dat/chuyen-khoan", to: "settings#bank", as: :settings_bank
+    patch "cai-dat/dua-don", to: "settings#transfer", as: :settings_transfer
     resources :services, path: "cai-dat/dich-vu", only: %i[create update destroy]
     get "hien-thi-hue-ni", to: "listings#show", as: :listing
     patch "hien-thi-hue-ni", to: "listings#update"
@@ -88,6 +89,7 @@ Rails.application.routes.draw do
       post "doi-phong", action: :move, as: :move
       post "khai-bao", action: :declare, as: :declare
     end
+    post "dua-don/:id/xong", to: "transfers#done", as: :transfer_done
   end
   root "sessions#new"
 

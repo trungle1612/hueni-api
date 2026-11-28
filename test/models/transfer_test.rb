@@ -37,9 +37,12 @@ class TransferTest < ActiveSupport::TestCase
     assert_equal [ 0, 0 ], [ Transfer.count, BookingRequest.count ]
   end
 
-  test "driver phone is kept as 10 digits" do
+  test "driver phone is kept as 10 digits; a bad one is refused only from the settings" do
     @place.update!(driver_phone: "+84 912 345 678")
     assert_equal "0912345678", @place.driver_phone
+    @place.driver_phone = "0912"
+    assert_not @place.valid?(:transfer)
+    assert @place.save, "An old bad phone must not block other place saves (places:import)"
   end
 
   test "decline and expiry cancel the legs; undo of a decline brings them back" do
@@ -82,5 +85,21 @@ class TransferTest < ActiveSupport::TestCase
     booking = ask
     assert booking.persisted?
     assert_equal %w[arrival departure], booking.transfers.order(:id).map(&:kind)
+  end
+
+  test "Đã đón: from its day on, once; a request whose leg is done can't be undone (#307)" do
+    request = ask
+    leg = request.transfers.arrival.first
+    assert_not leg.finish
+    assert_equal [ "Nhận yêu cầu đặt phòng trước" ], leg.errors.full_messages
+    assert request.accept(room: rooms(:garden), deposit_percent: 0)
+    assert_not leg.reload.finish
+    assert_equal [ "Chưa đến ngày 05/10" ], leg.errors.full_messages
+
+    leg.update!(date: Date.current)
+    assert leg.finish
+    assert_not request.reload.undo
+    assert_equal [ "Đã đón hoặc đưa khách ở sân bay, không hoàn tác được" ], request.errors.full_messages
+    assert_equal [ "accepted", "done" ], [ request.reload.status, leg.reload.status ]
   end
 end

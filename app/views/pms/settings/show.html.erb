@@ -28,6 +28,28 @@
     <% end %>
   </section>
 
+  <section id="dua-don" class="px-4 pt-4" aria-labelledby="h-transfer">
+    <h2 id="h-transfer" class="pms-sec-h">Đưa đón sân bay</h2>
+    <%= form_with model: place, url: pms_settings_transfer_path, method: :patch, class: "pms-panel p-3 flex flex-col gap-3.5", html: { novalidate: true } do |form| %>
+      <label class="flex items-center gap-2.5 cursor-pointer">
+        <%= form.check_box :transfer_partner, class: "size-4.5 accent-pms-primary" %>
+        <span class="flex-1 min-w-0"><span class="block font-semibold">Nhận đặt xe đón, đưa <%= Place::TRANSFER_AIRPORT.downcase_first %></span><span class="block text-[13px] text-pms-text-2">Khách chọn khi gửi yêu cầu trên hue-ni</span></span>
+      </label>
+      <div class="flex flex-col gap-1.5">
+        <%= form.label :transfer_price, "Giá mỗi chuyến (đ)", class: "text-[13px] font-semibold" %>
+        <%= pms_money_field form, :transfer_price, placeholder: "200.000" %>
+        <%= pms_field_error(place, :transfer_price) %>
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <%= form.label :driver_phone, "Số tài xế đối tác", class: "text-[13px] font-semibold" %>
+        <%= form.telephone_field :driver_phone, maxlength: 20, placeholder: "0912 345 678", autocomplete: "off", class: pms_input_class(place, :driver_phone), aria: field_aria(place, :driver_phone) %>
+        <%= pms_field_error(place, :driver_phone) %>
+      </div>
+      <p class="text-[13px] text-pms-text-2">Khách trả tiền mặt cho tài xế, không tính vào tiền phòng. Bạn tự báo tài xế; số tài xế hiện cho lễ tân ở yêu cầu và đặt phòng có đưa đón. Đổi giá không làm đổi chuyến đã đặt.</p>
+      <%= form.button "Lưu đưa đón", class: "pms-btn pms-btn-primary w-full" %>
+    <% end %>
+  </section>
+
   <% services = place.services.sort_by(&:name) %>
   <section class="px-4 pt-4" aria-labelledby="h-services">
     <div class="flex items-center justify-between gap-2">

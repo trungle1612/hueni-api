@@ -121,6 +121,12 @@ class Place < ApplicationRecord
   TRANSFER_REFUSED = "Cơ sở này chưa có dịch vụ đưa đón sân bay"
   normalizes :driver_phone, with: ->(phone) { phone.gsub(/\D/, "").sub(/\A84(?=\d{9}\z)/, "0").presence }
   validates :transfer_price, numericality: { greater_than_or_equal_to: 0, only_integer: true }
+  # Checked only from Cài đặt cơ sở, so an old value never blocks places:import or other settings.
+  validates :driver_phone, format: { with: /\A0\d{9}\z/, message: "phải có 10 số, ví dụ 0912 345 678" }, allow_nil: true, on: :transfer
+  # Owners type the price like other money fields (Cài đặt cơ sở, #307): "200.000", "200k".
+  def transfer_price=(value)
+    super(VndPrice.parse(value))
+  end
 
   SITE_MAX_NIGHTS = 30
   SITE_FULL = "Hết phòng trong những ngày đã chọn"
