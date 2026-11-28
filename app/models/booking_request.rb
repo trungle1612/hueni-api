@@ -17,6 +17,7 @@ class BookingRequest < ApplicationRecord
   belongs_to :place
   belongs_to :booking, optional: true
   belongs_to :room, optional: true
+  has_many :transfers, dependent: :delete_all
 
   enum :status, STATUSES.index_by(&:itself), validate: true
   normalizes :guest_name, :guest_phone, :note, with: ->(value) { value.strip.presence }
@@ -29,8 +30,16 @@ class BookingRequest < ApplicationRecord
   scope :holding, ->(from, to) { open.where(start_date: ...to, end_date: from.next_day..) }
 
   after_create_commit { Notification.booking_request(self) }
+  # Đưa đón sân bay (#306): a refused request takes its transfers with it; accepted, they follow the booking.
+  after_update { transfers.pending.update_all(status: "cancelled", updated_at: Time.current) if saved_change_to_status? && declined? }
 
-  def self.expire = pending.where(reply_by: ...Time.current).update_all(status: "expired", updated_at: Time.current)
+  def self.expire
+    transaction do
+      ids = pending.where(reply_by: ...Time.current).ids
+      Transfer.pending.where(booking_request_id: ids).update_all(status: "cancelled", updated_at: Time.current)
+      where(id: ids).update_all(status: "expired", updated_at: Time.current)
+    end
+  end
   # Answered or expired requests go after DAYS days; accepted ones stay with their booking (the guest's link).
   def self.prune = where.not(status: "accepted").where(created_at: ...DAYS.days.ago).delete_all
 
@@ -90,6 +99,7 @@ class BookingRequest < ApplicationRecord
       next refuse(*booking.errors.full_messages) unless booking.valid?
       next refuse(format(HELD, room.name)) unless room.in?(place.site_free_rooms(type_rooms, start_date, end_date, except: self))
       booking.save!
+      transfers.update_all(booking_id: booking.id)
       update!(status: "accepted", booking:, deposit_percent:)
     end
   end
@@ -112,12 +122,14 @@ class BookingRequest < ApplicationRecord
       next refuse(undo_refusal) if undo_refusal
       if (booking = self.booking)
         update!(status: "pending", booking: nil, deposit_percent: nil)
+        transfers.update_all(booking_id: nil)
         PaperTrail::Version.where(item_type: "Booking", item_id: booking.id).delete_all
         Notification.where(booking_id: booking.id).delete_all
         booking.delete
         Vacancy.bust
       else
         update!(status: "pending", decline_reason: nil, suggested_start_date: nil, suggested_end_date: nil)
+        transfers.cancelled.update_all(status: "pending", updated_at: Time.current)
       end
       true
     end

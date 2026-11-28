@@ -26,6 +26,7 @@ class V1::BookingSiteController < V1::BaseController
           left: (place.site_rooms_left(typed, from, to) if from),
           total: free&.select { it.room_type == type }&.filter_map { Booking.new(room: it, start_date: from, end_date: to).room_total }&.min }
       end,
+      transfer: ({ available: true, airport: Place::TRANSFER_AIRPORT, price: place.transfer_price } if place.transfer_partner),
       rooms: rooms.map do |room|
         { id: room.id, name: room.name, room_type: room.room_type, max_guests: room.max_guests,
           free: (free.include?(room) if from),
@@ -34,11 +35,13 @@ class V1::BookingSiteController < V1::BaseController
     }
   end
 
-  # { booking: { room_id, start_date, end_date, guests, guest_name, guest_phone, note } }; neither room_id nor room_type
+  # { booking: { room_id, start_date, end_date, guests, guest_name, guest_phone, note, transfer: { arrival: { time, flight }, departure } } }; neither room_id nor room_type
   # (#302) = any free room. room_type (older hue-ni) limits it to that type. website is a honeypot.
   def create
     place = Place.find_by!(slug: params[:slug])
-    attrs = params.expect(booking: %i[room_type room_id start_date end_date guests guest_name guest_phone note website])
+    transfer = params.dig(:booking, :transfer)
+    return render(json: { error: "invalid", message: "Thông tin đưa đón không hợp lệ.", errors: {} }, status: :unprocessable_entity) if transfer.present? && !transfer.respond_to?(:permitted?)
+    attrs = params.expect(booking: [ *%i[room_type room_id start_date end_date guests guest_name guest_phone note website], { transfer: [ :departure, { arrival: %i[time flight] } ] } ])
     return render(json: { error: "invalid", message: "Không gửi được.", errors: {} }, status: :unprocessable_entity) if attrs[:website].present?
     made = PaperTrail.request(whodunnit: Activity::SITE) { place.book_online(**attrs.except(:website).to_h.symbolize_keys) }
     if made.persisted?
@@ -65,8 +68,13 @@ class V1::BookingSiteController < V1::BaseController
         start_date: booking.start_date, end_date: booking.end_date, room_type: booking.room.room_type_label, room: booking.room.name, guests: booking.guests,
         total: booking.total, deposit: booking.site_deposit, paid: booking.paid,
         bank: ({ name: place.bank_name, account: place.bank_account, holder: place.bank_holder, content: booking.code.delete("-") } if booking.held? && place.bank?),
-        phone: (place.phone if place.site_show_phone)
+        phone: (place.phone if place.site_show_phone), transfers: transfers_json(booking.transfers)
       }
+    end
+
+    # What the guest sees of a leg: never the driver.
+    def transfers_json(transfers)
+      transfers.order(:kind, :id).map { { kind: it.kind, date: it.date, time: it.pickup_time, flight: it.flight, price: it.price, status: it.status } }
     end
 
     # Accepted: the booking's status (its deposit at the % picked on accept), with the request's code.
@@ -76,7 +84,8 @@ class V1::BookingSiteController < V1::BaseController
         code: request.code, status: request.site_status, reply_by: request.reply_by, homestay: request.place.name,
         start_date: request.start_date, end_date: request.end_date, room_type: Room::ROOM_TYPES[request.room_type || request.room&.room_type], room: request.room&.name, guests: request.guests,
         reason: (BookingRequest::DECLINE_REASONS[request.decline_reason] if request.declined?),
-        suggested: ({ start_date: request.suggested_start_date, end_date: request.suggested_end_date } if request.suggested_start_date)
+        suggested: ({ start_date: request.suggested_start_date, end_date: request.suggested_end_date } if request.suggested_start_date),
+        transfers: transfers_json(request.transfers)
       }
     end
 

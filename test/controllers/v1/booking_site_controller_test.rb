@@ -122,4 +122,28 @@ class V1::BookingSiteControllerTest < ActionDispatch::IntegrationTest
     post v1_booking_site_bookings_path(@place.slug), params: { booking: pick.merge(guest_name: "Anh Tú") }, as: :json
     assert_equal [ Place::SITE_ROOM_FULL ], body.dig("errors", "base")
   end
+
+  test "transfer: offered by partners only; the status link shows the legs, never another guest's" do
+    get v1_booking_site_path(@place.slug)
+    assert_nil body["transfer"]
+    post v1_booking_site_bookings_path(@place.slug), params: { booking: guest.merge(transfer: { departure: true }) }, as: :json
+    assert_response :unprocessable_entity
+    assert_equal [ "Cơ sở này chưa có dịch vụ đưa đón sân bay" ], [ body["message"] ]
+
+    @place.update!(transfer_partner: true, site_mode: "approve")
+    get v1_booking_site_path(@place.slug)
+    assert_equal({ "available" => true, "airport" => "Sân bay Phú Bài", "price" => 200_000 }, body["transfer"])
+    post v1_booking_site_bookings_path(@place.slug), params: { booking: guest.merge(transfer: { arrival: { time: "14:30", flight: "VJ123" }, departure: true }) }, as: :json
+    assert_response :created
+    assert_equal [ [ "arrival", "14:30", "VJ123", "pending" ], [ "departure", nil, nil, "pending" ] ], body["transfers"].map { it.values_at("kind", "time", "flight", "status") }
+    assert_no_match "driver", response.body
+
+    token = body["token"]
+    post v1_booking_site_bookings_path(@place.slug), params: { booking: guest.merge(guest_name: "Anh Tú", transfer: "yes") }, as: :json
+    assert_response :unprocessable_entity
+
+    BookingRequest.last.decline(reason: "full")
+    get v1_booking_site_status_path(token)
+    assert_equal [ "cancelled" ], body["transfers"].map { it["status"] }.uniq
+  end
 end

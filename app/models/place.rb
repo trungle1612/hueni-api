@@ -18,6 +18,7 @@ class Place < ApplicationRecord
   has_many :invites, dependent: :delete_all
   has_many :notifications, dependent: :delete_all
   has_many :booking_requests, dependent: :delete_all
+  has_many :transfers, dependent: :delete_all
   has_many :users, through: :place_memberships
 
   after_commit { Vacancy.bust }
@@ -60,6 +61,7 @@ class Place < ApplicationRecord
       Payment.where(booking: bookings).delete_all
       BookingCharge.where(booking: bookings).delete_all
       booking_requests.delete_all
+      transfers.delete_all
       bookings.delete_all
       groups.delete_all
       guests.delete_all
@@ -114,6 +116,12 @@ class Place < ApplicationRecord
       "rules" => check_in_time.nil? || check_out_time.nil?, "bank" => !bank? }.filter_map { |item, missing| item if missing && required.include?(item) }
   end
 
+  # Đưa đón sân bay (#306): partner homestays only; the guest pays the driver in cash, so it is never billed here.
+  TRANSFER_AIRPORT = "Sân bay Phú Bài"
+  TRANSFER_REFUSED = "Cơ sở này chưa có dịch vụ đưa đón sân bay"
+  normalizes :driver_phone, with: ->(phone) { phone.gsub(/\D/, "").sub(/\A84(?=\d{9}\z)/, "0").presence }
+  validates :transfer_price, numericality: { greater_than_or_equal_to: 0, only_integer: true }
+
   SITE_MAX_NIGHTS = 30
   SITE_FULL = "Hết phòng trong những ngày đã chọn"
   SITE_ROOM_FULL = "Phòng này đã có khách trong những ngày đã chọn"
@@ -122,7 +130,7 @@ class Place < ApplicationRecord
   # held for site_hold_minutes when a deposit is asked. Approve mode: a BookingRequest, if a room is free. room_id (#290,
   # #302): that room instead. room_type (older hue-ni): only rooms of that type. Returns the booking or request,
   # saved or with errors. Errors never come from the room checks: those name the booking in the way, another guest's.
-  def book_online(room_type: nil, room_id: nil, **fields)
+  def book_online(room_type: nil, room_id: nil, transfer: nil, **fields)
     pool = site_rooms.order(:name).to_a
     room = pool.find { it.id.to_s == room_id.to_s } if room_id.present?
     typed = room_type.present? ? pool.select { it.room_type == room_type } : pool
@@ -134,6 +142,7 @@ class Place < ApplicationRecord
     if room_id.present? ? room.nil? : typed.empty?
       booking.errors.add(:base, room_id.present? ? "Phòng này không nhận đặt online" : room_type.present? ? "Loại phòng này không nhận đặt online" : "Homestay chưa có phòng nhận đặt online")
     end
+    legs = transfer_legs(transfer, booking, booking.errors)
     booking.errors.add(:guest_name, :blank) if booking.guest_name.blank?
     booking.errors.add(:guest_phone, :blank) if booking.guest_phone.blank?
     booking.errors.add(:guests, :blank) unless booking.guests&.positive?
@@ -152,11 +161,33 @@ class Place < ApplicationRecord
     full = room ? SITE_ROOM_FULL : SITE_FULL
     return Booking.new(attrs).tap { it.errors.add(:base, full) } unless booking&.valid?
     if site_mode == "approve"
-      return booking_requests.create!(room_type: room_type.presence, room:, reply_by: site_reply_minutes.minutes.from_now, **attrs.except(:online))
+      return transaction do
+        booking_requests.create!(room_type: room_type.presence, room:, reply_by: site_reply_minutes.minutes.from_now, **attrs.except(:online)).tap { it.transfers.create!(legs) }
+      end
     end
     booking.hold_expires_at = site_hold_minutes.minutes.from_now if site_deposit_percent.positive?
-    booking.save || booking.tap { it.errors.clear; it.errors.add(:base, full) }
+    transaction do
+      booking.save ? booking.transfers.create!(legs) : booking.tap { it.errors.clear; it.errors.add(:base, full) }
+    end
     booking
+  end
+
+  # transfer: { arrival: { time:, flight: }, departure: true } → the legs to create (price snapshotted, dates = the
+  # stay's), or errors on `errors` (refused outright when this isn't a partner, never silently dropped).
+  def transfer_legs(transfer, stay, errors)
+    transfer = (transfer.to_h.deep_symbolize_keys if transfer.respond_to?(:to_h))
+    arrival, departure = transfer&.values_at(:arrival, :departure)
+    departure = ActiveModel::Type::Boolean.new.cast(departure)
+    return [] if arrival.blank? && !departure
+    return errors.add(:base, TRANSFER_REFUSED).then { [] } unless transfer_partner
+    legs = []
+    legs << { kind: "arrival", date: stay.start_date, pickup_time: arrival[:time].presence, flight: arrival[:flight], price: transfer_price, place: self } if arrival.present?
+    legs << { kind: "departure", date: stay.end_date, price: transfer_price, place: self } if departure
+    legs.each do |leg|
+      probe = Transfer.new(leg).tap(&:validate)
+      probe.errors.each { errors.add(:base, it.message) }
+    end
+    legs
   end
 
   # Rooms hue-ni can sell for from...to, each on its own: free on the calendar, and taking it leaves every
